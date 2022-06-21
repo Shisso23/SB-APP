@@ -1,8 +1,8 @@
+import RootRouter from "./navigation/root.router";
+
 function App() {
   return (
-    <div class=" font-bold text-lg">
-        SB APP
-    </div>
+    <RootRouter/>
   );
 }
 
