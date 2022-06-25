@@ -1,5 +1,6 @@
 import ax from 'axios';
-import { config } from '../../../config';
+import config from '../../config'
+
 
 
 
@@ -7,6 +8,7 @@ const authNetworkService = ax.create({
   timeout: 5000,
   baseURL: config.apiUrl,
   headers: {
+
     'X-RapidAPI-Key': config.apiKey,
     'X-RapidAPI-Host': 'api-football-v1.p.rapidapi.com',
     // Accept: 'application/json',

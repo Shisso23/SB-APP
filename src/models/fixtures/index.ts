@@ -1,6 +1,5 @@
 export class FixturesModel {
-    public parameter: fixtureParameterModel;
-    public errors: string [];
+    public errors: String [];
     public results: Number;
     public paging: FixturePagingModel;
     public response: FixtureDataModel[];
@@ -8,18 +7,10 @@ export class FixturesModel {
      *
      */
     constructor(init: FixturesModel) {
-        this.parameter = init.parameter;
         this.errors = init.errors;
         this.results = init.results;
         this.paging = init.paging;
         this.response = init.response;
-    }
-}
-
-export class fixtureParameterModel {
-    public date: String;
-    constructor(init: fixtureParameterModel) {
-       this.date = init.date;
     }
 }
 
@@ -128,6 +119,30 @@ export class FixtureDataScoreModel {
        this.halfTime = init.halfTime;
        this.fullTime = init.fullTime;
        this.extraTime = init.extraTime;
+    }
+}
+
+
+export class FixturesFilterModel {
+    public live?: String;
+    public date?: String;
+    public league?: Number;
+    public season?: Number;
+    public team?: Number;
+    public last?: Number;
+    public next?: Number;
+    public from?: String;
+    public to?: String;
+    constructor(init: FixturesFilterModel) {
+       this.live = init.live;
+       this.date = init.date;
+       this.league = init.league;
+       this.season = init.season;
+       this.team = init.team;
+       this.last = init.last;
+       this.next = init.next;
+       this.from = init.from;
+       this.to = init.to;
     }
 }
 

@@ -1,5 +1,4 @@
 export interface FixturesDto {
-   parameter: fixtureParameterDto;
    errors:  String [];
    results: Number;
    paging: FixturePagingDto;
@@ -8,7 +7,7 @@ export interface FixturesDto {
 
 
   export interface FixtureDataDto{
-    fixture: FixtureDataDFixtureto;
+    fixture: FixtureDataFixtureDto;
     league: FixtureDataLeagueDto;
     teams: FixtureDataTeamsDto;
     goals: FixtureDataGoalsDto;
@@ -21,7 +20,7 @@ export interface FixtureDataLeagueDto{
     name: String;
     country: String;
     logo: String;
-    season: String;
+    season: Number;
     round: String;
 }
 
@@ -48,10 +47,11 @@ export interface FixtureDataScoreDto{
     extraTime: FixtureDataGoalsDto;
 }
 
-  export interface FixtureDataDFixtureto{
+  export interface FixtureDataFixtureDto{
     id: Number;
     date: string;
     timestamp: Number;
+    timezone: String;
     status: FixtureStatusDto;
 }
 
@@ -66,8 +66,3 @@ export interface FixtureStatusDto{
     current: Number;
     total: Number;
 }
-
-  export interface fixtureParameterDto{
-      league: String;
-      season: string;
-  }
