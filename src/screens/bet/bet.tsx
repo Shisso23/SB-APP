@@ -12,7 +12,7 @@ import images from '../../assets/images';
 
 
 
-const HomeScreen: React.FC = () => {
+const BetScreen: React.FC = () => {
   const {fixtures, isLoadingFixtures } : FixturesState = useSelector(fixturesSelector);
   const navigate = useNavigate();
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
@@ -39,7 +39,7 @@ const updateWindowDimensions =()=>{
 }
 
 const handleBetClick =()=>{
-  return navigate('/bet', {})
+  return navigate('/betpage', {})
 }
 
   return (
@@ -59,4 +59,4 @@ const handleBetClick =()=>{
   );
 };
 
-export default HomeScreen;
+export default BetScreen;
