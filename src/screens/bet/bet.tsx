@@ -25,11 +25,26 @@ const BetScreen: React.FC = () => {
   
   useEffect(()=>{
     dispatch( geFilteredLeaguesAction (leaguesFilters));
-    window.addEventListener('resize', updateWindowDimensions)
+  
+    window.addEventListener('resize', updateWindowDimensions);
+    window.addEventListener("load", handlePageRefresh);
     return ()=>{
-      window.removeEventListener('resize', updateWindowDimensions)
+      window.removeEventListener('resize', updateWindowDimensions);
+      window.removeEventListener("load", handlePageRefresh);
     }
   }, []);
+
+  useEffect(()=>{
+    handlePageRefresh();
+  }, [leagues?.response.length])
+
+  const handlePageRefresh=()=>{
+    if(searchedLeagues?.length ===0){
+      setFilteredLeagues(leagues?.response)
+    }else{
+      setFilteredLeagues(searchedLeagues)
+    }
+  }
 
   useEffect(()=>{
     if(searchedLeagues?.length ===0){
@@ -43,10 +58,6 @@ const updateWindowDimensions =()=>{
   setWindowHeight(window.innerHeight);
   setWindowWidth(window.innerWidth);
 }
-
-useEffect(()=>{
-    console.log({selectedLeagues})
-}, [selectedLeagues, selectedLeagues?.length])
 
 const handleNextClick =()=>{
   return navigate('/predictions', {})
