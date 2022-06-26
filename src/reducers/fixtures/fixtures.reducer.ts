@@ -1,6 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
-import { FixturesDto } from '../../dto/fixtures/index';
 import { FixturesModel } from '../../models/fixtures/index';
 
 export interface FixturesState {
