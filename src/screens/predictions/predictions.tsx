@@ -73,8 +73,11 @@ const handleOptionSelect =(e:ChangeEvent<HTMLInputElement>, option: {id: Number,
     }}
     className=" flex flex-grow items-center flex-col justify-center pb-10 pt-28"
     >
+       <div className=' flex flex-row  w-full justify-center'>
+          <div className=' flex font-bold self-center text-lg py-2 bg-white h-14 w-64 mb-5 items-center justify-center text-center'>Select Bet Options</div>
+        </div>
         <div className='flex flex-col w-9/12 overflow-y-scroll items-center'>
-            <div className=' text-white flex w-4/6 '>Selecte bet Options</div>
+       
                 {betOptions.map(betOption=>{
                     return (<div key={`${betOption.id}`} className=' flex flex-row justify-between py-6 my-2 px-3 w-4/6 rounded-md bg-blue-300 hover:bg-blue-200'>
                         <CheckBoxIcon onChange={(e)=> handleOptionSelect(e, betOption)} size="medium"/>
