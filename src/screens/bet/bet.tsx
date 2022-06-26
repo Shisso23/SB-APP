@@ -7,22 +7,20 @@ import { geFilteredLeaguesAction } from '../../reducers/leagues/leagues.actions'
 import images from '../../assets/images';
 import { leaguesSelector, LeaguesState } from '../../reducers/leagues/leagues.reducer';
 import { LeagueDataLeagueModel, LeaguesFilterModel } from '../../models/leagues';
-import { CircularProgress } from '@mui/material';
-
-
-
-
-
+import { CircularProgress, TextField } from '@mui/material';
+import Autocomplete from '@mui/material/Autocomplete';
+import { LeagueDataModel } from '../../models/leagues/index';
 
 const BetScreen: React.FC = () => {
-  const {leagues, isLoadingLeagues } : LeaguesState = useSelector(leaguesSelector);
+  let {leagues, isLoadingLeagues } : LeaguesState = useSelector(leaguesSelector);
   const navigate = useNavigate();
   const checkBoxRef = useRef(null);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [windowHeight, setWindowHeight] = useState(window.innerHeight);
   const [selectedLeagues, setSelectedLeagues] = useState<LeagueDataLeagueModel[]>();
   const [leaguesFilters, setLeaguesFilters] = useState<LeaguesFilterModel>({current: true, season: 2022, type: 'league'});
-
+  const [searchedLeagues, setSearchedLeagues] = useState<LeagueDataModel[] | []>([]);
+  const [filteredLeagues, setFilteredLeagues] = useState<LeagueDataModel[]>(leagues?.response)
   const dispatch: any = useDispatch();
   
   useEffect(()=>{
@@ -32,6 +30,14 @@ const BetScreen: React.FC = () => {
       window.removeEventListener('resize', updateWindowDimensions)
     }
   }, []);
+
+  useEffect(()=>{
+    if(searchedLeagues?.length ===0){
+      setFilteredLeagues(leagues?.response)
+    }else{
+      setFilteredLeagues(searchedLeagues)
+    }
+  }, [searchedLeagues?.length])
 
 const updateWindowDimensions =()=>{
   setWindowHeight(window.innerHeight);
@@ -76,14 +82,38 @@ const handleLeagueSelect =(e:ChangeEvent<HTMLInputElement>, league: LeagueDataLe
     >
         {
             isLoadingLeagues? <CircularProgress />:
-           <> <div className=' flex font-bold text-lg py-2 bg-white h-14 w-1/5 mb-5 items-center justify-center'>Select leagues for which to predict</div>
-        
+      <> 
+       {leagues && 
+        <div className=' absolute float-right top-24 right-10'> 
+            <div className=' text-white font-semibold'>
+              Search league/ Country
+            </div>
+          <Autocomplete
+                className='bg-gray-200 w-64 rounded-lg'
+                multiple
+                defaultValue={[]}
+                value={searchedLeagues}
+                id="leagueSearch"
+                getOptionLabel={(league: LeagueDataModel)=> `${league.league.name} - ${league.country.name}`}
+                options={leagues.response?.map((league) =>  new LeagueDataModel(league))}
+                onChange={(event, value: LeagueDataModel[])=>{
+                  setSearchedLeagues(value)
+                }}
+                renderInput={(params) => <TextField {...params} InputLabelProps={{color: 'primary', inputMode: 'search' }} />}
+              />
+        </div>}
+      <div className=' flex flex-row  w-full justify-center'>
+     
+        <div className=' flex font-bold self-center text-lg py-2 bg-white h-14 w-64 mb-5 items-center justify-center text-center'>Select leagues for which to predict</div>
+
+      </div>
+      
         <div className=' flex flex-col w-9/12 overflow-y-scroll items-center'>
         <div className=' text-white flex w-4/6 '>{selectedLeagues?.length || 0} Selected</div>
-            {leagues?.response.map(leagueData=>{
+            {filteredLeagues?.map(leagueData=>{
                 return (<div key={`${leagueData.league.id}`} className=' flex flex-row justify-between py-6 my-2 px-3 w-4/6 rounded-md bg-blue-300 hover:bg-blue-200'>
                     <CheckBoxIcon ref={checkBoxRef} onChange={(e)=> handleLeagueSelect(e, leagueData.league)} size="medium"/>
-                    <div className=' flex text-lg font-semibold items-center justify-center text-black'>{leagueData.league.name}</div>
+                    <div className=' flex text-lg font-semibold items-center justify-center text-black ml-20'>{leagueData.league.name}</div>
                     <div className=' flex flex-row'>
                         <div className=' px-2 text-lg text-black'>{ leagueData.country.name}</div>
                         <div>
