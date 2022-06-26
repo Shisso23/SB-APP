@@ -50,8 +50,10 @@ const BetScreen: React.FC = () => {
     if(searchedLeagues?.length ===0){
       setFilteredLeagues(leagues?.response)
     }else{
+      setSelectedLeagues(selectedLeagues.filter(league=> searchedLeagues.some((searchedLeague: LeagueDataModel)=> searchedLeague.league.id === league.id)));
       setFilteredLeagues(searchedLeagues)
     }
+     
   }, [searchedLeagues?.length])
 
 const updateWindowDimensions =()=>{
