@@ -124,6 +124,7 @@ export class FixtureDataScoreModel {
 
 
 export class FixturesFilterModel {
+    public h2h?: String;
     public live?: String;
     public date?: String;
     public league?: Number;
@@ -143,6 +144,7 @@ export class FixturesFilterModel {
        this.next = init.next;
        this.from = init.from;
        this.to = init.to;
+       this.h2h =  init.h2h;
     }
 }
 

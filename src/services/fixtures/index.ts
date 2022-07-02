@@ -29,3 +29,8 @@ export const getFilteredFixtures = async (filters: FixturesFilterModel) => {
     })
 } 
 
+export const getH2hFixtures = (filters: FixturesFilterModel)=>{
+    return authNetworkService.get(`${endpoint}/headtohead`, {
+        params: filters
+    })
+}

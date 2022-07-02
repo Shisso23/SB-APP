@@ -50,7 +50,7 @@ const BetScreen: React.FC = () => {
     if(searchedLeagues?.length ===0){
       setFilteredLeagues(leagues?.response)
     }else{
-      setSelectedLeagues(selectedLeagues.filter(league=> searchedLeagues.some((searchedLeague: LeagueDataModel)=> searchedLeague.league.id === league.id)));
+      setSelectedLeagues(selectedLeagues?.filter(league=> searchedLeagues.some((searchedLeague: LeagueDataModel)=> searchedLeague.league.id === league.id)));
       setFilteredLeagues(searchedLeagues)
     }
      
@@ -62,7 +62,9 @@ const updateWindowDimensions =()=>{
 }
 
 const handleNextClick =()=>{
-  return navigate('/predictions', {})
+  return navigate('/predictions', {state:{
+    selectedLeagues
+  }})
 }
 
 const handleLeagueSelect =(e:ChangeEvent<HTMLInputElement>, league: LeagueDataLeagueModel)=>{
@@ -77,7 +79,7 @@ const handleLeagueSelect =(e:ChangeEvent<HTMLInputElement>, league: LeagueDataLe
         }
     }else{
         if(selectedLeagues && selectedLeagues.some(leagueSelected => leagueSelected.id === league.id)){
-            setSelectedLeagues(selectedLeagues.filter(leagueSelected=> leagueSelected.id !== league.id))
+            setSelectedLeagues(selectedLeagues?.filter(leagueSelected=> leagueSelected.id !== league.id))
         }
     }
  

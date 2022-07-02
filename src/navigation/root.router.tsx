@@ -4,6 +4,7 @@ import Navbar from '../components/navBar';
 import HomeScreen from '../screens/home/home.screen';
 import BetScreen from '../screens/bet/bet';
 import PredictionsScreen from '../screens/predictions/predictions';
+import FixturesScreen from '../screens/fixtures/fixtures.screen';
 
 const RootRouter: React.FC = () => {
   return (
@@ -13,6 +14,7 @@ const RootRouter: React.FC = () => {
           <Route index element={<HomeScreen />} />
           <Route path='/bet' element={<BetScreen />} />
           <Route path='/predictions' element={<PredictionsScreen />} />
+          <Route path='/fixtures' element={<FixturesScreen />} />
       </Routes>
   </BrowserRouter>
   );

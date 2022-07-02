@@ -5,7 +5,7 @@ import config from '../../config'
 
 
 const authNetworkService = ax.create({
-  timeout: 5000,
+  timeout: 10000,
   baseURL: config.apiUrl,
   headers: {
 

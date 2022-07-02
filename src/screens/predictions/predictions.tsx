@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import { geFilteredFixturesAction } from '../../reducers/fixtures/fixtures.actions';
 import { FixturesFilterModel } from '../../models/fixtures';
@@ -13,11 +13,11 @@ import { ChangeEvent } from 'react';
 const PredictionsScreen: React.FC = () => {
   const {fixtures, isLoadingFixtures } : FixturesState = useSelector(fixturesSelector);
   const navigate = useNavigate();
+  const location = useLocation();
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [windowHeight, setWindowHeight] = useState(window.innerHeight);
   const [selectedBetOptions, setSelectedBetOptions] = useState<{name: String, id: Number}[]>();
-
-  console.log({fixtures})
+  const selectedLeagues  =  location.state
   const dispatch: any = useDispatch();
   const fixtureFilters: FixturesFilterModel = new FixturesFilterModel({
     league: 39,
@@ -37,7 +37,10 @@ const PredictionsScreen: React.FC = () => {
   }, []);
 
   const handleNextClick =()=>{
-    return navigate('/betSlip', {})
+    return navigate('/fixtures', {state: {
+      selectedBetOptions,
+      selectedLeagues
+  }})
   }
 
 const updateWindowDimensions =()=>{
