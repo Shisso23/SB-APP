@@ -106,9 +106,12 @@ type LocationState = {
   const handleNextClick =async ()=>{
     // console.log({H2HFixtures: getH2HFixtures(44, 33)})
   }
-//   const getLastFiveFixtures(teamId: Number)=>{
-
-//   }
+  const getLastFiveFixtures = (teamId: Number)=>{
+    return allFixtures.filter(fixture=>{
+      return fixture.teams.home.id === teamId || fixture.teams.away.id === teamId
+    })
+  }
+  
   const getH2HFixtures =(teamOneId: Number, teamTwoId: Number)=>{
       return allFixtures.filter(fixture=>{
           return ((fixture.teams.home.id === teamOneId || fixture.teams.away.id === teamOneId) &&
@@ -170,14 +173,20 @@ const updateWindowDimensions =()=>{
         <div className=' flex flex-row  w-full justify-center'>
           <div className=' flex font-bold self-center text-lg py-2 bg-white h-14 w-64 mb-5 items-center justify-center text-center'>Predictions</div>
         </div>
-       
+  
             <>
               {loadingLeaguesFixtures? <CircularProgress/> : <div className='flex flex-col w-9/12 overflow-y-scroll items-center'>
                   {currentFixtures?.map(fixtureData=>{
                       return (
                       <div key={`${fixtureData.fixture.id}`} className=' flex flex-row justify-between py-6 my-2 px-3 w-4/6 rounded-md bg-blue-300 hover:bg-blue-200'>
-                          <div>{fixtureData.league.name}</div>
-                          <div className=' flex flex-row justify-between w-4/6'>
+                          <div>{fixtureData.league.name}
+                              <div>
+                                {
+                                  `${toMomentDate(fixtureData.fixture.date).format('DD-MMMM-YYYY')}`
+                                }
+                              </div>
+                          </div>
+                          <div className=' flex flex-row justify-between w-3/6'>
                               <div className=' flex flex-row'>
                                   <img src={`${fixtureData.teams.home.logo}`} alt='country flag' width={40} height={40} className=' mr-1'/>
                                   <div className=' flex text-lg font-semibold items-center justify-center text-black'>{fixtureData.teams.home.name}</div>
@@ -189,7 +198,7 @@ const updateWindowDimensions =()=>{
                                   </div>
                               </div>
                           </div>
-                          <div className=' flex flex-row'>
+                          <div className=' flex flex-row justify-center items-center'>
                               <p>{`${fixtureData.goals.home}-${fixtureData.goals.away}`}</p>
                           </div>
                       </div>)
