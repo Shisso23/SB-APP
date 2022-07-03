@@ -1,35 +1,28 @@
 
 import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { geFilteredFixturesAction } from '../../reducers/fixtures/fixtures.actions';
 import { FixturesFilterModel } from '../../models/fixtures';
-import { fixturesSelector, FixturesState } from '../../reducers/fixtures/fixtures.reducer';
 import images from '../../assets/images';
 import CheckBoxIcon  from '@mui/material/Checkbox';
 import { ChangeEvent } from 'react';
 
 const PredictionsScreen: React.FC = () => {
-  const {fixtures, isLoadingFixtures } : FixturesState = useSelector(fixturesSelector);
   const navigate = useNavigate();
   const location = useLocation();
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [windowHeight, setWindowHeight] = useState(window.innerHeight);
   const [selectedBetOptions, setSelectedBetOptions] = useState<{name: String, id: Number}[]>();
   const selectedLeagues  =  location.state
-  const dispatch: any = useDispatch();
-  const fixtureFilters: FixturesFilterModel = new FixturesFilterModel({
-    league: 39,
-    season: 2020
-  })
+
   const betOptions: {name: String; id: Number} [] = [{name: 'Both Teams to Score', id: 0}, {name: 'Home/Away', id: 1}, {name: 'Home/Away over 1.5', id: 2},
   {name: 'over 1.5', id: 3}, {name: 'Over 2.5', id: 4}, {name: 'Home/Away Wins Either Half', id: 5 }, {name: 'Multi Goals (2-5) Goals', id: 6}, {name: 'Multi Goals (3-6) Goals', id: 7},
   {name: 'Both Halfs Over 0.5', id: 8}, {name: 'Draw or GG', id: 9 }, {name: 'Draw', id: 10}, {name: 'Half-Time Draw', id: 11}
 ]
   
   useEffect(()=>{
-    dispatch(geFilteredFixturesAction(fixtureFilters));
     window.addEventListener('resize', updateWindowDimensions)
     return ()=>{
       window.removeEventListener('resize', updateWindowDimensions)
