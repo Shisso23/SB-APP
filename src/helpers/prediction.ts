@@ -1,5 +1,5 @@
 import { FixtureDataModel } from "../models/fixtures";
-import { betOptions } from "../variables/variables";
+import { betOptions, numberOfH2HMatchesBack, numberOTeamLastFixturesBack } from "../variables/variables";
 
 
 
@@ -35,12 +35,12 @@ export const predictBothTeamsToScore =({currentFixtures, allFixtures}:{currentFi
 export const getLastFiveTeamFixtures = ({teamId, allFixtures}: {teamId: Number, allFixtures: FixtureDataModel[]})=>{
     return allFixtures.filter(fixture=>{
       return (fixture.teams.home.id === teamId || fixture.teams.away.id === teamId) && fixture.fixture.status.short ==='FT'
-    }).slice(0, 6)
+    }).slice(0, numberOTeamLastFixturesBack)
   }
   
   export const getH2HFixtures =({teamOneId, teamTwoId, allFixtures}: {teamOneId: Number, teamTwoId: Number, allFixtures: FixtureDataModel[] })=>{
       return allFixtures.filter(fixture=>{
           return ((fixture.teams.home.id === teamOneId || fixture.teams.away.id === teamOneId) &&
           (fixture.teams.home.id === teamTwoId || fixture.teams.away.id === teamTwoId)) && fixture.fixture.status.short ==='FT'
-      }).slice(0, 6) //TODO verify there's enough h2h
+      }).slice(0, numberOfH2HMatchesBack) //TODO verify there's enough h2h
   }
