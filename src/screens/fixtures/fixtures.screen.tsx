@@ -3,22 +3,20 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Autocomplete, Button, ButtonGroup, CircularProgress, TextField } from '@mui/material';
+import { Autocomplete, CircularProgress, TextField } from '@mui/material';
 import moment from 'moment';
 import DatePicker from 'react-datepicker'
 import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
 import "react-datepicker/dist/react-datepicker.css";
 
-import { geFilteredFixturesAction } from '../../reducers/fixtures/fixtures.actions';
 import { FixturesFilterModel, FixturesModel } from '../../models/fixtures';
-import { fixturesSelector, FixturesState } from '../../reducers/fixtures/fixtures.reducer';
 import images from '../../assets/images';
 import { LeagueDataLeagueModel } from '../../models/leagues';
 import { getFilteredFixtures } from '../../services/fixtures/index';
 import { FixtureDataModel } from '../../models/fixtures/index';
 import { currentDate, toMomentDate } from '../../helpers/dateTimeHelper';
-import { betOptions, levels } from '../../variables/variables';
+import { betOptions, levels, seasonsBack } from '../../variables/variables';
 import { predictBothTeamsToScore, predictOver1_5 } from '../../helpers/prediction';
 
 
@@ -27,7 +25,6 @@ type LocationState = {
     selectedLeagues: {selectedLeagues: LeagueDataLeagueModel[]};
     selectedBetOptions: {name: String; id: Number}[]
 }
-  const {fixtures, isLoadingFixtures } : FixturesState = useSelector(fixturesSelector);
   const navigate = useNavigate();
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [windowHeight, setWindowHeight] = useState(window.innerHeight);
@@ -35,25 +32,17 @@ type LocationState = {
   const [loadingLeaguesFixtures, setLoadingLeaguesFixtures] = useState(false);
   const [toDate, setToDate] = useState( new Date(moment().add(1,'days').format('YYYY-MM-DD')));
   const location = useLocation();
-  const dispatch: any = useDispatch();
   const selectedBetOptions  =  location.state
   const {selectedLeagues} =  location.state as LocationState;
   const [futureFixtures, setFutureFixtures] = useState<FixtureDataModel[]>([]);
   const [allFixtures, setAllFixtures]= useState<FixtureDataModel[]>();
   const [currentFixtures, setCurrentFixtures] = useState<FixtureDataModel[]>();
   const [predictedFixtures, setPredictedFixtures]= useState<{fixtures: FixtureDataModel[], option: {name: String; id: Number, level: Number, shortName: String }}[]>(); //TODO try making a model for the bet option and reuse it
-  const fixtureFilters: FixturesFilterModel = new FixturesFilterModel({
-    league: 39,
-    season: 2020
-  });
   const [selectedLevels, setSeletedLevels] = useState<Number[]>([0])
-
-
   const [selectedOptions, setSelectedOptions] = useState<{name: String; id: Number}[] | []>([]);
   const minFixtureDate = new Date();
 
   useEffect(()=>{
-    dispatch(geFilteredFixturesAction(fixtureFilters));
     window.addEventListener('resize', updateWindowDimensions)
     getLeaguesSeasonsFixtures().then(responses=>{
         setAllFixtures(responses.flat())
@@ -71,13 +60,19 @@ type LocationState = {
    if(currentFixtures){
      predict();
    }
-  }, [futureFixtures.length])
+  }, [futureFixtures?.length])
 
   useEffect(()=>{
     if(currentFixtures){
       predict();
     }
   }, [selectedLevels.length])
+
+  useEffect(()=>{
+    if(currentFixtures){
+      predict();
+    }
+  }, [currentFixtures?.length])
 
  
 
@@ -108,7 +103,7 @@ type LocationState = {
     setLoadingLeaguesFixtures(true);
     return Promise.all(
         selectedLeagues.selectedLeagues.map(async (league: LeagueDataLeagueModel, index) => {
-        const seasons = [2022, 2021, 2020]; //Get from date pickers
+        const seasons = seasonsBack //TODO Get from variables
        return Promise.all(seasons.map(async (season: Number)=>{
             const getLeagueFixturesResponse: FixturesModel =  await (await getFilteredFixtures(new FixturesFilterModel({league: league.id, season}))).data
             return getLeagueFixturesResponse.response;
@@ -128,7 +123,7 @@ type LocationState = {
   }
 
   const handleNextClick =async ()=>{
-    // console.log({H2HFixtures: getH2HFixtures(44, 33)})
+
   }
 
 const updateWindowDimensions =()=>{
@@ -198,32 +193,32 @@ const updateWindowDimensions =()=>{
               {loadingLeaguesFixtures? <CircularProgress/> : <div className='flex flex-col w-9/12 overflow-y-scroll items-center'>
                   {predictedFixtures?.map((predictedionResult, predResultIndex)=>{
                    return predictedionResult.fixtures.map((fixtureData, fixtureDataIndex)=>{
-              
                         return (
-                        <div key={`${predResultIndex}-${fixtureDataIndex}`} className=' flex flex-row justify-between py-6 my-2 px-3 w-4/6 rounded-md bg-blue-300 hover:bg-blue-200'>
-                            <div>{fixtureData.league.name}
-                                <div>
-                                  {
-                                    `${toMomentDate(fixtureData.fixture.date).format('DD-MMMM-YYYY')}`
-                                  }
-                                </div>
-                            </div>
-                            <div className=' flex flex-row justify-between w-3/6'>
-                                <div className=' flex flex-row'>
-                                    <img src={`${fixtureData.teams.home.logo}`} alt='country flag' width={40} height={40} className=' mr-1'/>
-                                    <div className=' flex text-lg font-semibold items-center justify-center text-black'>{fixtureData.teams.home.name}</div>
-                                </div>
-                                <div className=' flex justify-start w-1/3'>
-                                    <div className=' flex flex-row float-left'>
-                                        <img src={`${fixtureData.teams.away.logo}`} alt='country flag' width={40} height={40} className=' mr-1'/>
-                                        <div className=' flex text-lg font-semibold items-center justify-center text-black'>{fixtureData.teams.away.name}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className=' flex flex-row justify-center items-center'>
-                                <p>{`${predictedionResult.option.shortName}`}</p>
-                            </div>
-                        </div>)
+                          <div key={`${predResultIndex}-${fixtureDataIndex}`} className=' flex flex-row     justify-between py-6 my-2 px-3 w-4/6 rounded-md bg-blue-300 hover:bg-blue-200'>
+                              <div>{fixtureData.league.name}
+                                  <div>
+                                    {
+                                      `${toMomentDate(fixtureData.fixture.date).format('DD-MMMM-YYYY')}`
+                                    }
+                                  </div>
+                              </div>
+                              <div className=' flex flex-row justify-between w-3/6'>
+                                  <div className=' flex flex-row'>
+                                      <img src={`${fixtureData.teams.home.logo}`} alt='country flag' width={40} height={40} className=' mr-1'/>
+                                      <div className=' flex text-lg font-semibold items-center justify-center text-black'>{fixtureData.teams.home.name}</div>
+                                  </div>
+                                  <div className=' flex justify-start w-1/3'>
+                                      <div className=' flex flex-row float-left'>
+                                          <img src={`${fixtureData.teams.away.logo}`} alt='country flag' width={40} height={40} className=' mr-1'/>
+                                          <div className=' flex text-lg font-semibold items-center justify-center text-black'>{fixtureData.teams.away.name}</div>
+                                      </div>
+                                  </div>
+                              </div>
+                              <div className=' flex flex-row justify-center items-center'>
+                                  <p>{`${predictedionResult.option.shortName}`}</p>
+                              </div>
+                          </div>
+                        )
                     })
                   }).flat() 
                   

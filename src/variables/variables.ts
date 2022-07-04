@@ -10,3 +10,7 @@ export const numberOfH2HMatchesBack = 5; //TODO Implement this where needed
 export const numberOTeamLastFixturesBack = 5; //TODO Implement this where needed
 
 export const numberOfSeasonsBack = 4; //TODO Implement this where needed
+
+export const seasonsBack = [2022, 2021, 2020];
+
+//TODO Should make these constants UPPERCASE

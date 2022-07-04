@@ -2,6 +2,7 @@ import { FixtureDataModel } from "../models/fixtures";
 import { betOptions, numberOfH2HMatchesBack, numberOTeamLastFixturesBack } from "../variables/variables";
 
 
+// TODO sort fixtures by dates. Latest first 
 
 export const predictOver1_5 =({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=>{
     const predictedFixtures= currentFixtures.filter(currentFixture=>{
