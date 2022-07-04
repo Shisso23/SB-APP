@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Autocomplete, CircularProgress, TextField } from '@mui/material';
+import { Autocomplete, Button, ButtonGroup, CircularProgress, TextField } from '@mui/material';
 import moment from 'moment';
 import DatePicker from 'react-datepicker'
 import "react-date-range/dist/styles.css";
@@ -18,7 +18,8 @@ import { LeagueDataLeagueModel } from '../../models/leagues';
 import { getFilteredFixtures } from '../../services/fixtures/index';
 import { FixtureDataModel } from '../../models/fixtures/index';
 import { currentDate, toMomentDate } from '../../helpers/dateTimeHelper';
-
+import { betOptions, levels } from '../../variables/variables';
+import { predictBothTeamsToScore, predictOver1_5 } from '../../helpers/prediction';
 
 
 const FixturesScreen: React.FC = () => {
@@ -40,17 +41,15 @@ type LocationState = {
   const [futureFixtures, setFutureFixtures] = useState<FixtureDataModel[]>([]);
   const [allFixtures, setAllFixtures]= useState<FixtureDataModel[]>();
   const [currentFixtures, setCurrentFixtures] = useState<FixtureDataModel[]>();
+  const [predictedFixtures, setPredictedFixtures]= useState<{fixtures: FixtureDataModel[], option: {name: String; id: Number, level: Number, shortName: String }}[]>(); //TODO try making a model for the bet option and reuse it
   const fixtureFilters: FixturesFilterModel = new FixturesFilterModel({
     league: 39,
     season: 2020
   });
+  const [selectedLevels, setSeletedLevels] = useState<Number[]>([0])
 
 
   const [selectedOptions, setSelectedOptions] = useState<{name: String; id: Number}[] | []>([]);
-  const betOptions: {name: String; id: Number} [] = [{name: 'Both Teams to Score', id: 0}, {name: 'Home/Away', id: 1}, {name: 'Home/Away over 1.5', id: 2},
-    {name: 'over 1.5', id: 3}, {name: 'Over 2.5', id: 4}, {name: 'Home/Away Wins Either Half', id: 5 }, {name: 'Multi Goals (2-5) Goals', id: 6}, {name: 'Multi Goals (3-6) Goals', id: 7},
-    {name: 'Both Halfs Over 0.5', id: 8}, {name: 'Draw or GG', id: 9 }, {name: 'Draw', id: 10}, {name: 'Half-Time Draw', id: 11}
-  ]
   const minFixtureDate = new Date();
 
   useEffect(()=>{
@@ -69,11 +68,28 @@ type LocationState = {
 
   useEffect(()=>{
    setCurrentFixtures(filterFixtresBetweenDates(fromDate, toDate));
+   if(currentFixtures){
+     predict();
+   }
   }, [futureFixtures.length])
 
   useEffect(()=>{
+    if(currentFixtures){
+      predict();
+    }
+  }, [selectedLevels.length])
+
+ 
+
+  useEffect(()=>{
+    /*This predicted fixtures will give me a list of each prediction function result like. [{fixtures, option}, ...] so for me to display it on the jsx if one bet option is selected; only display the predictions for that bet option if there's any. If a level is selected; display prediction functions results for those options and merge them. if a fixtures is returned from 2 prediction functions. Add an Or eg. Over 1.5 or GG )
+      */
     setCurrentFixtures(filterFixtresBetweenDates(fromDate, toDate));
   }, [fromDate.toString(), toDate.toString()])
+
+  const predict=()=>{
+    setPredictedFixtures([predictOver1_5({currentFixtures, allFixtures}), predictBothTeamsToScore({currentFixtures, allFixtures})])
+  }
 
   const filterFutureFixtures=(fixtures:FixtureDataModel[] )=>{
     return fixtures.filter(fixtureData=> {
@@ -103,20 +119,16 @@ type LocationState = {
       );
   }
 
+  const onLevelSelect=(selectedLevel: Number)=>()=>{
+    if(selectedLevels.includes(selectedLevel)){
+      setSeletedLevels(selectedLevels.filter(level=> level!==selectedLevel))
+    }else{
+      setSeletedLevels([...selectedLevels, selectedLevel])
+    }
+  }
+
   const handleNextClick =async ()=>{
     // console.log({H2HFixtures: getH2HFixtures(44, 33)})
-  }
-  const getLastFiveFixtures = (teamId: Number)=>{
-    return allFixtures.filter(fixture=>{
-      return fixture.teams.home.id === teamId || fixture.teams.away.id === teamId
-    })
-  }
-  
-  const getH2HFixtures =(teamOneId: Number, teamTwoId: Number)=>{
-      return allFixtures.filter(fixture=>{
-          return ((fixture.teams.home.id === teamOneId || fixture.teams.away.id === teamOneId) &&
-          (fixture.teams.home.id === teamTwoId || fixture.teams.away.id === teamTwoId)) && fixture.fixture.status.short ==='FT'
-      })
   }
 
 const updateWindowDimensions =()=>{
@@ -169,6 +181,14 @@ const updateWindowDimensions =()=>{
                     </div> 
                   </div>
               </div>
+             {currentFixtures? <div className=' mt-5 w-28 flex justify-between flex-wrap text-left'>
+                <span className=' text-white font-semibold mb-2'>Select dificulty levels</span>
+                {levels.map(level=>{
+                  return <button key={`${level}`} className={` rounded-lg p-2 outline-1 border font-bold text-lg text-white m-1 w-12 ${selectedLevels.includes(level)?'bg-blue-400 border-white' : 'bg-transparent border-blue-400'} `} onClick={onLevelSelect(level)}>
+                      {`${level}`}
+                  </button>
+                })}
+              </div>: <></>}
         </div>
         <div className=' flex flex-row  w-full justify-center'>
           <div className=' flex font-bold self-center text-lg py-2 bg-white h-14 w-64 mb-5 items-center justify-center text-center'>Predictions</div>
@@ -176,33 +196,38 @@ const updateWindowDimensions =()=>{
   
             <>
               {loadingLeaguesFixtures? <CircularProgress/> : <div className='flex flex-col w-9/12 overflow-y-scroll items-center'>
-                  {currentFixtures?.map(fixtureData=>{
-                      return (
-                      <div key={`${fixtureData.fixture.id}`} className=' flex flex-row justify-between py-6 my-2 px-3 w-4/6 rounded-md bg-blue-300 hover:bg-blue-200'>
-                          <div>{fixtureData.league.name}
-                              <div>
-                                {
-                                  `${toMomentDate(fixtureData.fixture.date).format('DD-MMMM-YYYY')}`
-                                }
-                              </div>
-                          </div>
-                          <div className=' flex flex-row justify-between w-3/6'>
-                              <div className=' flex flex-row'>
-                                  <img src={`${fixtureData.teams.home.logo}`} alt='country flag' width={40} height={40} className=' mr-1'/>
-                                  <div className=' flex text-lg font-semibold items-center justify-center text-black'>{fixtureData.teams.home.name}</div>
-                              </div>
-                              <div className=' flex justify-start w-1/3'>
-                                  <div className=' flex flex-row float-left'>
-                                      <img src={`${fixtureData.teams.away.logo}`} alt='country flag' width={40} height={40} className=' mr-1'/>
-                                      <div className=' flex text-lg font-semibold items-center justify-center text-black'>{fixtureData.teams.away.name}</div>
-                                  </div>
-                              </div>
-                          </div>
-                          <div className=' flex flex-row justify-center items-center'>
-                              <p>{`${fixtureData.goals.home}-${fixtureData.goals.away}`}</p>
-                          </div>
-                      </div>)
-                  })}
+                  {predictedFixtures?.map((predictedionResult, predResultIndex)=>{
+                   return predictedionResult.fixtures.map((fixtureData, fixtureDataIndex)=>{
+              
+                        return (
+                        <div key={`${predResultIndex}-${fixtureDataIndex}`} className=' flex flex-row justify-between py-6 my-2 px-3 w-4/6 rounded-md bg-blue-300 hover:bg-blue-200'>
+                            <div>{fixtureData.league.name}
+                                <div>
+                                  {
+                                    `${toMomentDate(fixtureData.fixture.date).format('DD-MMMM-YYYY')}`
+                                  }
+                                </div>
+                            </div>
+                            <div className=' flex flex-row justify-between w-3/6'>
+                                <div className=' flex flex-row'>
+                                    <img src={`${fixtureData.teams.home.logo}`} alt='country flag' width={40} height={40} className=' mr-1'/>
+                                    <div className=' flex text-lg font-semibold items-center justify-center text-black'>{fixtureData.teams.home.name}</div>
+                                </div>
+                                <div className=' flex justify-start w-1/3'>
+                                    <div className=' flex flex-row float-left'>
+                                        <img src={`${fixtureData.teams.away.logo}`} alt='country flag' width={40} height={40} className=' mr-1'/>
+                                        <div className=' flex text-lg font-semibold items-center justify-center text-black'>{fixtureData.teams.away.name}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className=' flex flex-row justify-center items-center'>
+                                <p>{`${predictedionResult.option.shortName}`}</p>
+                            </div>
+                        </div>)
+                    })
+                  }).flat() 
+                  
+                  }
               </div>}
             </>
             <button className=' flex bg-blue-400 rounded p-4 items-center justify-center self-end w-60 text-black hover:bg-blue-200 mr-5' onClick={handleNextClick}>
