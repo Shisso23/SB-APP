@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import CheckBoxIcon from '@mui/material/Checkbox';
 
+import "./styles.css"
 import { geFilteredLeaguesAction } from '../../reducers/leagues/leagues.actions';
 import images from '../../assets/images';
 import { leaguesSelector, LeaguesState } from '../../reducers/leagues/leagues.reducer';
@@ -123,7 +124,7 @@ const handleLeagueSelect =(e:ChangeEvent<HTMLInputElement>, league: LeagueDataLe
 
       </div>
       
-        <div className=' flex flex-col w-9/12 overflow-y-scroll items-center'>
+        <div className=' flex flex-col w-9/12 overflow-y-scroll listView items-center'>
         <div className=' text-white flex w-4/6 '>{selectedLeagues?.length || 0} Selected</div>
             {filteredLeagues?.map(leagueData=>{
                 return (<div key={`${leagueData.league.id}`} className=' flex flex-row justify-between py-6 my-2 px-3 w-4/6 rounded-md bg-blue-300 hover:bg-blue-200'>
