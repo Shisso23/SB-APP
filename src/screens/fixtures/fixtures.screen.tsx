@@ -6,9 +6,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Autocomplete, CircularProgress, TextField } from '@mui/material';
 import moment from 'moment';
 import DatePicker from 'react-datepicker'
-import "react-date-range/dist/styles.css";
-import "react-date-range/dist/theme/default.css";
 import "react-datepicker/dist/react-datepicker.css";
+import "./styles.css"
 
 import { FixturesFilterModel, FixturesModel } from '../../models/fixtures';
 import images from '../../assets/images';
@@ -22,8 +21,7 @@ import { predictBothTeamsToScore, predictOver1_5 } from '../../helpers/predictio
 
 const FixturesScreen: React.FC = () => {
 type LocationState = {
-    selectedLeagues: {selectedLeagues: LeagueDataLeagueModel[]};
-    selectedBetOptions: {name: String; id: Number}[]
+    selectedLeagues:  LeagueDataLeagueModel[];
 }
   const navigate = useNavigate();
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
@@ -32,8 +30,8 @@ type LocationState = {
   const [loadingLeaguesFixtures, setLoadingLeaguesFixtures] = useState(false);
   const [toDate, setToDate] = useState( new Date(moment().add(1,'days').format('YYYY-MM-DD')));
   const location = useLocation();
-  const selectedBetOptions  =  location.state
-  const {selectedLeagues} =  location.state as LocationState;
+  const {selectedLeagues }=  location.state as LocationState;
+  console.log({selectedLeagues})
   const [futureFixtures, setFutureFixtures] = useState<FixtureDataModel[]>([]);
   const [allFixtures, setAllFixtures]= useState<FixtureDataModel[]>();
   const [currentFixtures, setCurrentFixtures] = useState<FixtureDataModel[]>();
@@ -44,7 +42,7 @@ type LocationState = {
 
   useEffect(()=>{
     window.addEventListener('resize', updateWindowDimensions)
-    getLeaguesSeasonsFixtures().then(responses=>{
+    getLeaguesSeasonsFixtures().then(responses=>{ //TODO Remove from here because it executes twice
         setAllFixtures(responses.flat())
         setFutureFixtures(filterFutureFixtures(responses.flat()))
     }).finally(()=>{
@@ -102,7 +100,7 @@ type LocationState = {
   const getLeaguesSeasonsFixtures = async ()=>{
     setLoadingLeaguesFixtures(true);
     return Promise.all(
-        selectedLeagues.selectedLeagues.map(async (league: LeagueDataLeagueModel, index) => {
+        selectedLeagues?.map(async (league: LeagueDataLeagueModel, index) => {
         const seasons = seasonsBack //TODO Get from variables
        return Promise.all(seasons.map(async (season: Number)=>{
             const getLeagueFixturesResponse: FixturesModel =  await (await getFilteredFixtures(new FixturesFilterModel({league: league.id, season}))).data
@@ -190,7 +188,7 @@ const updateWindowDimensions =()=>{
         </div>
   
             <>
-              {loadingLeaguesFixtures? <CircularProgress/> : <div className='flex flex-col w-9/12 overflow-y-scroll items-center'>
+              {loadingLeaguesFixtures? <CircularProgress/> : <div className='flex flex-col w-8/12 overflow-y-scroll listView items-center'>
                   {predictedFixtures?.map((predictedionResult, predResultIndex)=>{
                    return predictedionResult.fixtures.map((fixtureData, fixtureDataIndex)=>{
                         return (
@@ -225,9 +223,6 @@ const updateWindowDimensions =()=>{
                   }
               </div>}
             </>
-            <button className=' flex bg-blue-400 rounded p-4 items-center justify-center self-end w-60 text-black hover:bg-blue-200 mr-5' onClick={handleNextClick}>
-                Next
-            </button>
         </div>
   );
 };

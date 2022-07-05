@@ -62,7 +62,7 @@ const updateWindowDimensions =()=>{
 }
 
 const handleNextClick =()=>{
-  return navigate('/predictions', {state:{
+  navigate('/fixtures', {state: {
     selectedLeagues
   }})
 }
@@ -132,7 +132,7 @@ const handleLeagueSelect =(e:ChangeEvent<HTMLInputElement>, league: LeagueDataLe
                     <div className=' flex flex-row'>
                         <div className=' px-2 text-lg text-black'>{ leagueData.country.name}</div>
                         <div>
-                            <img src={`${leagueData.country.flag}`} alt='country flag' width={40} height={40}/>
+                            <img src={`${leagueData.country.flag}`} alt='country fla' width={40} height={40}/>
                         </div>
                     </div>
                 </div>)

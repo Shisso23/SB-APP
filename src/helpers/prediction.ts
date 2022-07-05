@@ -9,6 +9,7 @@ export const predictOver1_5 =({currentFixtures, allFixtures}:{currentFixtures: F
         const lastFiveHomeFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.home.id, allFixtures});
         const lastFiveAwayFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.away.id, allFixtures});
         const fixtureH2hFixtures = getH2HFixtures({teamOneId: currentFixture.teams.home.id, teamTwoId: currentFixture.teams.away.id, allFixtures})
+        //Get last 5 home/ away games
         console.log({lastFiveHomeFixtures});
         console.log({lastFiveAwayFixtures});
         console.log({fixtureH2hFixtures});
