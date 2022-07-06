@@ -1,29 +1,11 @@
-import { Button } from '@mui/material';
 import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { Navigate, useNavigate } from 'react-router-dom';
-
-import { geFilteredFixturesAction } from '../../reducers/fixtures/fixtures.actions';
-import { FixturesFilterModel } from '../../models/fixtures';
-import { fixturesSelector, FixturesState } from '../../reducers/fixtures/fixtures.reducer';
+import { useNavigate } from 'react-router-dom';
 import images from '../../assets/images';
 
-
-
-
-
 const HomeScreen: React.FC = () => {
-  const {fixtures, isLoadingFixtures } : FixturesState = useSelector(fixturesSelector);
   const navigate = useNavigate();
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [windowHeight, setWindowHeight] = useState(window.innerHeight);
-
-  console.log({fixtures})
-  const dispatch: any = useDispatch();
-  const fixtureFilters: FixturesFilterModel = new FixturesFilterModel({
-    league: 39,
-    season: 2020
-  })
   
   useEffect(()=>{
     // dispatch(geFilteredFixturesAction(fixtureFilters));

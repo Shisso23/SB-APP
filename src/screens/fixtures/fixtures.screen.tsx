@@ -164,7 +164,7 @@ const updateWindowDimensions =()=>{
                 Bet Options
             </div>
                 <Autocomplete
-                    className='bg-gray-200 w-64 rounded-lg'
+                    className='bg-gray-200 w-64 rounded-lg max-h-48 overflow-y-auto'
                     multiple
                     defaultValue={[]}
                     value={selectedOptions}

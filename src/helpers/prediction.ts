@@ -6,13 +6,13 @@ import { betOptions, numberOfH2HMatchesBack, numberOTeamLastFixturesBack } from 
 
 export const predictOver1_5 =({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=>{
     const predictedFixtures= currentFixtures.filter(currentFixture=>{
-        const lastFiveHomeFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.home.id, allFixtures});
-        const lastFiveAwayFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.away.id, allFixtures});
+        const lastFiveHomeFixtures =  getLastFiveTeamHomeFixtures({teamId: currentFixture.teams.home.id, allFixtures});
+        const lastFiveAwayFixtures =  getLastFiveTeamAwayFixtures({teamId: currentFixture.teams.away.id, allFixtures});
         const fixtureH2hFixtures = getH2HFixtures({teamOneId: currentFixture.teams.home.id, teamTwoId: currentFixture.teams.away.id, allFixtures})
         //Get last 5 home/ away games
-        console.log({lastFiveHomeFixtures});
-        console.log({lastFiveAwayFixtures});
-        console.log({fixtureH2hFixtures});
+       
+        
+        
         // filter the fixtures that passes the over 1.5 test here and return it
        return true
     })
@@ -21,13 +21,13 @@ export const predictOver1_5 =({currentFixtures, allFixtures}:{currentFixtures: F
 
 export const predictOver2_5 =({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=>{
     const predictedFixtures= currentFixtures.filter(currentFixture=>{
-        const lastFiveHomeFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.home.id, allFixtures});
-        const lastFiveAwayFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.away.id, allFixtures});
+        const lastFiveHomeFixtures =  getLastFiveTeamHomeFixtures({teamId: currentFixture.teams.home.id, allFixtures});
+        const lastFiveAwayFixtures =  getLastFiveTeamAwayFixtures({teamId: currentFixture.teams.away.id, allFixtures});
         const fixtureH2hFixtures = getH2HFixtures({teamOneId: currentFixture.teams.home.id, teamTwoId: currentFixture.teams.away.id, allFixtures})
         //Get last 5 home/ away games
-        console.log({lastFiveHomeFixtures});
-        console.log({lastFiveAwayFixtures});
-        console.log({fixtureH2hFixtures});
+       
+        
+        
         // filter the fixtures that passes the over 1.5 test here and return it
        return true
     })
@@ -37,12 +37,12 @@ export const predictOver2_5 =({currentFixtures, allFixtures}:{currentFixtures: F
 
 export const predictBothTeamsToScore =({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=>{
     const predictedFixtures= currentFixtures.filter(currentFixture=>{
-        const lastFiveHomeFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.home.id, allFixtures});
-        const lastFiveAwayFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.away.id, allFixtures});
+        const lastFiveHomeFixtures =  getLastFiveTeamHomeFixtures({teamId: currentFixture.teams.home.id, allFixtures});
+        const lastFiveAwayFixtures =  getLastFiveTeamAwayFixtures({teamId: currentFixture.teams.away.id, allFixtures});
         const fixtureH2hFixtures = getH2HFixtures({teamOneId: currentFixture.teams.home.id, teamTwoId: currentFixture.teams.away.id, allFixtures})
-        console.log({lastFiveHomeFixtures});
-        console.log({lastFiveAwayFixtures});
-        console.log({fixtureH2hFixtures});
+       
+        
+        
         //TODO filter the fixtures that passes the GG test here and return it
        return true
     })
@@ -51,12 +51,12 @@ export const predictBothTeamsToScore =({currentFixtures, allFixtures}:{currentFi
 
 export const predictHomeWinsEitherHalf =({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=>{
     const predictedFixtures= currentFixtures.filter(currentFixture=>{
-        const lastFiveHomeFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.home.id, allFixtures});
-        const lastFiveAwayFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.away.id, allFixtures});
+        const lastFiveHomeFixtures =  getLastFiveTeamHomeFixtures({teamId: currentFixture.teams.home.id, allFixtures});
+        const lastFiveAwayFixtures =  getLastFiveTeamAwayFixtures({teamId: currentFixture.teams.away.id, allFixtures});
         const fixtureH2hFixtures = getH2HFixtures({teamOneId: currentFixture.teams.home.id, teamTwoId: currentFixture.teams.away.id, allFixtures})
-        console.log({lastFiveHomeFixtures});
-        console.log({lastFiveAwayFixtures});
-        console.log({fixtureH2hFixtures});
+       
+        
+        
         //TODO filter the fixtures that passes the H wins either half test here and return it
        return true
     })
@@ -65,12 +65,12 @@ export const predictHomeWinsEitherHalf =({currentFixtures, allFixtures}:{current
 
 export const predictAwayWinsEitherHalf =({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=>{
     const predictedFixtures= currentFixtures.filter(currentFixture=>{
-        const lastFiveHomeFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.home.id, allFixtures});
-        const lastFiveAwayFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.away.id, allFixtures});
+        const lastFiveHomeFixtures =  getLastFiveTeamHomeFixtures({teamId: currentFixture.teams.home.id, allFixtures});
+        const lastFiveAwayFixtures =  getLastFiveTeamAwayFixtures({teamId: currentFixture.teams.away.id, allFixtures});
         const fixtureH2hFixtures = getH2HFixtures({teamOneId: currentFixture.teams.home.id, teamTwoId: currentFixture.teams.away.id, allFixtures})
-        console.log({lastFiveHomeFixtures});
-        console.log({lastFiveAwayFixtures});
-        console.log({fixtureH2hFixtures});
+       
+        
+        
         //TODO filter the fixtures that passes the H wins either half test here and return it
        return true
     })
@@ -79,12 +79,12 @@ export const predictAwayWinsEitherHalf =({currentFixtures, allFixtures}:{current
 
 export const predictHomeWin =({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=>{
     const predictedFixtures= currentFixtures.filter(currentFixture=>{
-        const lastFiveHomeFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.home.id, allFixtures});
-        const lastFiveAwayFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.away.id, allFixtures});
+        const lastFiveHomeFixtures =  getLastFiveTeamHomeFixtures({teamId: currentFixture.teams.home.id, allFixtures});
+        const lastFiveAwayFixtures =  getLastFiveTeamAwayFixtures({teamId: currentFixture.teams.away.id, allFixtures});
         const fixtureH2hFixtures = getH2HFixtures({teamOneId: currentFixture.teams.home.id, teamTwoId: currentFixture.teams.away.id, allFixtures})
-        console.log({lastFiveHomeFixtures});
-        console.log({lastFiveAwayFixtures});
-        console.log({fixtureH2hFixtures});
+       
+        
+        
         //TODO filter the fixtures that passes the H wins either half test here and return it
        return true
     })
@@ -94,12 +94,12 @@ export const predictHomeWin =({currentFixtures, allFixtures}:{currentFixtures: F
 
 export const predictAwayWin =({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=>{
     const predictedFixtures= currentFixtures.filter(currentFixture=>{
-        const lastFiveHomeFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.home.id, allFixtures});
-        const lastFiveAwayFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.away.id, allFixtures});
+        const lastFiveHomeFixtures =  getLastFiveTeamHomeFixtures({teamId: currentFixture.teams.home.id, allFixtures});
+        const lastFiveAwayFixtures =  getLastFiveTeamAwayFixtures({teamId: currentFixture.teams.away.id, allFixtures});
         const fixtureH2hFixtures = getH2HFixtures({teamOneId: currentFixture.teams.home.id, teamTwoId: currentFixture.teams.away.id, allFixtures})
-        console.log({lastFiveHomeFixtures});
-        console.log({lastFiveAwayFixtures});
-        console.log({fixtureH2hFixtures});
+       
+        
+        
         //TODO filter the fixtures that passes the H wins either half test here and return it
        return true
     })
@@ -108,12 +108,12 @@ export const predictAwayWin =({currentFixtures, allFixtures}:{currentFixtures: F
 
 export const predictHomeOver1_5 =({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=>{
     const predictedFixtures= currentFixtures.filter(currentFixture=>{
-        const lastFiveHomeFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.home.id, allFixtures});
-        const lastFiveAwayFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.away.id, allFixtures});
+        const lastFiveHomeFixtures =  getLastFiveTeamHomeFixtures({teamId: currentFixture.teams.home.id, allFixtures});
+        const lastFiveAwayFixtures =  getLastFiveTeamAwayFixtures({teamId: currentFixture.teams.away.id, allFixtures});
         const fixtureH2hFixtures = getH2HFixtures({teamOneId: currentFixture.teams.home.id, teamTwoId: currentFixture.teams.away.id, allFixtures})
-        console.log({lastFiveHomeFixtures});
-        console.log({lastFiveAwayFixtures});
-        console.log({fixtureH2hFixtures});
+       
+        
+        
         //TODO filter the fixtures that passes the H wins either half test here and return it
        return true
     })
@@ -121,13 +121,13 @@ export const predictHomeOver1_5 =({currentFixtures, allFixtures}:{currentFixture
 }
 export const predictMultiGoals2_5 =({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=>{
     const predictedFixtures= currentFixtures.filter(currentFixture=>{
-        const lastFiveHomeFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.home.id, allFixtures});
-        const lastFiveAwayFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.away.id, allFixtures});
+        const lastFiveHomeFixtures =  getLastFiveTeamHomeFixtures({teamId: currentFixture.teams.home.id, allFixtures});
+        const lastFiveAwayFixtures =  getLastFiveTeamAwayFixtures({teamId: currentFixture.teams.away.id, allFixtures});
         const fixtureH2hFixtures = getH2HFixtures({teamOneId: currentFixture.teams.home.id, teamTwoId: currentFixture.teams.away.id, allFixtures})
         //Get last 5 home/ away games
-        console.log({lastFiveHomeFixtures});
-        console.log({lastFiveAwayFixtures});
-        console.log({fixtureH2hFixtures});
+       
+        
+        
         // filter the fixtures that passes the over 1.5 test here and return it
        return true
     })
@@ -136,13 +136,13 @@ export const predictMultiGoals2_5 =({currentFixtures, allFixtures}:{currentFixtu
 
 export const predictMultiGoals3_6 =({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=>{
     const predictedFixtures= currentFixtures.filter(currentFixture=>{
-        const lastFiveHomeFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.home.id, allFixtures});
-        const lastFiveAwayFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.away.id, allFixtures});
+        const lastFiveHomeFixtures =  getLastFiveTeamHomeFixtures({teamId: currentFixture.teams.home.id, allFixtures});
+        const lastFiveAwayFixtures =  getLastFiveTeamAwayFixtures({teamId: currentFixture.teams.away.id, allFixtures});
         const fixtureH2hFixtures = getH2HFixtures({teamOneId: currentFixture.teams.home.id, teamTwoId: currentFixture.teams.away.id, allFixtures})
         //Get last 5 home/ away games
-        console.log({lastFiveHomeFixtures});
-        console.log({lastFiveAwayFixtures});
-        console.log({fixtureH2hFixtures});
+       
+        
+        
         // filter the fixtures that passes the over 1.5 test here and return it
        return true
     })
@@ -151,13 +151,13 @@ export const predictMultiGoals3_6 =({currentFixtures, allFixtures}:{currentFixtu
 
 export const predictBothHalVOver0_5 =({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=>{
     const predictedFixtures= currentFixtures.filter(currentFixture=>{
-        const lastFiveHomeFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.home.id, allFixtures});
-        const lastFiveAwayFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.away.id, allFixtures});
+        const lastFiveHomeFixtures =  getLastFiveTeamHomeFixtures({teamId: currentFixture.teams.home.id, allFixtures});
+        const lastFiveAwayFixtures =  getLastFiveTeamAwayFixtures({teamId: currentFixture.teams.away.id, allFixtures});
         const fixtureH2hFixtures = getH2HFixtures({teamOneId: currentFixture.teams.home.id, teamTwoId: currentFixture.teams.away.id, allFixtures})
         //Get last 5 home/ away games
-        console.log({lastFiveHomeFixtures});
-        console.log({lastFiveAwayFixtures});
-        console.log({fixtureH2hFixtures});
+       
+        
+        
         // filter the fixtures that passes the over 1.5 test here and return it
        return true
     })
@@ -166,13 +166,13 @@ export const predictBothHalVOver0_5 =({currentFixtures, allFixtures}:{currentFix
 
 export const predictDrawOrGoal =({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=>{
     const predictedFixtures= currentFixtures.filter(currentFixture=>{
-        const lastFiveHomeFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.home.id, allFixtures});
-        const lastFiveAwayFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.away.id, allFixtures});
+        const lastFiveHomeFixtures =  getLastFiveTeamHomeFixtures({teamId: currentFixture.teams.home.id, allFixtures});
+        const lastFiveAwayFixtures =  getLastFiveTeamAwayFixtures({teamId: currentFixture.teams.away.id, allFixtures});
         const fixtureH2hFixtures = getH2HFixtures({teamOneId: currentFixture.teams.home.id, teamTwoId: currentFixture.teams.away.id, allFixtures})
         //Get last 5 home/ away games
-        console.log({lastFiveHomeFixtures});
-        console.log({lastFiveAwayFixtures});
-        console.log({fixtureH2hFixtures});
+       
+        
+        
         // filter the fixtures that passes the over 1.5 test here and return it
        return true
     })
@@ -181,13 +181,13 @@ export const predictDrawOrGoal =({currentFixtures, allFixtures}:{currentFixtures
 
 export const predictDraw =({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=>{
     const predictedFixtures= currentFixtures.filter(currentFixture=>{
-        const lastFiveHomeFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.home.id, allFixtures});
-        const lastFiveAwayFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.away.id, allFixtures});
+        const lastFiveHomeFixtures =  getLastFiveTeamHomeFixtures({teamId: currentFixture.teams.home.id, allFixtures});
+        const lastFiveAwayFixtures =  getLastFiveTeamAwayFixtures({teamId: currentFixture.teams.away.id, allFixtures});
         const fixtureH2hFixtures = getH2HFixtures({teamOneId: currentFixture.teams.home.id, teamTwoId: currentFixture.teams.away.id, allFixtures})
         //Get last 5 home/ away games
-        console.log({lastFiveHomeFixtures});
-        console.log({lastFiveAwayFixtures});
-        console.log({fixtureH2hFixtures});
+       
+        
+        
         // filter the fixtures that passes the over 1.5 test here and return it
        return true
     })
@@ -196,13 +196,13 @@ export const predictDraw =({currentFixtures, allFixtures}:{currentFixtures: Fixt
 
 export const predictHTDraw =({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=>{
     const predictedFixtures= currentFixtures.filter(currentFixture=>{
-        const lastFiveHomeFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.home.id, allFixtures});
-        const lastFiveAwayFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.away.id, allFixtures});
+        const lastFiveHomeFixtures =  getLastFiveTeamHomeFixtures({teamId: currentFixture.teams.home.id, allFixtures});
+        const lastFiveAwayFixtures =  getLastFiveTeamAwayFixtures({teamId: currentFixture.teams.away.id, allFixtures});
         const fixtureH2hFixtures = getH2HFixtures({teamOneId: currentFixture.teams.home.id, teamTwoId: currentFixture.teams.away.id, allFixtures})
         //Get last 5 home/ away games
-        console.log({lastFiveHomeFixtures});
-        console.log({lastFiveAwayFixtures});
-        console.log({fixtureH2hFixtures});
+       
+        
+        
         // filter the fixtures that passes the over 1.5 test here and return it
        return true
     })
@@ -211,13 +211,13 @@ export const predictHTDraw =({currentFixtures, allFixtures}:{currentFixtures: Fi
 
 export const predictAwayOver1_5 =({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=>{
     const predictedFixtures= currentFixtures.filter(currentFixture=>{
-        const lastFiveHomeFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.home.id, allFixtures});
-        const lastFiveAwayFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.away.id, allFixtures});
+        const lastFiveHomeFixtures =  getLastFiveTeamHomeFixtures({teamId: currentFixture.teams.home.id, allFixtures});
+        const lastFiveAwayFixtures =  getLastFiveTeamAwayFixtures({teamId: currentFixture.teams.away.id, allFixtures});
         const fixtureH2hFixtures = getH2HFixtures({teamOneId: currentFixture.teams.home.id, teamTwoId: currentFixture.teams.away.id, allFixtures})
         //Get last 5 home/ away games
-        console.log({lastFiveHomeFixtures});
-        console.log({lastFiveAwayFixtures});
-        console.log({fixtureH2hFixtures});
+       
+        
+        
         // filter the fixtures that passes the over 1.5 test here and return it
        return true
     })
@@ -226,13 +226,13 @@ export const predictAwayOver1_5 =({currentFixtures, allFixtures}:{currentFixture
 
 export const predictHomeOver0_5 =({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=>{
     const predictedFixtures= currentFixtures.filter(currentFixture=>{
-        const lastFiveHomeFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.home.id, allFixtures});
-        const lastFiveAwayFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.away.id, allFixtures});
+        const lastFiveHomeFixtures =  getLastFiveTeamHomeFixtures({teamId: currentFixture.teams.home.id, allFixtures});
+        const lastFiveAwayFixtures =  getLastFiveTeamAwayFixtures({teamId: currentFixture.teams.away.id, allFixtures});
         const fixtureH2hFixtures = getH2HFixtures({teamOneId: currentFixture.teams.home.id, teamTwoId: currentFixture.teams.away.id, allFixtures})
         //Get last 5 home/ away games
-        console.log({lastFiveHomeFixtures});
-        console.log({lastFiveAwayFixtures});
-        console.log({fixtureH2hFixtures});
+       
+        
+        
         // filter the fixtures that passes the over 1.5 test here and return it
        return true
     })
@@ -241,22 +241,28 @@ export const predictHomeOver0_5 =({currentFixtures, allFixtures}:{currentFixture
 
 export const predictAwayOver0_5 =({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=>{
     const predictedFixtures= currentFixtures.filter(currentFixture=>{
-        const lastFiveHomeFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.home.id, allFixtures});
-        const lastFiveAwayFixtures =  getLastFiveTeamFixtures({teamId: currentFixture.teams.away.id, allFixtures});
+        const lastFiveHomeFixtures =  getLastFiveTeamHomeFixtures({teamId: currentFixture.teams.home.id, allFixtures});
+        const lastFiveAwayFixtures =  getLastFiveTeamAwayFixtures({teamId: currentFixture.teams.away.id, allFixtures});
         const fixtureH2hFixtures = getH2HFixtures({teamOneId: currentFixture.teams.home.id, teamTwoId: currentFixture.teams.away.id, allFixtures})
         //Get last 5 home/ away games
-        console.log({lastFiveHomeFixtures});
-        console.log({lastFiveAwayFixtures});
-        console.log({fixtureH2hFixtures});
+       
+        
+        
         // filter the fixtures that passes the over 1.5 test here and return it
        return true
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===16) }// can look into making that betoption a enum
 }
 
-export const getLastFiveTeamFixtures = ({teamId, allFixtures}: {teamId: Number, allFixtures: FixtureDataModel[]})=>{
+export const getLastFiveTeamHomeFixtures = ({teamId, allFixtures}: {teamId: Number, allFixtures: FixtureDataModel[]})=>{
     return allFixtures.filter(fixture=>{
-      return (fixture.teams.home.id === teamId || fixture.teams.away.id === teamId) && fixture.fixture.status.short ==='FT'
+      return (fixture.teams.home.id === teamId) && fixture.fixture.status.short ==='FT'
+    }).slice(0, numberOTeamLastFixturesBack)
+  }
+
+  export const getLastFiveTeamAwayFixtures = ({teamId, allFixtures}: {teamId: Number, allFixtures: FixtureDataModel[]})=>{
+    return allFixtures.filter(fixture=>{
+      return (fixture.teams.away.id === teamId || fixture.teams.away.id === teamId) && fixture.fixture.status.short ==='FT'
     }).slice(0, numberOTeamLastFixturesBack)
   }
   
