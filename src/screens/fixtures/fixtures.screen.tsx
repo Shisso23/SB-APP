@@ -1,7 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 
 import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Autocomplete, CircularProgress, TextField } from '@mui/material';
 import moment from 'moment';
@@ -16,7 +15,7 @@ import { getFilteredFixtures } from '../../services/fixtures/index';
 import { FixtureDataModel } from '../../models/fixtures/index';
 import { currentDate, toMomentDate } from '../../helpers/dateTimeHelper';
 import { betOptions, levels, seasonsBack } from '../../variables/variables';
-import { predictBothTeamsToScore, predictOver1_5 } from '../../helpers/prediction';
+import { betOptionModel } from '../../models/bet-option-model/index';
 
 
 const FixturesScreen: React.FC = () => {
@@ -31,38 +30,50 @@ type LocationState = {
   const [toDate, setToDate] = useState( new Date(moment().add(1,'days').format('YYYY-MM-DD')));
   const location = useLocation();
   const {selectedLeagues }=  location.state as LocationState;
-  console.log({selectedLeagues})
   const [futureFixtures, setFutureFixtures] = useState<FixtureDataModel[]>([]);
   const [allFixtures, setAllFixtures]= useState<FixtureDataModel[]>();
   const [currentFixtures, setCurrentFixtures] = useState<FixtureDataModel[]>();
   const [predictedFixtures, setPredictedFixtures]= useState<{fixtures: FixtureDataModel[], option: {name: String; id: Number, level: Number, shortName: String }}[]>(); //TODO try making a model for the bet option and reuse it
   const [selectedLevels, setSeletedLevels] = useState<Number[]>([0])
-  const [selectedOptions, setSelectedOptions] = useState<{name: String; id: Number}[] | []>([]);
+  const [selectedOptions, setSelectedOptions] = useState<betOptionModel [] | []>([]);
   const minFixtureDate = new Date();
+  const [readyToFtechLeagues, setReadyToFetchLeagues] = useState(false);
+
 
   useEffect(()=>{
     window.addEventListener('resize', updateWindowDimensions)
-    getLeaguesSeasonsFixtures().then(responses=>{ //TODO Remove from here because it executes twice
-        setAllFixtures(responses.flat())
-        setFutureFixtures(filterFutureFixtures(responses.flat()))
-    }).finally(()=>{
-      setLoadingLeaguesFixtures(false);
-    })
+    setReadyToFetchLeagues(true);
+    setSelectedOptions(betOptions.filter(option=> selectedLevels.some(level=> option.level === level)))
     return ()=>{
       window.removeEventListener('resize', updateWindowDimensions)
     }
   }, []);
 
   useEffect(()=>{
+    if(readyToFtechLeagues){
+      fetchLeaguesSeasonsFixtures();
+    }
+  }, [readyToFtechLeagues])
+
+  const fetchLeaguesSeasonsFixtures=async()=>{
+    getLeaguesSeasonsFixtures().then(responses=>{ //TODO Remove from here because it executes twice
+      setAllFixtures(responses.flat())
+      setFutureFixtures(filterFutureFixtures(responses.flat()))
+  }).finally(()=>{
+    setLoadingLeaguesFixtures(false);
+  })
+  }
+
+  useEffect(()=>{
    setCurrentFixtures(filterFixtresBetweenDates(fromDate, toDate));
-   if(currentFixtures){
-     predict();
-   }
   }, [futureFixtures?.length])
 
   useEffect(()=>{
-    if(currentFixtures){
-      predict();
+    if(selectedLevels.length>0){
+      setSelectedOptions(betOptions.filter(option=> selectedLevels.some(level=> option.level === level)))
+    }
+    else{
+      setSelectedOptions([])
     }
   }, [selectedLevels.length])
 
@@ -71,6 +82,15 @@ type LocationState = {
       predict();
     }
   }, [currentFixtures?.length])
+
+  useEffect(()=>{
+    if(selectedOptions){
+      predict();
+    }
+    if(selectedOptions.length===0){
+      setSeletedLevels([])
+    }
+  }, [selectedOptions?.length])
 
  
 
@@ -81,7 +101,8 @@ type LocationState = {
   }, [fromDate.toString(), toDate.toString()])
 
   const predict=()=>{
-    setPredictedFixtures([predictOver1_5({currentFixtures, allFixtures}), predictBothTeamsToScore({currentFixtures, allFixtures})])
+      const predictions = selectedOptions.map((option: betOptionModel)=> option.predict({currentFixtures, allFixtures}))
+      setPredictedFixtures(predictions)
   }
 
   const filterFutureFixtures=(fixtures:FixtureDataModel[] )=>{
@@ -148,9 +169,9 @@ const updateWindowDimensions =()=>{
                     defaultValue={[]}
                     value={selectedOptions}
                     id="Bet Options"
-                    getOptionLabel={(option: {name: String; id: Number})=> `${option.name}`}
+                    getOptionLabel={(option: betOptionModel)=> `${option.name}`}
                     options={betOptions.map((option) =>  option)}
-                    onChange={(event, value: {name: String; id: Number}[])=>{
+                    onChange={(event, value: betOptionModel[])=>{
                         setSelectedOptions(value)
                     }}
                     renderInput={(params) => <TextField {...params} InputLabelProps={{color: 'primary', inputMode: 'search' }} />}
@@ -188,7 +209,7 @@ const updateWindowDimensions =()=>{
         </div>
   
             <>
-              {loadingLeaguesFixtures? <CircularProgress/> : <div className='flex flex-col w-8/12 overflow-y-scroll listView items-center'>
+              {loadingLeaguesFixtures? <CircularProgress/> : <div className='flex flex-col w-9/12 overflow-y-scroll listView items-center'>
                   {predictedFixtures?.map((predictedionResult, predResultIndex)=>{
                    return predictedionResult.fixtures.map((fixtureData, fixtureDataIndex)=>{
                         return (
