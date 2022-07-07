@@ -71,7 +71,7 @@ export const predictAwayWinsEitherHalf =({currentFixtures, allFixtures}:{current
         if(lastFiveAwayFixtures.length ===0){
             return false
         }
-       return (lastFiveAwayFixtures.every(FixtureData=> FixtureData.goals.away> FixtureData.goals.home))
+       return (lastFiveAwayFixtures.every(FixtureData=> FixtureData.goals.away> FixtureData.goals.home)) && lastFiveHomeFixtures.some(fixtureData=> fixtureData.goals.away> 1)
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===14) }//TODO can look into making that betoption id a enum
 }
