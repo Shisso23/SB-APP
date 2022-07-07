@@ -214,7 +214,7 @@ const updateWindowDimensions =()=>{
                    return predictedionResult.fixtures.map((fixtureData, fixtureDataIndex)=>{
                         return (
                           <div key={`${predResultIndex}-${fixtureDataIndex}`} className=' flex flex-row     justify-between py-6 my-2 px-3 w-4/6 rounded-md bg-blue-300 hover:bg-blue-200'>
-                              <div>{fixtureData.league.name}
+                              <div>{`${fixtureData.league.name} (${fixtureData.league.country})`}
                                   <div>
                                     {
                                       `${toMomentDate(fixtureData.fixture.date).format('DD-MMMM-YYYY HH:mm')}`

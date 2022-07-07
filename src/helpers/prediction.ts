@@ -69,7 +69,7 @@ export const predictHomeWin =({currentFixtures, allFixtures}:{currentFixtures: F
         
         
         //TODO filter the fixtures that passes the H wins either half test here and return it
-       return (lastFiveHomeFixtures.every(FixtureData=> FixtureData.goals.away> FixtureData.goals.home)) && fixtureH2hFixtures.every(fixtureData=> fixtureData.teams.home.winner === true )
+       return (lastFiveHomeFixtures.every(FixtureData=> FixtureData.goals.home> FixtureData.goals.away)) && fixtureH2hFixtures.every(fixtureData=> fixtureData.teams.home.winner === true )
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===1) }//TODO can look into making that betoption id a enum
 }
@@ -84,7 +84,7 @@ export const predictAwayWin =({currentFixtures, allFixtures}:{currentFixtures: F
         
         
         //TODO filter the fixtures that passes the H wins either half test here and return it
-        return (lastFiveHomeFixtures.every(FixtureData=> FixtureData.goals.away> FixtureData.goals.home)) && fixtureH2hFixtures.every(fixtureData=> fixtureData.teams.home.winner === true )
+        return (lastFiveAwayFixtures.every(FixtureData=> FixtureData.goals.away> FixtureData.goals.home)) && fixtureH2hFixtures.every(fixtureData=> fixtureData.teams.away.winner === true )
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===12) }//TODO can look into making that betoption id a enum
 }
