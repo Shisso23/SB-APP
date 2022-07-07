@@ -96,7 +96,6 @@ type LocationState = {
 
   useEffect(()=>{
     const groupedPredictionsData = _.groupBy(predictedFixtures, predictedFixture=> predictedFixture.option.shortName)
-    console.log({groupedPredictionsData})
     setGroupedPredictionsData(groupedPredictionsData)
   }, [JSON.stringify(predictedFixtures)])
 
@@ -147,12 +146,6 @@ type LocationState = {
     }else{
       setSeletedLevels([...selectedLevels, selectedLevel])
     }
-  }
-
-  const handleNextClick =async ()=>{
-    const groupedPredictionsData = _.groupBy(predictedFixtures, predictedFixture=> predictedFixture.option.shortName)
-
-    // console.log({groupedPredictions})
   }
 
 const updateWindowDimensions =()=>{
