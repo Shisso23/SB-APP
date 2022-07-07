@@ -1,5 +1,3 @@
-
-import { string } from 'yup';
 import authNetworkService from '../auth-network-service/auth-network.service';
 import {FixturesFilterModel} from '../../models/fixtures/index'
 

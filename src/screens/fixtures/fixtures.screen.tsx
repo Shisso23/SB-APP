@@ -217,7 +217,7 @@ const updateWindowDimensions =()=>{
                               <div>{fixtureData.league.name}
                                   <div>
                                     {
-                                      `${toMomentDate(fixtureData.fixture.date).format('DD-MMMM-YYYY')}`
+                                      `${toMomentDate(fixtureData.fixture.date).format('DD-MMMM-YYYY HH:mm')}`
                                     }
                                   </div>
                               </div>
