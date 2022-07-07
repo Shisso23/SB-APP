@@ -33,8 +33,8 @@ type LocationState = {
   const [futureFixtures, setFutureFixtures] = useState<FixtureDataModel[]>([]);
   const [allFixtures, setAllFixtures]= useState<FixtureDataModel[]>();
   const [currentFixtures, setCurrentFixtures] = useState<FixtureDataModel[]>();
-  const [predictedFixtures, setPredictedFixtures]= useState<{fixtures: FixtureDataModel[], option: {name: String; id: Number, level: Number, shortName: String }}[]>(); //TODO try making a model for the bet option and reuse it
-  const [selectedLevels, setSeletedLevels] = useState<Number[]>([0])
+  const [predictedFixtures, setPredictedFixtures]= useState<{fixtures: FixtureDataModel[], option: {name: String; id: number, level: number, shortName: String }}[]>(); //TODO try making a model for the bet option and reuse it
+  const [selectedLevels, setSeletedLevels] = useState<number[]>([0])
   const [selectedOptions, setSelectedOptions] = useState<betOptionModel [] | []>([]);
   const minFixtureDate = new Date();
   const [readyToFtechLeagues, setReadyToFetchLeagues] = useState(false);
@@ -123,7 +123,7 @@ type LocationState = {
     return Promise.all(
         selectedLeagues?.map(async (league: LeagueDataLeagueModel, index) => {
         const seasons = seasonsBack //TODO Get from variables
-       return Promise.all(seasons.map(async (season: Number)=>{
+       return Promise.all(seasons.map(async (season: number)=>{
             const getLeagueFixturesResponse: FixturesModel =  await (await getFilteredFixtures(new FixturesFilterModel({league: league.id, season}))).data
             return getLeagueFixturesResponse.response;
         })).then(response=>{
@@ -133,7 +133,7 @@ type LocationState = {
       );
   }
 
-  const onLevelSelect=(selectedLevel: Number)=>()=>{
+  const onLevelSelect=(selectedLevel: number)=>()=>{
     if(selectedLevels.includes(selectedLevel)){
       setSeletedLevels(selectedLevels.filter(level=> level!==selectedLevel))
     }else{

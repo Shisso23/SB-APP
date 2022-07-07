@@ -1,6 +1,6 @@
 export class LeaguesModel {
     public errors: String [];
-    public results: Number;
+    public results: number;
     public paging: LeaguePagingModel;
     public response: LeagueDataModel[];
     /**
@@ -15,8 +15,8 @@ export class LeaguesModel {
 }
 
 export class LeaguePagingModel {
-    public current: Number;
-    public total: Number;
+    public current: number;
+    public total: number;
     constructor(init: LeaguePagingModel) {
        this.current = init.current;
        this.total = init.total;
@@ -35,7 +35,7 @@ export class LeagueDataModel {
 }
 
 export class LeagueDataLeagueModel {
-    public id: Number;
+    public id: number;
     public name: String;
     public type: String;
     public logo: String;
@@ -62,7 +62,7 @@ export class LeagueDataCountryModel {
 }
 
 export class LeagueDataSeasonsModel {
-    public year: Number;
+    public year: number;
     public start: String;
     public end: String;
     public current: Boolean
@@ -76,12 +76,12 @@ export class LeagueDataSeasonsModel {
 
 
 export class LeaguesFilterModel {
-    public id?: Number;
+    public id?: number;
     public name?: String;
     public country?: String;
     public code?: String;
-    public season?: Number;
-    public team?: Number;
+    public season?: number;
+    public team?: number;
     public type?: String;
     public current?: Boolean;
     public search?: String

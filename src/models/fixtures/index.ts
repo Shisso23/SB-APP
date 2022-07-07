@@ -1,6 +1,6 @@
 export class FixturesModel {
     public errors: String [];
-    public results: Number;
+    public results: number;
     public paging: FixturePagingModel;
     public response: FixtureDataModel[];
     /**
@@ -15,8 +15,8 @@ export class FixturesModel {
 }
 
 export class FixturePagingModel {
-    public current: Number;
-    public total: Number;
+    public current: number;
+    public total: number;
     constructor(init: FixturePagingModel) {
        this.current = init.current;
        this.total = init.total;
@@ -39,10 +39,10 @@ export class FixtureDataModel {
 }
 
 export class FixtureDataFixtureModel {
-    public id: Number;
+    public id: number;
     public timezone: String;
     public date: String;
-    public timestamp: Number;
+    public timestamp: number;
     public status: FixtureDataFixtureStatusModel
 
     constructor(init: FixtureDataFixtureModel) {
@@ -57,7 +57,7 @@ export class FixtureDataFixtureModel {
 export class FixtureDataFixtureStatusModel {
     public long: String;
     public short: String;
-    public elapsed: Number;
+    public elapsed: number;
     constructor(init: FixtureDataFixtureStatusModel) {
        this.long = init.long;
        this.short = init.short;
@@ -66,11 +66,11 @@ export class FixtureDataFixtureStatusModel {
 }
 
 export class FixtureDataLeagueModel {
-    public id: Number;
+    public id: number;
     public name: String;
     public country: String;
     public logo: String;
-    public season: Number;
+    public season: number;
     constructor(init: FixtureDataLeagueModel) {
        this.id = init.id;
        this.name = init.name;
@@ -81,7 +81,7 @@ export class FixtureDataLeagueModel {
 }
 
 export class FixtureDataTeamModel {
-    public id: Number;
+    public id: number;
     public name: String;
     public logo: String;
     public winner: Boolean;
@@ -104,21 +104,21 @@ export class FixtureDataTeamsModel {
 }
 
 export class FixtureDataGoalsModel {
-    public home: Number ;
-    public away: Number;
+    public home: number ;
+    public away: number;
     constructor(init: FixtureDataGoalsModel) {
        this.home = init.home;
        this.away = init.away;
     }
 }
 export class FixtureDataScoreModel {
-    public halfTime: FixtureDataGoalsModel;
-    public fullTime: FixtureDataGoalsModel;
-    public extraTime: FixtureDataGoalsModel;
+    public halftime: FixtureDataGoalsModel;
+    public fulltime: FixtureDataGoalsModel;
+    public extratime: FixtureDataGoalsModel;
     constructor(init: FixtureDataScoreModel) {
-       this.halfTime = init.halfTime;
-       this.fullTime = init.fullTime;
-       this.extraTime = init.extraTime;
+       this.halftime = init.halftime;
+       this.fulltime = init.fulltime;
+       this.extratime = init.extratime;
     }
 }
 
@@ -127,11 +127,11 @@ export class FixturesFilterModel {
     public h2h?: String;
     public live?: String;
     public date?: String;
-    public league?: Number;
-    public season?: Number;
-    public team?: Number;
-    public last?: Number;
-    public next?: Number;
+    public league?: number;
+    public season?: number;
+    public team?: number;
+    public last?: number;
+    public next?: number;
     public from?: String;
     public to?: String;
     constructor(init: FixturesFilterModel) {

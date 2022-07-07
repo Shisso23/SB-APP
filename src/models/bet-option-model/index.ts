@@ -2,8 +2,8 @@ import { FixtureDataModel } from "../fixtures";
 
 export class betOptionModel {
     public name: String;
-    public id: Number;
-    public level: Number;
+    public id: number;
+    public level: number;
     public shortName: String;
     public predict: ({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=> {fixtures: FixtureDataModel[], option: betOptionModel}
     /**

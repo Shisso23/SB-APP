@@ -13,7 +13,7 @@ import {
  } from '../helpers/prediction';
 import { betOptionModel } from '../models/bet-option-model';
 import { FixtureDataModel } from '../models/fixtures/index';
-export const levels: Number [] = [0,1,2,3,4,5];
+export const levels: number [] = [0,1,2,3,4,5];
 
 export  const betOptions: betOptionModel [] = [
     {name: 'Both Teams to Score', id: 0, shortName: 'GG', level:3,  predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=> predictBothTeamsToScore(params)}, 
