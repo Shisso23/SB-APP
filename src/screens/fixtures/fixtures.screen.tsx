@@ -16,6 +16,7 @@ import { FixtureDataModel } from '../../models/fixtures/index';
 import { currentDate, toMomentDate } from '../../helpers/dateTimeHelper';
 import { betOptions, levels, seasonsBack } from '../../variables/variables';
 import { betOptionModel } from '../../models/bet-option-model/index';
+import _, { Dictionary } from 'lodash';
 
 
 const FixturesScreen: React.FC = () => {
@@ -34,6 +35,7 @@ type LocationState = {
   const [allFixtures, setAllFixtures]= useState<FixtureDataModel[]>();
   const [currentFixtures, setCurrentFixtures] = useState<FixtureDataModel[]>();
   const [predictedFixtures, setPredictedFixtures]= useState<{fixtures: FixtureDataModel[], option: {name: String; id: number, level: number, shortName: String }}[]>(); //TODO try making a model for the bet option and reuse it
+  const [groupedPredictionsData, setGroupedPredictionsData] = useState<Dictionary<{ fixtures: FixtureDataModel[]; option: { name: String; id: number; level: number; shortName: String; }; }[]>>()
   const [selectedLevels, setSeletedLevels] = useState<number[]>([0])
   const [selectedOptions, setSelectedOptions] = useState<betOptionModel [] | []>([]);
   const minFixtureDate = new Date();
@@ -92,6 +94,12 @@ type LocationState = {
     }
   }, [selectedOptions?.length])
 
+  useEffect(()=>{
+    const groupedPredictionsData = _.groupBy(predictedFixtures, predictedFixture=> predictedFixture.option.shortName)
+    console.log({groupedPredictionsData})
+    setGroupedPredictionsData(groupedPredictionsData)
+  }, [JSON.stringify(predictedFixtures)])
+
  
 
   useEffect(()=>{
@@ -142,7 +150,9 @@ type LocationState = {
   }
 
   const handleNextClick =async ()=>{
+    const groupedPredictionsData = _.groupBy(predictedFixtures, predictedFixture=> predictedFixture.option.shortName)
 
+    // console.log({groupedPredictions})
   }
 
 const updateWindowDimensions =()=>{
@@ -210,38 +220,45 @@ const updateWindowDimensions =()=>{
   
             <>
               {loadingLeaguesFixtures? <CircularProgress/> : <div className='flex flex-col w-9/12 overflow-y-scroll listView items-center'>
-                  {predictedFixtures?.map((predictedionResult, predResultIndex)=>{
-                   return predictedionResult.fixtures.map((fixtureData, fixtureDataIndex)=>{
-                        return (
-                          <div key={`${predResultIndex}-${fixtureDataIndex}`} className=' flex flex-row     justify-between py-6 my-2 px-3 w-4/6 rounded-md bg-blue-300 hover:bg-blue-200'>
-                              <div>{`${fixtureData.league.name} (${fixtureData.league.country})`}
-                                  <div>
-                                    {
-                                      `${toMomentDate(fixtureData.fixture.date).format('DD-MMMM-YYYY HH:mm')}`
-                                    }
-                                  </div>
-                              </div>
-                              <div className=' flex flex-row justify-between w-3/6'>
-                                  <div className=' flex flex-row'>
-                                      <img src={`${fixtureData.teams.home.logo}`} alt='country flag' width={40} height={40} className=' mr-1'/>
-                                      <div className=' flex text-lg font-semibold items-center justify-center text-black'>{fixtureData.teams.home.name}</div>
-                                  </div>
-                                  <div className=' flex justify-start w-1/3'>
-                                      <div className=' flex flex-row float-left'>
-                                          <img src={`${fixtureData.teams.away.logo}`} alt='country flag' width={40} height={40} className=' mr-1'/>
-                                          <div className=' flex text-lg font-semibold items-center justify-center text-black'>{fixtureData.teams.away.name}</div>
+                {predictedFixtures &&
+                  Object.keys(groupedPredictionsData)?.map(OptionShortName=>{
+                    return <>
+                      <div className=' text-lg text-white font-bold bg-blue-400'>{!groupedPredictionsData[OptionShortName].every(predFixture=> predFixture.fixtures.length===0) && OptionShortName|| ''}</div>
+                      {groupedPredictionsData[OptionShortName].map((predictedionResult, predResultIndex)=>{
+                      return  predictedionResult.fixtures.map((fixtureData, fixtureDataIndex)=>{
+                            return (
+                              <div key={`${predResultIndex}-${fixtureDataIndex}`} className=' flex flex-row justify-between py-6 my-2 px-3 w-4/6 rounded-md bg-blue-300 hover:bg-blue-200'>
+                                  <div>{`${fixtureData.league.name} (${fixtureData.league.country})`}
+                                      <div>
+                                        {
+                                          `${toMomentDate(fixtureData.fixture.date).format('DD-MMMM-YYYY HH:mm')}`
+                                        }
                                       </div>
                                   </div>
+                                  <div className=' flex flex-row justify-between w-3/6'>
+                                      <div className=' flex flex-row'>
+                                          <img src={`${fixtureData.teams.home.logo}`} alt='country flag' width={40} height={40} className=' mr-1'/>
+                                          <div className=' flex text-lg font-semibold items-center justify-center text-black'>{fixtureData.teams.home.name}</div>
+                                      </div>
+                                      <div className=' flex justify-start w-1/3'>
+                                          <div className=' flex flex-row float-left'>
+                                              <img src={`${fixtureData.teams.away.logo}`} alt='country flag' width={40} height={40} className=' mr-1'/>
+                                              <div className=' flex text-lg font-semibold items-center justify-center text-black'>{fixtureData.teams.away.name}</div>
+                                          </div>
+                                      </div>
+                                  </div>
+                                  <div className=' flex flex-row justify-center items-center'>
+                                      <p>{`${predictedionResult.option.shortName}`}</p>
+                                  </div>
                               </div>
-                              <div className=' flex flex-row justify-center items-center'>
-                                  <p>{`${predictedionResult.option.shortName}`}</p>
-                              </div>
-                          </div>
-                        )
-                    })
-                  }).flat() 
-                  
-                  }
+                            )
+                        })
+                      })}
+                    </>
+                    
+                  }) || <div/>
+
+                }
               </div>}
             </>
         </div>
