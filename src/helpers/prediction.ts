@@ -164,8 +164,6 @@ export const predictHTDraw =({currentFixtures, allFixtures}:{currentFixtures: Fi
         const lastFiveHomeFixtures =  getLastFiveTeamHomeFixtures({teamId: currentFixture.teams.home.id, allFixtures});
         const lastFiveAwayFixtures =  getLastFiveTeamAwayFixtures({teamId: currentFixture.teams.away.id, allFixtures});
         const fixtureH2hFixtures = getH2HFixtures({teamOneId: currentFixture.teams.home.id, teamTwoId: currentFixture.teams.away.id, allFixtures})
-        
-        console.log({})
        return fixtureH2hFixtures.every(fixtureData=> fixtureData.score.halftime.home === fixtureData.score.halftime.away) 
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===11) }// can look into making that betoption a enum

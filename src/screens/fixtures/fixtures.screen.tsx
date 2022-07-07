@@ -215,7 +215,7 @@ const updateWindowDimensions =()=>{
               {loadingLeaguesFixtures? <CircularProgress/> : <div className='flex flex-col w-9/12 overflow-y-scroll listView items-center'>
                 {predictedFixtures &&
                   Object.keys(groupedPredictionsData)?.map(OptionShortName=>{
-                    return <>
+                    return <div key={`${OptionShortName}`}>
                       <div className=' text-lg text-white font-bold bg-blue-400'>{!groupedPredictionsData[OptionShortName].every(predFixture=> predFixture.fixtures.length===0) && OptionShortName|| ''}</div>
                       {groupedPredictionsData[OptionShortName].map((predictedionResult, predResultIndex)=>{
                       return  predictedionResult.fixtures.map((fixtureData, fixtureDataIndex)=>{
@@ -247,7 +247,7 @@ const updateWindowDimensions =()=>{
                             )
                         })
                       })}
-                    </>
+                    </div>
                     
                   }) || <div/>
 
