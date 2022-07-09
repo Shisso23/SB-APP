@@ -40,7 +40,7 @@ const FixturesScreen: React.FC = () => {
   const [fromDate, setFromDate] = useState(new Date());
   const [loadingLeaguesFixtures, setLoadingLeaguesFixtures] = useState(false);
   const [toDate, setToDate] = useState(
-    new Date(moment().add(1, "days").format("YYYY-MM-DD"))
+    new Date(moment().add(2, "days").format("YYYY-MM-DD"))
   );
   const location = useLocation();
   const { selectedLeagues } = location.state as LocationState;
@@ -98,8 +98,12 @@ const FixturesScreen: React.FC = () => {
     getLeaguesSeasonsFixtures()
       .then((responses) => {
         //TODO Remove from here because it executes twice
-        setAllFixtures(responses.flat());
-        setFutureFixtures(filterFutureFixtures(responses.flat()));
+        setAllFixtures(responses.flat().sort((fixtureA, fixtureB)=> {
+          return fixtureB.fixture.timestamp - fixtureA.fixture.timestamp
+      }));
+        setFutureFixtures(filterFutureFixtures(responses.flat().sort((fixtureA, fixtureB)=> {
+          return fixtureB.fixture.timestamp - fixtureA.fixture.timestamp
+      })));
       })
       .finally(() => {
         setLoadingLeaguesFixtures(false);
@@ -391,8 +395,7 @@ const FixturesScreen: React.FC = () => {
                             {(!groupedPredictionsData[OptionShortName].every(
                               (predFixture) => predFixture.fixtures.length === 0
                             ) &&
-                              OptionShortName) ||
-                              ""}
+                              <div>{OptionShortName}</div>)}
                           </div>
                           {groupedPredictionsData[OptionShortName].map(
                             (predictedionResult, predResultIndex) => {
@@ -423,7 +426,7 @@ const FixturesScreen: React.FC = () => {
                                             height={40}
                                             className=" mr-1"
                                           />
-                                          <div className=" flex text-lg font-semibold items-center justify-center text-black">
+                                          <div className=" flex hover:text-clip text-lg font-semibold items-center justify-center text-black">
                                             {fixtureData.teams.home.name}
                                           </div>
                                         </div>
@@ -436,7 +439,7 @@ const FixturesScreen: React.FC = () => {
                                               height={40}
                                               className=" mr-1"
                                             />
-                                            <div className=" flex text-lg font-semibold items-center justify-center text-black">
+                                            <div className=" flex hover:text-clip text-lg font-semibold items-center justify-center text-black">
                                               {fixtureData.teams.away.name}
                                             </div>
                                           </div>
