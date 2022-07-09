@@ -376,7 +376,7 @@ const FixturesScreen: React.FC = () => {
       className="pb-10 pt-28 flex flex-grow "
     >
       <div className=" flex flex-row justify-center flex-grow ">
-      <button onClick={() => navigate(-1)} className=' text-white border rounded-lg p-5'>go back</button>
+      <button onClick={() => navigate(-1)} className=' text-white border rounded-lg p-5 h-12 ml-2 flex items-center justify-center'>Go back</button>
         <div className=" flex flex-col justify-center flex-grow">
           <div className=" flex font-bold self-center text-lg py-2 bg-gray-300 w-64 mb-5 items-center justify-center text-center">
             Predictions
@@ -418,7 +418,7 @@ const FixturesScreen: React.FC = () => {
                                           ).format("DD-MMMM-YYYY HH:mm")}`}
                                         </div>
                                       </div>
-                                      <div className=" flex flex-row justify-between w-3/6">
+                                      <div className=" flex flex-row  self-center justify-around w-4/6">
                                         <div className=" flex flex-row">
                                           <img
                                             src={`${fixtureData.teams.home.logo}`}
@@ -446,9 +446,9 @@ const FixturesScreen: React.FC = () => {
                                           </div>
                                         </div>
                                       </div>
-                                      <div className=" flex flex-row justify-center items-center">
+                                      {/* <div className=" flex flex-row justify-center items-center">
                                         <p>{`${predictedionResult.option.shortName}`}</p>
-                                      </div>
+                                      </div> */}
                                     </div>
                                   );
                                 }
