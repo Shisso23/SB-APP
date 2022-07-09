@@ -66,7 +66,7 @@ const FixturesScreen: React.FC = () => {
       }[]
     >
   >();
-  const [selectedLevels, setSeletedLevels] = useState<number[]>([0]);
+  const [selectedLevels, setSeletedLevels] = useState<number[]>([0,1,2,3,4,5]);
   const [selectedOptions, setSelectedOptions] = useState<betOptionModel[] | []>(
     []
   );
@@ -137,7 +137,7 @@ const FixturesScreen: React.FC = () => {
       predict();
     }
     if (selectedOptions.length === 0) {
-      setSeletedLevels([]);
+      // setSeletedLevels([]);
     }
   }, [selectedOptions?.length]);
 
@@ -376,6 +376,7 @@ const FixturesScreen: React.FC = () => {
       className="pb-10 pt-28 flex flex-grow "
     >
       <div className=" flex flex-row justify-center flex-grow ">
+      <button onClick={() => navigate(-1)} className=' text-white border rounded-lg p-5'>go back</button>
         <div className=" flex flex-col justify-center flex-grow">
           <div className=" flex font-bold self-center text-lg py-2 bg-gray-300 w-64 mb-5 items-center justify-center text-center">
             Predictions
