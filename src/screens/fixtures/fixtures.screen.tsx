@@ -387,18 +387,15 @@ const FixturesScreen: React.FC = () => {
             ) : (
               <div className="flex flex-col w-10/12 items-center">
                 {(predictedFixtures &&
-                  Object.keys(groupedPredictionsData)?.filter(optionShortName_=>{
-                    return groupedPredictionsData[optionShortName_].filter(predictedionResult=>
-                      predictedionResult.fixtures.length>0)
-                  }).map(
+                  Object.keys(groupedPredictionsData)?.map(
                     (OptionShortName) => {
                       return (
                         <>
                           <div className=" text-lg text-white font-bold bg-blue-500 mb-2">
-                            {/* {(!groupedPredictionsData[OptionShortName].every(
+                            {(!groupedPredictionsData[OptionShortName].every(
                               (predFixture) => predFixture.fixtures.length === 0
-                            ) && */}
-                              <div>{OptionShortName}</div>
+                            ) &&
+                              <div>{OptionShortName}</div>)}
                           </div>
                           {groupedPredictionsData[OptionShortName].map(
                             (predictedionResult, predResultIndex) => {
