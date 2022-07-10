@@ -14,7 +14,6 @@ import images from "../../assets/images";
 import { LeagueDataLeagueModel } from "../../models/leagues";
 import {
   getFilteredFixtures,
-  getH2hFixtures,
 } from "../../services/fixtures/index";
 import { FixtureDataModel } from "../../models/fixtures/index";
 import { currentDate, toMomentDate } from "../../helpers/dateTimeHelper";
@@ -40,7 +39,7 @@ const FixturesScreen: React.FC = () => {
   const [fromDate, setFromDate] = useState(new Date());
   const [loadingLeaguesFixtures, setLoadingLeaguesFixtures] = useState(false);
   const [toDate, setToDate] = useState(
-    new Date(moment().add(2, "days").format("YYYY-MM-DD"))
+    new Date(moment().add(1, "days").format("YYYY-MM-DD"))
   );
   const location = useLocation();
   const { selectedLeagues } = location.state as LocationState;
@@ -388,15 +387,18 @@ const FixturesScreen: React.FC = () => {
             ) : (
               <div className="flex flex-col w-10/12 items-center">
                 {(predictedFixtures &&
-                  Object.keys(groupedPredictionsData)?.map(
+                  Object.keys(groupedPredictionsData)?.filter(optionShortName_=>{
+                    return groupedPredictionsData[optionShortName_].filter(predictedionResult=>
+                      predictedionResult.fixtures.length>0)
+                  }).map(
                     (OptionShortName) => {
                       return (
                         <>
                           <div className=" text-lg text-white font-bold bg-blue-500 mb-2">
-                            {(!groupedPredictionsData[OptionShortName].every(
+                            {/* {(!groupedPredictionsData[OptionShortName].every(
                               (predFixture) => predFixture.fixtures.length === 0
-                            ) &&
-                              <div>{OptionShortName}</div>)}
+                            ) && */}
+                              <div>{OptionShortName}</div>
                           </div>
                           {groupedPredictionsData[OptionShortName].map(
                             (predictedionResult, predResultIndex) => {
