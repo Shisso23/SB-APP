@@ -285,7 +285,7 @@ const FixturesScreen: React.FC = () => {
     });
 
     return (
-      <div className=" flex flex-col items-center justify-center">
+      <div className=" flex flex-col items-center justify-center listView">
         <div className=" w-full">
           <button
             className=" bg-black text-white float-right py-3 px-5 rounded-lg"
@@ -294,11 +294,10 @@ const FixturesScreen: React.FC = () => {
             Close
           </button>
         </div>
-
         <span className=" text-2xl font-bold text-center">
           Fixture Deatails
         </span>
-        <div className=" flex flex-row justify-between items-center bg-blue-400 w-full mt-5 rounded-lg px-3 pb-3 overflow-scroll ">
+        <div className=" flex flex-row justify-between items-center bg-blue-400 w-full mt-5 rounded-lg px-3 pb-3 listView overflow-x-hidden  ">
           <div className=" flex flex-col mr-5">
             <div className="text-base font-bold text-center my-3">
               Head to Head
@@ -501,7 +500,7 @@ const FixturesScreen: React.FC = () => {
       }}
       className="pb-10 pt-28 flex flex-grow "
     >
-      <div className=" flex flex-row justify-center flex-grow overflow-x-scroll ">
+      <div className=" flex flex-row justify-center flex-grow overflow-x-scroll listView ">
         <button
           onClick={() => navigate(-1)}
           className=" text-white border rounded-lg p-5 h-12 ml-2 flex items-center justify-center"
@@ -557,7 +556,7 @@ const FixturesScreen: React.FC = () => {
                                             height={30}
                                             className=" mr-1"
                                           />
-                                          <div className=" flex hover:text-clip text-lg font-semibold items-center justify-center text-black truncate">
+                                          <div className=" text-base font-semibold  pr-3 text-black w-2/3 truncate ">
                                             {fixtureData.teams.home.name}
                                           </div>
                                         </div>
@@ -570,7 +569,7 @@ const FixturesScreen: React.FC = () => {
                                               height={30}
                                               className=" mr-1"
                                             />
-                                            <div className=" flex hover:text-clip text-lg font-semibold items-center justify-center text-black truncate">
+                                            <div className="  text-base font-semibold text-black truncate">
                                               {fixtureData.teams.away.name}
                                             </div>
                                           </div>
