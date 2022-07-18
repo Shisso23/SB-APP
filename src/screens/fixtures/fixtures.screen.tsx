@@ -25,7 +25,6 @@ import {
 } from "../../helpers/prediction";
 import { getStandingsByTeamId } from "../../services/standings";
 import {
-  StandingsModel,
   StandingsResponseModel,
 } from "../../models/standings-models";
 
@@ -181,9 +180,9 @@ const FixturesScreen: React.FC = () => {
   };
 
   const handleViewStandingsClick =
-    ({ homeTeamId, awayTeamId, season }) =>
+    ({ homeTeamId, awayTeamId, season, leagueId }) =>
     () => {
-      getFixtureTeamsStandings({ homeTeamId, awayTeamId, season });
+      getFixtureTeamsStandings({ homeTeamId, awayTeamId, season, leagueId });
     };
 
   const filterFixtresBetweenDates = (from: Date, to: Date) => {
@@ -249,11 +248,11 @@ const FixturesScreen: React.FC = () => {
     });
   };
 
-  const getFixtureTeamsStandings = ({ homeTeamId, awayTeamId, season }) => {
+  const getFixtureTeamsStandings = ({ homeTeamId, awayTeamId, season, leagueId}) => {
     setLoadingStandings(true);
     Promise.all([
-      getStandingsByTeamId({ teamId: homeTeamId, season }),
-      getStandingsByTeamId({ teamId: awayTeamId, season }),
+      getStandingsByTeamId({ teamId: homeTeamId, season, leagueId }),
+      getStandingsByTeamId({ teamId: awayTeamId, season, leagueId }),
     ]).then((response) => {
       console.log({ response });
       const sortedStandings = sortStandings([
@@ -297,7 +296,7 @@ const FixturesScreen: React.FC = () => {
         <span className=" text-2xl font-bold text-center">
           Fixture Deatails
         </span>
-        <div className=" flex flex-row justify-between items-center bg-blue-400 w-full mt-5 rounded-lg px-3 pb-3 listView overflow-x-hidden  ">
+        <div className=" flex flex-row justify-between items-center bg-blue-400 w-full mt-5 rounded-lg px-3 pb-3 listView overflow-x-scroll  ">
           <div className=" flex flex-col mr-5">
             <div className="text-base font-bold text-center my-3">
               Head to Head
@@ -422,6 +421,7 @@ const FixturesScreen: React.FC = () => {
             homeTeamId: homeTeam.id,
             awayTeamId: awayTeam.id,
             season: allFixtures[0].league.season,
+            leagueId: fixtureH2h[0].league.id
           })}
         >
           View teams Standings

@@ -3,11 +3,12 @@ import {StandingsModel} from '../../models/standings-models'
 
 const endpoint = 'standings';
 
-export const getStandingsByTeamId = async ({teamId, season}: {teamId:number; season: number}) => {
+export const getStandingsByTeamId = async ({teamId, season, leagueId}: {teamId:number; season: number, leagueId: number}) => {
     const response=  authNetworkService.get(endpoint, {
         params: {
             season,
-            team: teamId
+            team: teamId,
+            league: leagueId
         }
     })
     return new StandingsModel({
