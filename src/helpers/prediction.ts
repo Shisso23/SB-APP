@@ -1,9 +1,6 @@
-import { FixtureDataModel, FixtureDataTeamModel } from "../models/fixtures";
+import { FixtureDataModel } from "../models/fixtures";
 import { betOptions, numberOfH2HMatchesBack, numberOTeamLastFixturesBack } from "../variables/variables";
-import { toMomentDate } from './dateTimeHelper';
 
-
-// TODO sort fixtures by dates. Latest first 
 
 export const predictOver1_5 =({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=>{
     const predictedFixtures= currentFixtures.filter(currentFixture=>{
@@ -91,7 +88,6 @@ export const predictHomeWin =({currentFixtures, allFixtures}:{currentFixtures: F
         const lastFiveHomeTeamHomeFixtures =  getLastFiveTeamHomeFixtures({teamId: currentFixture.teams.home.id, allFixtures});
         const lastFiveAwayTeamAwayFixtures =  getLastFiveTeamAwayFixtures({teamId: currentFixture.teams.away.id, allFixtures});
         const fixtureH2hFixtures = getH2HFixtures({teamOneId: currentFixture.teams.home.id, teamTwoId: currentFixture.teams.away.id, allFixtures})
-        //TODO filter the fixtures that passes the H wins either half test here and return it
         if(lastFiveHomeTeamHomeFixtures.length>=3 && fixtureH2hFixtures.length>=2){
             return (homeTeamWinsMostMatches({fixtures: lastFiveHomeTeamHomeFixtures, homeTeamId: currentFixture.teams.home.id}) && (otherHomeTeamGoalsInAwayFixtures({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, goals: 1}))) &&
             ((homeTeamWinsMostMatches({fixtures: fixtureH2hFixtures, homeTeamId: currentFixture.teams.home.id}))&& !(awayTeamWinsMostMatchesTimes({fixtures: fixtureH2hFixtures, awayTeamId: currentFixture.teams.away.id})) )

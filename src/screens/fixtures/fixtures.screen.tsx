@@ -49,8 +49,7 @@ const FixturesScreen: React.FC = () => {
   const [futureFixtures, setFutureFixtures] = useState<FixtureDataModel[]>([]);
   const [allFixtures, setAllFixtures] = useState<FixtureDataModel[]>();
   const [currentFixtures, setCurrentFixtures] = useState<FixtureDataModel[]>();
-  const [homeTeamStandings, setHomeTeamStandings] = useState<StandingsModel>();
-  const [awayTeamStandings, setAwayTeamStandings] = useState<StandingsModel>();
+  const [loadingStandings, setLoadingStandings] = useState<Boolean>(false);
   const [fixtureTeamsStandings, setFixtureTeamsStandings] =
     useState<StandingsResponseModel[]>();
   const [predictedFixtures, setPredictedFixtures] = useState<
@@ -105,7 +104,6 @@ const FixturesScreen: React.FC = () => {
   const fetchLeaguesSeasonsFixtures = async () => {
     getLeaguesSeasonsFixtures()
       .then((responses) => {
-        //TODO Remove from here because it executes twice
         setAllFixtures(
           responses.flat().sort((fixtureA, fixtureB) => {
             return fixtureB.fixture.timestamp - fixtureA.fixture.timestamp;
@@ -185,8 +183,6 @@ const FixturesScreen: React.FC = () => {
   const handleViewStandingsClick =
     ({ homeTeamId, awayTeamId, season }) =>
     () => {
-      // getHomeTeamStandings({homeTeamId, season});
-      // getAwayTeamStandings({awayTeamId, season});
       getFixtureTeamsStandings({ homeTeamId, awayTeamId, season });
     };
 
@@ -204,7 +200,7 @@ const FixturesScreen: React.FC = () => {
     setLoadingLeaguesFixtures(true);
     return Promise.all(
       selectedLeagues?.map(async (league: LeagueDataLeagueModel, index) => {
-        const seasons = seasonsBack; //TODO Get from variables
+        const seasons = seasonsBack;
         return Promise.all(
           seasons.map(async (season: number) => {
             const getLeagueFixturesResponse: FixturesModel = await (
@@ -222,6 +218,9 @@ const FixturesScreen: React.FC = () => {
   };
 
   const toggleModal = () => {
+    if(isModalOpen){
+      setFixtureTeamsStandings(undefined)
+    }
     setIsModalOpen(!isModalOpen);
   };
 
@@ -251,6 +250,7 @@ const FixturesScreen: React.FC = () => {
   };
 
   const getFixtureTeamsStandings = ({ homeTeamId, awayTeamId, season }) => {
+    setLoadingStandings(true);
     Promise.all([
       getStandingsByTeamId({ teamId: homeTeamId, season }),
       getStandingsByTeamId({ teamId: awayTeamId, season }),
@@ -262,6 +262,8 @@ const FixturesScreen: React.FC = () => {
       ]);
       setFixtureTeamsStandings(sortedStandings);
       console.log({ sortStandings });
+    }).finally(()=>{
+      setLoadingStandings(false);
     });
   };
 
@@ -425,7 +427,7 @@ const FixturesScreen: React.FC = () => {
         >
           View teams Standings
         </button>
-        {fixtureTeamsStandings && (
+        {loadingStandings? <CircularProgress />: fixtureTeamsStandings && (
           <>
             <div className=" flex flex-row border border-solid justify-between font-bold bg-gray-400 w-9/12   ">
               <span className=" w-16">Rank</span>
