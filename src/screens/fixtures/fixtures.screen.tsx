@@ -298,7 +298,7 @@ const FixturesScreen: React.FC = () => {
         <span className=" text-2xl font-bold text-center">
           Fixture Deatails
         </span>
-        <div className=" flex flex-row justify-between items-center bg-blue-400 w-full mt-5 rounded-lg px-3 pb-3 ">
+        <div className=" flex flex-row justify-between items-center bg-blue-400 w-full mt-5 rounded-lg px-3 pb-3 overflow-scroll ">
           <div className=" flex flex-col mr-5">
             <div className="text-base font-bold text-center my-3">
               Head to Head
@@ -311,8 +311,8 @@ const FixturesScreen: React.FC = () => {
                       <img
                         src={`${fixtureData.teams.home.logo}`}
                         alt="country flag"
-                        width={32}
-                        height={32}
+                        width={30}
+                        height={30}
                         className=" mr-1"
                       />
                       <div className=" pt-1 truncate">
@@ -324,8 +324,8 @@ const FixturesScreen: React.FC = () => {
                       <img
                         src={`${fixtureData.teams.away.logo}`}
                         alt="country flag"
-                        width={32}
-                        height={32}
+                        width={30}
+                        height={30}
                         className=" mr-1"
                       />
                       <div className=" pt-1 truncate">
@@ -350,8 +350,8 @@ const FixturesScreen: React.FC = () => {
                       <img
                         src={`${fixtureData.teams.home.logo}`}
                         alt="country flag"
-                        width={32}
-                        height={32}
+                        width={30}
+                        height={30}
                         className=" mr-1"
                       />
                       <div className=" pt-1 truncate">
@@ -363,8 +363,8 @@ const FixturesScreen: React.FC = () => {
                       <img
                         src={`${fixtureData.teams.away.logo}`}
                         alt="country flag"
-                        width={32}
-                        height={32}
+                        width={30}
+                        height={30}
                         className=" mr-1"
                       />
                       <div className=" pt-1 truncate">
@@ -389,8 +389,8 @@ const FixturesScreen: React.FC = () => {
                       <img
                         src={`${fixtureData.teams.home.logo}`}
                         alt="country flag"
-                        width={32}
-                        height={32}
+                        width={30}
+                        height={30}
                         className=" mr-1"
                       />
                       <div className=" pt-1 truncate ">
@@ -398,12 +398,12 @@ const FixturesScreen: React.FC = () => {
                       </div>
                     </div>
                     <div className=" flex mx-3 w-20 items-center justify-center bg-green-300">{`${fixtureData.score.fulltime.home} - ${fixtureData.score.fulltime.away}`}</div>
-                    <div className=" flex flex-row w-auto overflow-x-hidden">
+                    <div className=" flex flex-row w-auto overflow-x-hidden ">
                       <img
                         src={`${fixtureData.teams.away.logo}`}
                         alt="country flag"
-                        width={32}
-                        height={32}
+                        width={30}
+                        height={30}
                         className=" mr-1"
                       />
                       <div className=" pt-1 truncate">
@@ -501,7 +501,7 @@ const FixturesScreen: React.FC = () => {
       }}
       className="pb-10 pt-28 flex flex-grow "
     >
-      <div className=" flex flex-row justify-center flex-grow ">
+      <div className=" flex flex-row justify-center flex-grow overflow-x-scroll ">
         <button
           onClick={() => navigate(-1)}
           className=" text-white border rounded-lg p-5 h-12 ml-2 flex items-center justify-center"
@@ -535,12 +535,12 @@ const FixturesScreen: React.FC = () => {
                                   return (
                                     <div
                                       key={`${predResultIndex}-${fixtureDataIndex}`}
-                                      className=" cursor-pointer flex flex-row justify-between py-6 my-2 px-3 w-4/6 rounded-md bg-blue-300 hover:bg-blue-200"
+                                      className=" cursor-pointer flex flex-row py-6 my-2 px-2 w-4/6 rounded-md bg-blue-300 hover:bg-blue-200"
                                       onClick={handleFixtureRowClick(
                                         fixtureData
                                       )}
                                     >
-                                      <div>
+                                      <div className=" text-left w-2/6">
                                         {`${fixtureData.league.name} (${fixtureData.league.country})`}
                                         <div>
                                           {`${toMomentDate(
@@ -548,29 +548,29 @@ const FixturesScreen: React.FC = () => {
                                           ).format("DD-MMMM-YYYY HH:mm")}`}
                                         </div>
                                       </div>
-                                      <div className=" flex flex-row  self-center justify-around w-4/6">
-                                        <div className=" flex flex-row">
+                                      <div className=" flex flex-row  self-center justify-between flex-grow overflow-x-hidden">
+                                        <div className=" flex flex-row w-1/2 pl-1">
                                           <img
                                             src={`${fixtureData.teams.home.logo}`}
                                             alt="country flag"
-                                            width={40}
-                                            height={40}
+                                            width={30}
+                                            height={30}
                                             className=" mr-1"
                                           />
-                                          <div className=" flex hover:text-clip text-lg font-semibold items-center justify-center text-black">
+                                          <div className=" flex hover:text-clip text-lg font-semibold items-center justify-center text-black truncate">
                                             {fixtureData.teams.home.name}
                                           </div>
                                         </div>
-                                        <div className=" flex justify-start w-1/3">
-                                          <div className=" flex flex-row float-left">
+                                        <div className=" flex justify-start w-1/2 pl-1 overflow-x-hidden">
+                                          <div className=" flex flex-row float-left w-full ">
                                             <img
                                               src={`${fixtureData.teams.away.logo}`}
                                               alt="country flag"
-                                              width={40}
-                                              height={40}
+                                              width={30}
+                                              height={30}
                                               className=" mr-1"
                                             />
-                                            <div className=" flex hover:text-clip text-lg font-semibold items-center justify-center text-black">
+                                            <div className=" flex hover:text-clip text-lg font-semibold items-center justify-center text-black truncate">
                                               {fixtureData.teams.away.name}
                                             </div>
                                           </div>
