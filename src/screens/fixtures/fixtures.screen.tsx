@@ -12,9 +12,7 @@ import "./styles.css";
 import { FixturesFilterModel, FixturesModel } from "../../models/fixtures";
 import images from "../../assets/images";
 import { LeagueDataLeagueModel } from "../../models/leagues";
-import {
-  getFilteredFixtures,
-} from "../../services/fixtures/index";
+import { getFilteredFixtures } from "../../services/fixtures/index";
 import { FixtureDataModel } from "../../models/fixtures/index";
 import { currentDate, toMomentDate } from "../../helpers/dateTimeHelper";
 import { betOptions, levels, seasonsBack } from "../../variables/variables";
@@ -25,6 +23,11 @@ import {
   getLastFiveTeamAwayFixtures,
   getLastFiveTeamHomeFixtures,
 } from "../../helpers/prediction";
+import { getStandingsByTeamId } from "../../services/standings";
+import {
+  StandingsModel,
+  StandingsResponseModel,
+} from "../../models/standings-models";
 
 Modal.setAppElement("#root");
 
@@ -46,6 +49,10 @@ const FixturesScreen: React.FC = () => {
   const [futureFixtures, setFutureFixtures] = useState<FixtureDataModel[]>([]);
   const [allFixtures, setAllFixtures] = useState<FixtureDataModel[]>();
   const [currentFixtures, setCurrentFixtures] = useState<FixtureDataModel[]>();
+  const [homeTeamStandings, setHomeTeamStandings] = useState<StandingsModel>();
+  const [awayTeamStandings, setAwayTeamStandings] = useState<StandingsModel>();
+  const [fixtureTeamsStandings, setFixtureTeamsStandings] =
+    useState<StandingsResponseModel[]>();
   const [predictedFixtures, setPredictedFixtures] = useState<
     {
       fixtures: FixtureDataModel[];
@@ -65,7 +72,9 @@ const FixturesScreen: React.FC = () => {
       }[]
     >
   >();
-  const [selectedLevels, setSeletedLevels] = useState<number[]>([0,1,2,3,4,5]);
+  const [selectedLevels, setSeletedLevels] = useState<number[]>([
+    0, 1, 2, 3, 4, 5,
+  ]);
   const [selectedOptions, setSelectedOptions] = useState<betOptionModel[] | []>(
     []
   );
@@ -97,12 +106,18 @@ const FixturesScreen: React.FC = () => {
     getLeaguesSeasonsFixtures()
       .then((responses) => {
         //TODO Remove from here because it executes twice
-        setAllFixtures(responses.flat().sort((fixtureA, fixtureB)=> {
-          return fixtureB.fixture.timestamp - fixtureA.fixture.timestamp
-      }));
-        setFutureFixtures(filterFutureFixtures(responses.flat().sort((fixtureA, fixtureB)=> {
-          return fixtureB.fixture.timestamp - fixtureA.fixture.timestamp
-      })));
+        setAllFixtures(
+          responses.flat().sort((fixtureA, fixtureB) => {
+            return fixtureB.fixture.timestamp - fixtureA.fixture.timestamp;
+          })
+        );
+        setFutureFixtures(
+          filterFutureFixtures(
+            responses.flat().sort((fixtureA, fixtureB) => {
+              return fixtureB.fixture.timestamp - fixtureA.fixture.timestamp;
+            })
+          )
+        );
       })
       .finally(() => {
         setLoadingLeaguesFixtures(false);
@@ -167,6 +182,14 @@ const FixturesScreen: React.FC = () => {
     });
   };
 
+  const handleViewStandingsClick =
+    ({ homeTeamId, awayTeamId, season }) =>
+    () => {
+      // getHomeTeamStandings({homeTeamId, season});
+      // getAwayTeamStandings({awayTeamId, season});
+      getFixtureTeamsStandings({ homeTeamId, awayTeamId, season });
+    };
+
   const filterFixtresBetweenDates = (from: Date, to: Date) => {
     const fixtures = futureFixtures.filter((fixtureData) => {
       return (
@@ -218,6 +241,30 @@ const FixturesScreen: React.FC = () => {
     toggleModal();
   };
 
+  const sortStandings = (fixtureTeamsStandings: StandingsResponseModel[]) => {
+    return fixtureTeamsStandings.sort((standDingsTeam1, standingsTeam2) => {
+      return (
+        standDingsTeam1.league.standings[0][0].rank -
+        standingsTeam2.league.standings[0][0].rank
+      );
+    });
+  };
+
+  const getFixtureTeamsStandings = ({ homeTeamId, awayTeamId, season }) => {
+    Promise.all([
+      getStandingsByTeamId({ teamId: homeTeamId, season }),
+      getStandingsByTeamId({ teamId: awayTeamId, season }),
+    ]).then((response) => {
+      console.log({ response });
+      const sortedStandings = sortStandings([
+        response[0].response[0],
+        response[1].response[0],
+      ]);
+      setFixtureTeamsStandings(sortedStandings);
+      console.log({ sortStandings });
+    });
+  };
+
   const renderModalContent = () => {
     const homeTeam = selectedFixtureRow?.teams.home;
     const awayTeam = selectedFixtureRow?.teams.away;
@@ -266,18 +313,22 @@ const FixturesScreen: React.FC = () => {
                         height={32}
                         className=" mr-1"
                       />
-                      <div className=" pt-1 truncate">{fixtureData.teams.home.name}</div>
+                      <div className=" pt-1 truncate">
+                        {fixtureData.teams.home.name}
+                      </div>
                     </div>
                     <div className=" flex mx-3 w-20 items-center justify-center bg-green-300">{`${fixtureData.score.fulltime.home} - ${fixtureData.score.fulltime.away}`}</div>
                     <div className=" flex flex-row w-auto">
-                    <img
+                      <img
                         src={`${fixtureData.teams.away.logo}`}
                         alt="country flag"
                         width={32}
                         height={32}
                         className=" mr-1"
                       />
-                      <div className=" pt-1">{fixtureData.teams.away.name}</div>
+                      <div className=" pt-1 truncate">
+                        {fixtureData.teams.away.name}
+                      </div>
                     </div>
                   </div>
                 );
@@ -301,18 +352,22 @@ const FixturesScreen: React.FC = () => {
                         height={32}
                         className=" mr-1"
                       />
-                      <div className=" pt-1 truncate">{fixtureData.teams.home.name}</div>
+                      <div className=" pt-1 truncate">
+                        {fixtureData.teams.home.name}
+                      </div>
                     </div>
                     <div className=" flex mx-3 w-20 items-center justify-center bg-green-300">{`${fixtureData.score.fulltime.home} - ${fixtureData.score.fulltime.away}`}</div>
                     <div className=" flex flex-row w-auto">
-                    <img
+                      <img
                         src={`${fixtureData.teams.away.logo}`}
                         alt="country flag"
                         width={32}
                         height={32}
                         className=" mr-1"
                       />
-                      <div className=" pt-1">{fixtureData.teams.away.name}</div>
+                      <div className=" pt-1 truncate">
+                        {fixtureData.teams.away.name}
+                      </div>
                     </div>
                   </div>
                 );
@@ -329,25 +384,29 @@ const FixturesScreen: React.FC = () => {
                 return (
                   <div className=" flex flex-row w-full p-3 border justify-start items-center border-solid border-t-0 border-b border-l-0 border-r-0 ">
                     <div className=" flex w-36">
-                    <img
+                      <img
                         src={`${fixtureData.teams.home.logo}`}
                         alt="country flag"
                         width={32}
                         height={32}
                         className=" mr-1"
                       />
-                      <div className=" pt-1 truncate ">{fixtureData.teams.home.name}</div>
+                      <div className=" pt-1 truncate ">
+                        {fixtureData.teams.home.name}
                       </div>
+                    </div>
                     <div className=" flex mx-3 w-20 items-center justify-center bg-green-300">{`${fixtureData.score.fulltime.home} - ${fixtureData.score.fulltime.away}`}</div>
-                    <div className=" flex flex-row w-auto">
-                    <img
+                    <div className=" flex flex-row w-auto overflow-x-hidden">
+                      <img
                         src={`${fixtureData.teams.away.logo}`}
                         alt="country flag"
                         width={32}
                         height={32}
                         className=" mr-1"
                       />
-                      <div className=" pt-1">{fixtureData.teams.away.name}</div>
+                      <div className=" pt-1 truncate">
+                        {fixtureData.teams.away.name}
+                      </div>
                     </div>
                   </div>
                 );
@@ -355,6 +414,72 @@ const FixturesScreen: React.FC = () => {
             </div>
           </div>
         </div>
+        <button
+          style={{ backgroundColor: "rgb(96 165 250)" }}
+          className=" flex bg-blue-400 rounded p-4 items-center justify-center self-center text-black hover:bg-blue-200 my-5"
+          onClick={handleViewStandingsClick({
+            homeTeamId: homeTeam.id,
+            awayTeamId: awayTeam.id,
+            season: allFixtures[0].league.season,
+          })}
+        >
+          View teams Standings
+        </button>
+        {fixtureTeamsStandings && (
+          <>
+            <div className=" flex flex-row border border-solid justify-between font-bold bg-gray-400 w-9/12   ">
+              <span className=" w-16">Rank</span>
+              <span className=" w-40">Team</span>
+              <span className=" w-16">MP</span>
+              <span className=" w-16">W</span>
+              <span className=" w-16">D</span>
+              <span className=" w-16">L</span>
+              <span className=" w-16">GF</span>
+              <span className=" w-16">GA</span>
+              <span className=" w-16">GD</span>
+              <span className=" w-16">Pts</span>
+            </div>
+            <div className=" w-9/12">
+              {fixtureTeamsStandings.map((teamStandings) => {
+                return (
+                  <div className=" flex flex-row border border-solid justify-between w-full">
+                    <span className=" w-16">
+                      {teamStandings.league.standings[0][0].rank}
+                    </span>
+                    <span className=" w-40 truncate text-pink-700">
+                      {teamStandings.league.standings[0][0].team.name}
+                    </span>
+                    <span className=" w-16">
+                      {teamStandings.league.standings[0][0].all.played}
+                    </span>
+                    <span className=" w-16">
+                      {teamStandings.league.standings[0][0].all.win}
+                    </span>
+                    <span className=" w-16">
+                      {teamStandings.league.standings[0][0].all.draw}
+                    </span>
+                    <span className=" w-16">
+                      {teamStandings.league.standings[0][0].all.lose}
+                    </span>
+                    <span className=" w-16">
+                      {teamStandings.league.standings[0][0].all.goals.for}
+                    </span>
+                    <span className=" w-16">
+                      {teamStandings.league.standings[0][0].all.goals.against}
+                    </span>
+                    <span className=" w-16">
+                      {teamStandings.league.standings[0][0].all.goals.for -
+                        teamStandings.league.standings[0][0].all.goals.against}
+                    </span>
+                    <span className=" w-16">
+                      {teamStandings.league.standings[0][0].points}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        || <div/>)}
       </div>
     );
   };
@@ -375,7 +500,12 @@ const FixturesScreen: React.FC = () => {
       className="pb-10 pt-28 flex flex-grow "
     >
       <div className=" flex flex-row justify-center flex-grow ">
-      <button onClick={() => navigate(-1)} className=' text-white border rounded-lg p-5 h-12 ml-2 flex items-center justify-center'>Go back</button>
+        <button
+          onClick={() => navigate(-1)}
+          className=" text-white border rounded-lg p-5 h-12 ml-2 flex items-center justify-center"
+        >
+          Go back
+        </button>
         <div className=" flex flex-col justify-center flex-grow">
           <div className=" flex font-bold self-center text-lg py-2 bg-gray-300 w-64 mb-5 items-center justify-center text-center">
             Predictions
@@ -392,10 +522,9 @@ const FixturesScreen: React.FC = () => {
                       return (
                         <>
                           <div className=" text-lg text-white font-bold bg-blue-500 mb-2">
-                            {(!groupedPredictionsData[OptionShortName].every(
+                            {!groupedPredictionsData[OptionShortName].every(
                               (predFixture) => predFixture.fixtures.length === 0
-                            ) &&
-                              <div>{OptionShortName}</div>)}
+                            ) && <div>{OptionShortName}</div>}
                           </div>
                           {groupedPredictionsData[OptionShortName].map(
                             (predictedionResult, predResultIndex) => {
