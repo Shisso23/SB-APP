@@ -235,7 +235,6 @@ const FixturesScreen: React.FC = () => {
 
   const handleFixtureRowClick = (selectedFixture: FixtureDataModel) => () => {
     setSelectedFixtureRow(selectedFixture);
-    console.log("Modal toggled");
     toggleModal();
   };
 
@@ -254,13 +253,11 @@ const FixturesScreen: React.FC = () => {
       getStandingsByTeamId({ teamId: homeTeamId, season, leagueId }),
       getStandingsByTeamId({ teamId: awayTeamId, season, leagueId }),
     ]).then((response) => {
-      console.log({ response });
       const sortedStandings = sortStandings([
         response[0].response[0],
         response[1].response[0],
       ]);
       setFixtureTeamsStandings(sortedStandings);
-      console.log({ sortStandings });
     }).finally(()=>{
       setLoadingStandings(false);
     });
