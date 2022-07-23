@@ -484,7 +484,7 @@ const otherHomeTeamGoalsInAwayFixtures = ({awayTeamFixtures, goals}: {awayTeamFi
             conditionPassedCount+=1;
         }
     })
-    if(((conditionPassedCount/awayTeamFixtures.length))>0.65){
+    if(((conditionPassedCount/awayTeamFixtures.length))>0.75){
         return true;
     }else{
         return false
@@ -498,7 +498,7 @@ const otherAwayTeamGoalsInHomeFixtures = ({homeTeamFixtures, goals}: {homeTeamFi
             conditionPassedCount+=1;
         }
     })
-    if(((conditionPassedCount/homeTeamFixtures.length))>0.65){
+    if(((conditionPassedCount/homeTeamFixtures.length))>0.75){
         return true;
     }else{
         return false
