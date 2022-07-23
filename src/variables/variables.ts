@@ -53,11 +53,11 @@ export  const betOptions: betOptionModel [] = [
     {name: 'Multi Goals A. (1->3 ) Goals', id: 25, level: 3, shortName:'1->3 A. G',  predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=> predictMultiGoals1_3Away(params)}
 ];
 
-export const numberOfH2HMatchesBack = 5; //TODO Implement this where needed
+export const numberOfH2HMatchesBack = 4;
 
-export const numberOTeamLastFixturesBack = 5; //TODO Implement this where needed
+export const numberOTeamLastFixturesBack = 4; 
 
-export const numberOfSeasonsBack = 4; //TODO Implement this where needed
+export const numberOfSeasonsBack = 4; 
 
 export const seasonsBack = [2022, 2021, 2020, 2019];
 
