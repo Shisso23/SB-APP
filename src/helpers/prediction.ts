@@ -309,79 +309,86 @@ export const predictMultiGoals0_3 =({currentFixtures, allFixtures}:{currentFixtu
 
 export const predictMultiGoals1_2Home =({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=>{
     const predictedFixtures= currentFixtures.filter(currentFixture=>{
+        const lastFiveAwayTeamAwayFixtures =  getLastFiveTeamAwayFixtures({teamId: currentFixture.teams.away.id, allFixtures});
         const lastFiveHomeTeamHomeFixtures =  getLastFiveTeamHomeFixtures({teamId: currentFixture.teams.home.id, allFixtures});
         const fixtureH2hFixtures = getH2HFixtures({teamOneId: currentFixture.teams.home.id, teamTwoId: currentFixture.teams.away.id, allFixtures})
         if(lastFiveHomeTeamHomeFixtures.length <3 || fixtureH2hFixtures.length <2){
             return false
         }
        return (lastFiveHomeTeamHomeFixtures.every(fixtureData=> (fixtureData.goals.home >=1 && fixtureData.goals.home <=2 )) &&
-        (fixtureH2hFixtures.filter(fixtureData=> fixtureData.teams.home.id === lastFiveHomeTeamHomeFixtures[0].teams.home.id).every(fixtureData=> (fixtureData.goals.home >=1 && fixtureData.goals.home <=2 ) )))
+        (fixtureH2hFixtures.filter(fixtureData=> fixtureData.teams.home.id === lastFiveHomeTeamHomeFixtures[0].teams.home.id).every(fixtureData=> (fixtureData.goals.home >=1 && fixtureData.goals.home <=2 ) ))) && otherHomeTeamGoalsInAwayFixtures({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, goals:1})
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===20) }// can look into making that betoption a enum
 }
 
 export const predictMultiGoals1_3Home =({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=>{
     const predictedFixtures= currentFixtures.filter(currentFixture=>{
+        const lastFiveAwayTeamAwayFixtures =  getLastFiveTeamAwayFixtures({teamId: currentFixture.teams.away.id, allFixtures});
         const lastFiveHomeTeamHomeFixtures =  getLastFiveTeamHomeFixtures({teamId: currentFixture.teams.home.id, allFixtures});
         const fixtureH2hFixtures = getH2HFixtures({teamOneId: currentFixture.teams.home.id, teamTwoId: currentFixture.teams.away.id, allFixtures})
         if(lastFiveHomeTeamHomeFixtures.length <3 || fixtureH2hFixtures.length <2){
             return false
         }
         return (lastFiveHomeTeamHomeFixtures.every(fixtureData=> (fixtureData.goals.home >=1 && fixtureData.goals.home <=3 )) &&
-        (fixtureH2hFixtures.filter(fixtureData=> fixtureData.teams.home.id === lastFiveHomeTeamHomeFixtures[0].teams.home.id).every(fixtureData=> (fixtureData.goals.home >=1 && fixtureData.goals.home <=3 ) )))
+        (fixtureH2hFixtures.filter(fixtureData=> fixtureData.teams.home.id === lastFiveHomeTeamHomeFixtures[0].teams.home.id).every(fixtureData=> (fixtureData.goals.home >=1 && fixtureData.goals.home <=3 ) ))) && otherHomeTeamGoalsInAwayFixtures({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, goals:1})
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===21) }// can look into making that betoption a enum
 }
 
 export const predictMultiGoals2_3Home =({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=>{
     const predictedFixtures= currentFixtures.filter(currentFixture=>{
+        const lastFiveAwayTeamAwayFixtures =  getLastFiveTeamAwayFixtures({teamId: currentFixture.teams.away.id, allFixtures});
         const lastFiveHomeTeamHomeFixtures =  getLastFiveTeamHomeFixtures({teamId: currentFixture.teams.home.id, allFixtures});
         const fixtureH2hFixtures = getH2HFixtures({teamOneId: currentFixture.teams.home.id, teamTwoId: currentFixture.teams.away.id, allFixtures})
         if(lastFiveHomeTeamHomeFixtures.length <3 || fixtureH2hFixtures.length <2){
             return false
         }
         return (lastFiveHomeTeamHomeFixtures.every(fixtureData=> (fixtureData.goals.home >=2 && fixtureData.goals.home <=3 )) &&
-        (fixtureH2hFixtures.filter(fixtureData=> fixtureData.teams.home.id === lastFiveHomeTeamHomeFixtures[0].teams.home.id).every(fixtureData=> (fixtureData.goals.home >=2 && fixtureData.goals.home <=3 ) )))
+        (fixtureH2hFixtures.filter(fixtureData=> fixtureData.teams.home.id === lastFiveHomeTeamHomeFixtures[0].teams.home.id).every(fixtureData=> (fixtureData.goals.home >=2 && fixtureData.goals.home <=3 ) ))) && otherHomeTeamGoalsInAwayFixtures({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, goals:1})
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===22) }// can look into making that betoption a enum
 }
 
 export const predictMultiGoals1_2Away =({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=>{
     const predictedFixtures= currentFixtures.filter(currentFixture=>{
+        const lastFiveHomeTeamHomeFixtures =  getLastFiveTeamHomeFixtures({teamId: currentFixture.teams.home.id, allFixtures});
         const lastFiveAwayTeamAwayFixtures =  getLastFiveTeamAwayFixtures({teamId: currentFixture.teams.away.id, allFixtures});
         const fixtureH2hFixtures = getH2HFixtures({teamOneId: currentFixture.teams.home.id, teamTwoId: currentFixture.teams.away.id, allFixtures})
         if(lastFiveAwayTeamAwayFixtures.length <3 || fixtureH2hFixtures.length <2){
             return false
         }
         return (lastFiveAwayTeamAwayFixtures.every(fixtureData=> (fixtureData.goals.away >=1 && fixtureData.goals.away <=2 )) &&
-        (fixtureH2hFixtures.filter(fixtureData=> fixtureData.teams.away.id === lastFiveAwayTeamAwayFixtures[0].teams.away.id).every(fixtureData=> (fixtureData.goals.away >=1 && fixtureData.goals.away <=2 ) )))
+        (fixtureH2hFixtures.filter(fixtureData=> fixtureData.teams.away.id === lastFiveAwayTeamAwayFixtures[0].teams.away.id).every(fixtureData=> (fixtureData.goals.away >=1 && fixtureData.goals.away <=2 ) ))) && otherAwayTeamGoalsInHomeFixtures({homeTeamFixtures: lastFiveHomeTeamHomeFixtures, goals:1})
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===23) }// can look into making that betoption a enum
 }
 
 
 export const predictMultiGoals2_3Away =({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=>{
+    
     const predictedFixtures= currentFixtures.filter(currentFixture=>{
+        const lastFiveHomeTeamHomeFixtures =  getLastFiveTeamHomeFixtures({teamId: currentFixture.teams.home.id, allFixtures});
         const lastFiveAwayTeamAwayFixtures =  getLastFiveTeamAwayFixtures({teamId: currentFixture.teams.away.id, allFixtures});
         const fixtureH2hFixtures = getH2HFixtures({teamOneId: currentFixture.teams.home.id, teamTwoId: currentFixture.teams.away.id, allFixtures})
         if(lastFiveAwayTeamAwayFixtures.length <3 || fixtureH2hFixtures.length <2){
             return false
         }
         return (lastFiveAwayTeamAwayFixtures.every(fixtureData=> (fixtureData.goals.away >=2 && fixtureData.goals.away <=3 )) &&
-        (fixtureH2hFixtures.filter(fixtureData=> fixtureData.teams.away.id === lastFiveAwayTeamAwayFixtures[0].teams.away.id).every(fixtureData=> (fixtureData.goals.away >=2 && fixtureData.goals.away <=3 ) )))
+        (fixtureH2hFixtures.filter(fixtureData=> fixtureData.teams.away.id === lastFiveAwayTeamAwayFixtures[0].teams.away.id).every(fixtureData=> (fixtureData.goals.away >=2 && fixtureData.goals.away <=3 ) ))) && otherAwayTeamGoalsInHomeFixtures({homeTeamFixtures: lastFiveHomeTeamHomeFixtures, goals:1})
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===24) }// can look into making that betoption a enum
 }
 
 export const predictMultiGoals1_3Away =({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=>{
     const predictedFixtures= currentFixtures.filter(currentFixture=>{
+        const lastFiveHomeTeamHomeFixtures =  getLastFiveTeamHomeFixtures({teamId: currentFixture.teams.home.id, allFixtures});
         const lastFiveAwayTeamAwayFixtures =  getLastFiveTeamAwayFixtures({teamId: currentFixture.teams.away.id, allFixtures});
         const fixtureH2hFixtures = getH2HFixtures({teamOneId: currentFixture.teams.home.id, teamTwoId: currentFixture.teams.away.id, allFixtures})
         if(lastFiveAwayTeamAwayFixtures.length <3 || fixtureH2hFixtures.length <2){
             return false
         }
         return (lastFiveAwayTeamAwayFixtures.every(fixtureData=> (fixtureData.goals.away >=1 && fixtureData.goals.away <=3 )) &&
-        (fixtureH2hFixtures.filter(fixtureData=> fixtureData.teams.away.id === lastFiveAwayTeamAwayFixtures[0].teams.away.id).every(fixtureData=> (fixtureData.goals.away >=1 && fixtureData.goals.away <=3 ) )))
+        (fixtureH2hFixtures.filter(fixtureData=> fixtureData.teams.away.id === lastFiveAwayTeamAwayFixtures[0].teams.away.id).every(fixtureData=> (fixtureData.goals.away >=1 && fixtureData.goals.away <=3 ) ))) && otherAwayTeamGoalsInHomeFixtures({homeTeamFixtures: lastFiveHomeTeamHomeFixtures, goals:1})
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===25) }// can look into making that betoption a enum
 }
