@@ -440,7 +440,7 @@ export const awayTeamFailScroringInMostAwayFixtures =({awayfixtures}: {awayfixtu
           conditionPassedCount+=1;
       }
   })
-  if(((conditionPassedCount/awayfixtures.length))>0.5){
+  if(((conditionPassedCount/awayfixtures.length))>=0.5){
       return true;
   }else{
       return false
@@ -454,7 +454,7 @@ export const homeTeamFailScroringInMostHomeFixtures =({homefixtures}: {homefixtu
           conditionPassedCount+=1;
       }
   })
-  if(((conditionPassedCount/homefixtures.length))>0.5){
+  if(((conditionPassedCount/homefixtures.length))>=0.5){
       return true;
   }else{
       return false
@@ -468,7 +468,7 @@ export const homeTeamFailWinningInMostHomeFixtures =({homefixtures}: {homefixtur
           conditionPassedCount+=1;
       }
   })
-  if(((conditionPassedCount/homefixtures.length))>=0.6){
+  if(((conditionPassedCount/homefixtures.length))>=0.5){
       return true;
   }else{
       return false
@@ -482,7 +482,7 @@ export const awayTeamFailWinningInMostAwayFixtures =({awayFixtures}: {awayFixtur
           conditionPassedCount+=1;
       }
   })
-  if(((conditionPassedCount/awayFixtures.length))>=0.6){
+  if(((conditionPassedCount/awayFixtures.length))>=0.5){
       return true;
   }else{
       return false
