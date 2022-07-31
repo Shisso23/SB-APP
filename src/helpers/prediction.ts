@@ -450,7 +450,7 @@ export const awayTeamFailScroringInMostAwayFixtures =({awayfixtures}: {awayfixtu
 export const homeTeamFailScroringInMostHomeFixtures =({homefixtures}: {homefixtures: FixtureDataModel[]})=>{
     let conditionPassedCount =0;
     homefixtures.forEach(fixtureData=> {
-      if(fixtureData.goals.away< 1){
+      if(fixtureData.goals.home< 1){
           conditionPassedCount+=1;
       }
   })
