@@ -417,8 +417,8 @@ const FixturesScreen: React.FC = () => {
           onClick={handleViewStandingsClick({
             homeTeamId: homeTeam.id,
             awayTeamId: awayTeam.id,
-            season: allFixtures[0].league.season,
-            leagueId: fixtureH2h[0].league.id
+            season: allFixtures[0]?.league.season,
+            leagueId: fixtureH2h[0]?.league.id
           })}
         >
           View teams Standings
