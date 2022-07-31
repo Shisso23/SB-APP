@@ -57,8 +57,8 @@ export const predictHomeWinsEitherHalf =({currentFixtures, allFixtures}:{current
             return false
         }
         ((homeTeamWinsMostMatches({fixtures: lastFiveHomeTeamHomeFixtures, homeTeamId: currentFixture.teams.home.id}) && (otherHomeTeamGoalsInAwayFixtures({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, goals: 1}))) &&
-        ( !(awayTeamWinsMostMatchesTimes({fixtures: fixtureH2hFixtures, awayTeamId: currentFixture.teams.away.id})) )) ||
-         (awayTeamFailScroringInMostAwayFixtures({awayfixtures: lastFiveAwayTeamAwayFixtures, minGoals: 1}) && HomeTeamScroreInMostHomeFixtures({homefixtures: lastFiveHomeTeamHomeFixtures, minGoals: 1}))
+        ((awayTeamFailWinningInMostAwayFixtures({awayFixtures: lastFiveAwayTeamAwayFixtures})) )) ||
+         (awayTeamFailScroringInMostAwayFixtures({awayfixtures: lastFiveAwayTeamAwayFixtures}) && HomeTeamScroreInMostHomeFixtures({homefixtures: lastFiveHomeTeamHomeFixtures, minGoals: 1}))
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===5) }//TODO can look into making that betoption a enum
 }
@@ -72,8 +72,8 @@ export const predictAwayWinsEitherHalf =({currentFixtures, allFixtures}:{current
             return false
         }
         return ((awayTeamWinsMostMatchesTimes({fixtures: lastFiveAwayTeamAwayFixtures, awayTeamId: currentFixture.teams.away.id}) && (otherAwayTeamGoalsInHomeFixtures({homeTeamFixtures: lastFiveHomeTeamHomeFixtures, goals: 1}))) &&
-        (!(homeTeamWinsMostMatches({fixtures: fixtureH2hFixtures, homeTeamId: currentFixture.teams.home.id})) )) ||
-         (homeTeamFailScroringInMostHomeFixtures({homefixtures: lastFiveHomeTeamHomeFixtures, minGoals: 1}) && awayTeamScroreInMostAwayFixtures({awayfixtures: lastFiveAwayTeamAwayFixtures, minGoals: 1}))
+        (homeTeamFailWinningInMostHomeFixtures({homefixtures:lastFiveHomeTeamHomeFixtures}) )) ||
+         (homeTeamFailScroringInMostHomeFixtures({homefixtures: lastFiveHomeTeamHomeFixtures}) && awayTeamScroreInMostAwayFixtures({awayfixtures: lastFiveAwayTeamAwayFixtures, minGoals: 1}))
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===14) }//TODO can look into making that betoption id a enum
 }
@@ -85,8 +85,8 @@ export const predictHomeWin =({currentFixtures, allFixtures}:{currentFixtures: F
         const fixtureH2hFixtures = getH2HFixtures({teamOneId: currentFixture.teams.home.id, teamTwoId: currentFixture.teams.away.id, allFixtures})
         if(lastFiveHomeTeamHomeFixtures.length>=3){
             return ((homeTeamWinsMostMatches({fixtures: lastFiveHomeTeamHomeFixtures, homeTeamId: currentFixture.teams.home.id}) && (otherHomeTeamGoalsInAwayFixtures({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, goals: 1}))) &&
-            ( !(awayTeamWinsMostMatchesTimes({fixtures: fixtureH2hFixtures, awayTeamId: currentFixture.teams.away.id})) )) ||
-             (awayTeamFailScroringInMostAwayFixtures({awayfixtures: lastFiveAwayTeamAwayFixtures, minGoals: 1}) && HomeTeamScroreInMostHomeFixtures({homefixtures: lastFiveHomeTeamHomeFixtures, minGoals: 1}))
+            ( (awayTeamFailWinningInMostAwayFixtures({awayFixtures: lastFiveAwayTeamAwayFixtures})) )) ||
+             (awayTeamFailScroringInMostAwayFixtures({awayfixtures: lastFiveAwayTeamAwayFixtures}) && HomeTeamScroreInMostHomeFixtures({homefixtures: lastFiveHomeTeamHomeFixtures, minGoals: 1}))
         }
         return false
     })
@@ -105,8 +105,8 @@ export const predictAwayWin =({currentFixtures, allFixtures}:{currentFixtures: F
         }
         //TODO filter the fixtures that passes the H wins either half test here and return it
         return ((awayTeamWinsMostMatchesTimes({fixtures: lastFiveAwayTeamAwayFixtures, awayTeamId: currentFixture.teams.away.id}) && (otherAwayTeamGoalsInHomeFixtures({homeTeamFixtures: lastFiveHomeTeamHomeFixtures, goals: 1}))) &&
-        (!(homeTeamWinsMostMatches({fixtures: fixtureH2hFixtures, homeTeamId: currentFixture.teams.home.id})) )) ||
-         (homeTeamFailScroringInMostHomeFixtures({homefixtures: lastFiveHomeTeamHomeFixtures, minGoals: 1}) && awayTeamScroreInMostAwayFixtures({awayfixtures: lastFiveAwayTeamAwayFixtures, minGoals: 1}))
+        ((homeTeamFailWinningInMostHomeFixtures({homefixtures:lastFiveHomeTeamHomeFixtures})) ) )||
+         (homeTeamFailScroringInMostHomeFixtures({homefixtures: lastFiveHomeTeamHomeFixtures}) && awayTeamScroreInMostAwayFixtures({awayfixtures: lastFiveAwayTeamAwayFixtures, minGoals: 1}))
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===12) }//TODO can look into making that betoption id a enum
 }
@@ -433,28 +433,56 @@ export const getLastFiveTeamHomeFixtures = ({teamId, allFixtures}: {teamId: numb
 }
 
 
-export const awayTeamFailScroringInMostAwayFixtures =({awayfixtures, minGoals}: {awayfixtures: FixtureDataModel[]; minGoals: number})=>{
+export const awayTeamFailScroringInMostAwayFixtures =({awayfixtures}: {awayfixtures: FixtureDataModel[]})=>{
     let conditionPassedCount =0;
     awayfixtures.forEach(fixtureData=> {
-      if(fixtureData.goals.away>=minGoals){
+      if(fixtureData.goals.away < 1){
           conditionPassedCount+=1;
       }
   })
-  if(((conditionPassedCount/awayfixtures.length))<0.5){
+  if(((conditionPassedCount/awayfixtures.length))>0.5){
       return true;
   }else{
       return false
   }
 }
 
-export const homeTeamFailScroringInMostHomeFixtures =({homefixtures, minGoals}: {homefixtures: FixtureDataModel[]; minGoals: number})=>{
+export const homeTeamFailScroringInMostHomeFixtures =({homefixtures}: {homefixtures: FixtureDataModel[]})=>{
     let conditionPassedCount =0;
     homefixtures.forEach(fixtureData=> {
-      if(fixtureData.goals.away>=minGoals){
+      if(fixtureData.goals.away< 1){
           conditionPassedCount+=1;
       }
   })
-  if(((conditionPassedCount/homefixtures.length))<0.5){
+  if(((conditionPassedCount/homefixtures.length))>0.5){
+      return true;
+  }else{
+      return false
+  }
+}
+
+export const homeTeamFailWinningInMostHomeFixtures =({homefixtures}: {homefixtures: FixtureDataModel[]})=>{
+    let conditionPassedCount =0;
+    homefixtures.forEach(fixtureData=> {
+      if(fixtureData.goals.home<= fixtureData.goals.away){
+          conditionPassedCount+=1;
+      }
+  })
+  if(((conditionPassedCount/homefixtures.length))>=0.6){
+      return true;
+  }else{
+      return false
+  }
+}
+
+export const awayTeamFailWinningInMostAwayFixtures =({awayFixtures}: {awayFixtures: FixtureDataModel[]})=>{
+    let conditionPassedCount =0;
+    awayFixtures.forEach(fixtureData=> {
+      if(fixtureData.goals.away <= fixtureData.goals.home){
+          conditionPassedCount+=1;
+      }
+  })
+  if(((conditionPassedCount/awayFixtures.length))>=0.6){
       return true;
   }else{
       return false
