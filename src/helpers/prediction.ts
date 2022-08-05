@@ -528,7 +528,7 @@ const otherHomeTeamGoalsInAwayFixtures = ({awayTeamFixtures, goals}: {awayTeamFi
             conditionPassedCount+=1;
         }
     })
-    if(((conditionPassedCount/awayTeamFixtures.length))>0.75){
+    if(((conditionPassedCount/awayTeamFixtures.length))>0.6){
         return true;
     }else{
         return false
@@ -542,7 +542,7 @@ const otherAwayTeamGoalsInHomeFixtures = ({homeTeamFixtures, goals}: {homeTeamFi
             conditionPassedCount+=1;
         }
     })
-    if(((conditionPassedCount/homeTeamFixtures.length))>0.75){
+    if(((conditionPassedCount/homeTeamFixtures.length))>0.6){
         return true;
     }else{
         return false
@@ -557,7 +557,7 @@ const homeTeamWinsMostHalfTimes = ({fixtures, homeTeamId}: {fixtures: FixtureDat
             conditionPassedCount+=1;
         }
     })
-    if(((conditionPassedCount/fixtures.length))>0.75){
+    if(((conditionPassedCount/fixtures.length))>0.6){
         return true;
     }else{
         return false
@@ -572,7 +572,7 @@ const homeTeamWinsMostMatches = ({fixtures, homeTeamId}: {fixtures: FixtureDataM
             conditionPassedCount+=1;
         }
     })
-    if(((conditionPassedCount/fixtures.length))>0.75){
+    if(((conditionPassedCount/fixtures.length))>0.6){
         return true;
     }else{
         return false
@@ -587,7 +587,7 @@ const awayTeamWinsMostHalfTimes = ({fixtures, awayTeamId}: {fixtures: FixtureDat
             conditionPassedCount+=1;
         }
     })
-    if(((conditionPassedCount/fixtures.length))>0.75){
+    if(((conditionPassedCount/fixtures.length))>0.6){
         return true;
     }else{
         return false
@@ -602,7 +602,7 @@ const awayTeamWinsMostMatchesTimes = ({fixtures, awayTeamId}: {fixtures: Fixture
             conditionPassedCount+=1;
         }
     })
-    if(((conditionPassedCount/fixtures.length))>0.75){
+    if(((conditionPassedCount/fixtures.length))>0.6){
         return true;
     }else{
         return false
@@ -644,7 +644,7 @@ const homeTeamDrawMostFixtures = ({fixtures, homeTeamId}: {fixtures: FixtureData
             conditionPassedCount+=1;
         }
     })
-    if(((conditionPassedCount/fixtures.length))>0.75){
+    if(((conditionPassedCount/fixtures.length))>0.6){
         return true;
     }else{
         return false
@@ -658,7 +658,7 @@ const awayTeamDrawMostFixtures = ({fixtures, awayTeamId}: {fixtures: FixtureData
             conditionPassedCount+=1;
         }
     })
-    if(((conditionPassedCount/fixtures.length))>0.75){
+    if(((conditionPassedCount/fixtures.length))>0.6){
         return true;
     }else{
         return false
