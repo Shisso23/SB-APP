@@ -55,7 +55,7 @@ export  const betOptions: betOptionModel [] = [
 
 export const numberOfH2HMatchesBack = 4;
 
-export const numberOTeamLastFixturesBack = 5; 
+export const numberOTeamLastFixturesBack = 4; 
 
 export const numberOfSeasonsBack = 4; 
 
