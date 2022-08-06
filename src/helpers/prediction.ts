@@ -149,8 +149,9 @@ export const predictMultiGoals3_6 =({currentFixtures, allFixtures}:{currentFixtu
         if(lastFiveHomeTeamHomeFixtures.length <3 || lastFiveAwayTeamAwayFixtures.length<3 ){
             return false
         }
-       return ((lastFiveHomeTeamHomeFixtures.every(FixtureData=> (FixtureData.goals.home + FixtureData.goals.away)>=3 && (FixtureData.goals.home + FixtureData.goals.away)<=6 )) && 
-       lastFiveAwayTeamAwayFixtures.every(FixtureData=>( FixtureData.goals.away + FixtureData.goals.home)>=3 && (FixtureData.goals.home + FixtureData.goals.away)<=6 ))
+       return HomeTeamScroreInMostHomeFixtures({homefixtures:lastFiveHomeTeamHomeFixtures, minGoals:2})  && awayTeamScroreInMostAwayFixtures({awayfixtures: lastFiveAwayTeamAwayFixtures, minGoals: 2}) &&
+        (otherHomeTeamGoalsInAwayFixtures({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, goals: 1}) &&
+         otherAwayTeamGoalsInHomeFixtures({homeTeamFixtures: lastFiveHomeTeamHomeFixtures, goals: 1}))
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===7) }// can look into making that betoption a enum
 }
@@ -308,7 +309,9 @@ export const predictMultiGoals1_2Home =({currentFixtures, allFixtures}:{currentF
         if(lastFiveHomeTeamHomeFixtures.length <3){
             return false
         }
-       return (lastFiveHomeTeamHomeFixtures.every(fixtureData=> (fixtureData.goals.home >=1 && fixtureData.goals.home <=2 ))) && otherHomeTeamGoalsInAwayFixtures({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, goals:1})
+       return (lastFiveHomeTeamHomeFixtures.every(fixtureData=> (fixtureData.goals.home >=1 && fixtureData.goals.home <=2 ))) && otherHomeTeamGoalsInAwayFixtures({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, goals:1}) ||
+       ((HomeTeamScroreInMostHomeFixtures({homefixtures: lastFiveHomeTeamHomeFixtures, minGoals: 1}))
+       && otherHomeTeamMinMaxGoalsInAwayFixtures({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, minGoals: 1, maxGoals: 2}))
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===20) }// can look into making that betoption a enum
 }
@@ -334,7 +337,9 @@ export const predictMultiGoals2_3Home =({currentFixtures, allFixtures}:{currentF
         if(lastFiveHomeTeamHomeFixtures.length <3){
             return false
         }
-        return (lastFiveHomeTeamHomeFixtures.every(fixtureData=> (fixtureData.goals.home >=2 && fixtureData.goals.home <=3 ))) && otherHomeTeamGoalsInAwayFixtures({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, goals:1})
+        return (lastFiveHomeTeamHomeFixtures.every(fixtureData=> (fixtureData.goals.home >=2 && fixtureData.goals.home <=3 ))) && otherHomeTeamGoalsInAwayFixtures({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, goals:1}) ||
+        ((HomeTeamScroreInMostHomeFixtures({homefixtures: lastFiveHomeTeamHomeFixtures, minGoals: 2}))
+         && otherHomeTeamMinMaxGoalsInAwayFixtures({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, minGoals: 2, maxGoals: 3}))
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===22) }// can look into making that betoption a enum
 }
@@ -347,7 +352,9 @@ export const predictMultiGoals1_2Away =({currentFixtures, allFixtures}:{currentF
         if(lastFiveAwayTeamAwayFixtures.length <3 ){
             return false
         }
-        return (lastFiveAwayTeamAwayFixtures.every(fixtureData=> (fixtureData.goals.away >=1 && fixtureData.goals.away <=2 ))) && otherAwayTeamGoalsInHomeFixtures({homeTeamFixtures: lastFiveHomeTeamHomeFixtures, goals:1})
+        return (lastFiveAwayTeamAwayFixtures.every(fixtureData=> (fixtureData.goals.away >=1 && fixtureData.goals.away <=2 ))) && otherAwayTeamGoalsInHomeFixtures({homeTeamFixtures: lastFiveHomeTeamHomeFixtures, goals:1}) ||
+        ((awayTeamScroreInMostAwayFixtures({awayfixtures: lastFiveAwayTeamAwayFixtures, minGoals: 2}))
+       && otherAwayTeamMinMaxGoalsInHomeFixtures({homeTeamFixtures: lastFiveHomeTeamHomeFixtures, minGoals: 1, maxGoals: 2}))
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===23) }// can look into making that betoption a enum
 }
@@ -362,7 +369,9 @@ export const predictMultiGoals2_3Away =({currentFixtures, allFixtures}:{currentF
         if(lastFiveAwayTeamAwayFixtures.length <3 ){
             return false
         }
-        return (lastFiveAwayTeamAwayFixtures.every(fixtureData=> (fixtureData.goals.away >=2 && fixtureData.goals.away <=3 ))) && otherAwayTeamGoalsInHomeFixtures({homeTeamFixtures: lastFiveHomeTeamHomeFixtures, goals:1})
+        return (lastFiveAwayTeamAwayFixtures.every(fixtureData=> (fixtureData.goals.away >=2 && fixtureData.goals.away <=3 ))) && otherAwayTeamGoalsInHomeFixtures({homeTeamFixtures: lastFiveHomeTeamHomeFixtures, goals:1}) ||
+        ((awayTeamScroreInMostAwayFixtures({awayfixtures: lastFiveAwayTeamAwayFixtures, minGoals: 2}))
+        && otherAwayTeamMinMaxGoalsInHomeFixtures({homeTeamFixtures: lastFiveHomeTeamHomeFixtures, minGoals: 2, maxGoals: 3}))
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===24) }// can look into making that betoption a enum
 }
@@ -443,7 +452,7 @@ export const awayTeamFailScroringInMostAwayFixtures =({awayfixtures}: {awayfixtu
           conditionPassedCount+=1;
       }
   })
-  if(((conditionPassedCount/awayfixtures.length))>=0.5){
+  if(((conditionPassedCount/awayfixtures.length))>=0.6){
       return true;
   }else{
       return false
@@ -457,7 +466,7 @@ export const homeTeamFailScroringInMostHomeFixtures =({homefixtures}: {homefixtu
           conditionPassedCount+=1;
       }
   })
-  if(((conditionPassedCount/homefixtures.length))>=0.5){
+  if(((conditionPassedCount/homefixtures.length))>=0.6){
       return true;
   }else{
       return false
@@ -471,7 +480,7 @@ export const homeTeamFailWinningInMostHomeFixtures =({homefixtures}: {homefixtur
           conditionPassedCount+=1;
       }
   })
-  if(((conditionPassedCount/homefixtures.length))>=0.5){
+  if(((conditionPassedCount/homefixtures.length))>=0.6){
       return true;
   }else{
       return false
@@ -485,7 +494,7 @@ export const awayTeamFailWinningInMostAwayFixtures =({awayFixtures}: {awayFixtur
           conditionPassedCount+=1;
       }
   })
-  if(((conditionPassedCount/awayFixtures.length))>=0.5){
+  if(((conditionPassedCount/awayFixtures.length))>=0.6){
       return true;
   }else{
       return false
@@ -528,7 +537,7 @@ const otherHomeTeamGoalsInAwayFixtures = ({awayTeamFixtures, goals}: {awayTeamFi
             conditionPassedCount+=1;
         }
     })
-    if(((conditionPassedCount/awayTeamFixtures.length))>0.6){
+    if(((conditionPassedCount/awayTeamFixtures.length))>=0.6){
         return true;
     }else{
         return false
@@ -539,6 +548,34 @@ const otherAwayTeamGoalsInHomeFixtures = ({homeTeamFixtures, goals}: {homeTeamFi
     let conditionPassedCount =0;
     homeTeamFixtures.forEach(fixtureData=>{
         if(fixtureData.goals.away>= goals){
+            conditionPassedCount+=1;
+        }
+    })
+    if(((conditionPassedCount/homeTeamFixtures.length))>=0.6){
+        return true;
+    }else{
+        return false
+    }
+}
+
+const otherHomeTeamMinMaxGoalsInAwayFixtures = ({awayTeamFixtures, minGoals, maxGoals}: {awayTeamFixtures: FixtureDataModel[]; minGoals: number; maxGoals: number})=>{
+    let conditionPassedCount =0;
+    awayTeamFixtures.forEach(fixtureData=>{
+        if(fixtureData.goals.home>= minGoals && fixtureData.goals.home<=maxGoals){
+            conditionPassedCount+=1;
+        }
+    })
+    if(((conditionPassedCount/awayTeamFixtures.length))>0.6){
+        return true;
+    }else{
+        return false
+    }
+}
+
+const otherAwayTeamMinMaxGoalsInHomeFixtures = ({homeTeamFixtures,  minGoals, maxGoals}: {homeTeamFixtures: FixtureDataModel[]; minGoals: number; maxGoals: number})=>{
+    let conditionPassedCount =0;
+    homeTeamFixtures.forEach(fixtureData=>{
+        if(fixtureData.goals.away>= minGoals &&  fixtureData.goals.away<=maxGoals){
             conditionPassedCount+=1;
         }
     })
@@ -557,7 +594,7 @@ const homeTeamWinsMostHalfTimes = ({fixtures, homeTeamId}: {fixtures: FixtureDat
             conditionPassedCount+=1;
         }
     })
-    if(((conditionPassedCount/fixtures.length))>0.6){
+    if(((conditionPassedCount/fixtures.length))>0.75){
         return true;
     }else{
         return false
@@ -572,7 +609,7 @@ const homeTeamWinsMostMatches = ({fixtures, homeTeamId}: {fixtures: FixtureDataM
             conditionPassedCount+=1;
         }
     })
-    if(((conditionPassedCount/fixtures.length))>0.6){
+    if(((conditionPassedCount/fixtures.length))>0.75){
         return true;
     }else{
         return false
@@ -587,7 +624,7 @@ const awayTeamWinsMostHalfTimes = ({fixtures, awayTeamId}: {fixtures: FixtureDat
             conditionPassedCount+=1;
         }
     })
-    if(((conditionPassedCount/fixtures.length))>0.6){
+    if(((conditionPassedCount/fixtures.length))>0.75){
         return true;
     }else{
         return false
@@ -602,7 +639,7 @@ const awayTeamWinsMostMatchesTimes = ({fixtures, awayTeamId}: {fixtures: Fixture
             conditionPassedCount+=1;
         }
     })
-    if(((conditionPassedCount/fixtures.length))>0.6){
+    if(((conditionPassedCount/fixtures.length))>0.75){
         return true;
     }else{
         return false
@@ -644,7 +681,7 @@ const homeTeamDrawMostFixtures = ({fixtures, homeTeamId}: {fixtures: FixtureData
             conditionPassedCount+=1;
         }
     })
-    if(((conditionPassedCount/fixtures.length))>0.6){
+    if(((conditionPassedCount/fixtures.length))>0.75){
         return true;
     }else{
         return false
@@ -658,7 +695,7 @@ const awayTeamDrawMostFixtures = ({fixtures, awayTeamId}: {fixtures: FixtureData
             conditionPassedCount+=1;
         }
     })
-    if(((conditionPassedCount/fixtures.length))>0.6){
+    if(((conditionPassedCount/fixtures.length))>0.75){
         return true;
     }else{
         return false
