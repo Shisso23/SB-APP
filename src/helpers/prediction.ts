@@ -437,7 +437,7 @@ export const getLastFiveTeamHomeFixtures = ({teamId, allFixtures}: {teamId: numb
           conditionPassedCount+=1;
       }
   })
-  if(((conditionPassedCount/awayfixtures.length))>=0.9){
+  if(((conditionPassedCount/awayfixtures.length))>=0.7){
       return true;
   }else{
       return false
