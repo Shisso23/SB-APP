@@ -18,7 +18,9 @@ import {
     predictMultiGoals2_3Home,
     predictMultiGoals1_2Away,
     predictMultiGoals2_3Away,
-    predictMultiGoals1_3Away
+    predictMultiGoals1_3Away,
+    predictHomeOrDraw,
+    predictAwayOrDraw
  } from '../helpers/prediction';
 import { betOptionModel } from '../models/bet-option-model';
 import { FixtureDataModel } from '../models/fixtures/index';
@@ -45,12 +47,14 @@ export  const betOptions: betOptionModel [] = [
     {name: 'Multi Goals (2->4 ) Goals', id: 17, level: 3, shortName:'2->4 G',  predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=> predictMultiGoals2_4(params)},
     {name: 'Multi Goals (0->2 ) Goals', id: 18, level: 3, shortName:'0->2 G',  predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=> predictMultiGoals0_2(params)},
     {name: 'Multi Goals (0->3 ) Goals', id: 19, level: 2, shortName:'0->3 G',  predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=> predictMultiGoals0_3(params)},
-    {name: 'Multi Goals H. (1->2 ) Goals', id: 20, level: 4, shortName:'1->2 H. G',  predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=> predictMultiGoals1_2Home(params)},
-    {name: 'Multi Goals H. (1->3 ) Goals', id: 21, level: 3, shortName:'1->3 H. G',  predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=> predictMultiGoals1_3Home(params)},
+    {name: 'Multi Goals H. (1->2 ) Goals', id: 20, level: 3, shortName:'1->2 H. G',  predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=> predictMultiGoals1_2Home(params)},
+    {name: 'Multi Goals H. (1->3 ) Goals', id: 21, level: 0, shortName:'1->3 H. G',  predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=> predictMultiGoals1_3Home(params)},
     {name: 'Multi Goals H. (2->3 ) Goals', id: 22, level: 4, shortName:'2->3 H. G',  predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=> predictMultiGoals2_3Home(params)},
-    {name: 'Multi Goals A. (1->2 ) Goals', id: 23, level: 4, shortName:'1->2 A. G',  predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=> predictMultiGoals1_2Away(params)},
+    {name: 'Multi Goals A. (1->2 ) Goals', id: 23, level: 3, shortName:'1->2 A. G',  predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=> predictMultiGoals1_2Away(params)},
     {name: 'Multi Goals A. (2->3 ) Goals', id: 24, level: 4, shortName:'2->3 A. G',  predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=> predictMultiGoals2_3Away(params)},
-    {name: 'Multi Goals A. (1->3 ) Goals', id: 25, level: 3, shortName:'1->3 A. G',  predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=> predictMultiGoals1_3Away(params)}
+    {name: 'Multi Goals A. (1->3 ) Goals', id: 25, level: 0, shortName:'1->3 A. G',  predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=> predictMultiGoals1_3Away(params)},
+    {name: 'Home or Draw', id: 26, level: 1, shortName:'Home or Dr.',  predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=> predictHomeOrDraw(params)},
+    {name: 'Away or Draw', id: 27, level: 1, shortName:'Away or Dr.',  predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=> predictAwayOrDraw(params)}
 ];
 
 export const numberOfH2HMatchesBack = 4;
