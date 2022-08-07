@@ -226,7 +226,9 @@ export const predictDraw =({currentFixtures, allFixtures}:{currentFixtures: Fixt
             return false
         }
        return (homeTeamDrawMostFixtures({fixtures: fixtureH2hFixtures, homeTeamId: currentFixture.teams.home.id}) && awayTeamDrawMostFixtures({fixtures: fixtureH2hFixtures, awayTeamId: currentFixture.teams.away.id})) ||
-       (homeTeamFailScroringInMostHomeFixtures({homefixtures: lastFiveHomeTeamHomeFixtures}) && awayTeamFailScroringInMostAwayFixtures({awayfixtures: lastFiveAwayTeamAwayFixtures}))
+       (homeTeamFailScroringInMostHomeFixtures({homefixtures: lastFiveHomeTeamHomeFixtures}) && awayTeamFailScroringInMostAwayFixtures({awayfixtures: lastFiveAwayTeamAwayFixtures})) ||
+       (lastFiveHomeTeamHomeFixtures.every(fixtureData=> fixtureData.teams.home.winner!==false) && awayTeamFailWinningInMostAwayFixtures({awayFixtures: lastFiveAwayTeamAwayFixtures}) && 
+       lastFiveAwayTeamAwayFixtures.every(fixtureData=> fixtureData.teams.away.winner!==false) && homeTeamFailWinningInMostHomeFixtures({homefixtures: lastFiveHomeTeamHomeFixtures}))
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===10) }// can look into making that betoption a enum
 }
@@ -309,8 +311,7 @@ export const predictMultiGoals0_2 =({currentFixtures, allFixtures}:{currentFixtu
         if(lastFiveAwayTeamAwayFixtures.length <3 || lastFiveHomeTeamHomeFixtures.length<3){
             return false
         }
-       return ((lastFiveHomeTeamHomeFixtures.every(fixtureData=> fixtureData.goals.home <=1) && lastFiveAwayTeamAwayFixtures.every(fixtureData=> fixtureData.goals.away <=1))) || 
-       fixtureH2hFixtures.every(fixtureData=> (fixtureData.goals.home + fixtureData.goals.away)<3 ) && fixtureH2hFixtures.length >=3
+       return ((lastFiveHomeTeamHomeFixtures.every(fixtureData=> fixtureData.goals.home <=1) && lastFiveAwayTeamAwayFixtures.every(fixtureData=> fixtureData.goals.away <=1)))
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===18) }// can look into making that betoption a enum
 }
@@ -324,7 +325,6 @@ export const predictMultiGoals0_3 =({currentFixtures, allFixtures}:{currentFixtu
             return false
         }
         return ((lastFiveHomeTeamHomeFixtures.every(fixtureData=> fixtureData.goals.home <=1) && lastFiveAwayTeamAwayFixtures.every(fixtureData=> fixtureData.goals.away <=1))) ||
-        fixtureH2hFixtures.every(fixtureData=> (fixtureData.goals.home + fixtureData.goals.away)<4 ) && fixtureH2hFixtures.length >=3
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===19) }// can look into making that betoption a enum
 }
