@@ -163,7 +163,7 @@ export const predictMultiGoals2_5 =({currentFixtures, allFixtures}:{currentFixtu
         if(lastFiveHomeTeamHomeFixtures.length <3 || lastFiveAwayTeamAwayFixtures.length<3 || fixtureH2hFixtures.length<3){
             return false
         }
-       return fixtureH2hFixtures.every(fixtureData=> (fixtureData.goals.home + fixtureData.goals.away)>=2 && (fixtureData.goals.home + fixtureData.goals.away<=5) ) 
+       return fixtureH2hFixtures.every(fixtureData=> (fixtureData.goals.home + fixtureData.goals.away)>=2 && (fixtureData.goals.home + fixtureData.goals.away<=5) )  && fixtureH2hFixtures.length>=3 
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===6) }// can look into making that betoption a enum
 }
@@ -176,7 +176,7 @@ export const predictMultiGoals3_6 =({currentFixtures, allFixtures}:{currentFixtu
         if(lastFiveHomeTeamHomeFixtures.length <3 || lastFiveAwayTeamAwayFixtures.length<3 || fixtureH2hFixtures.length<3 ){
             return false
         }
-       return fixtureH2hFixtures.every(fixtureData=> (fixtureData.goals.home + fixtureData.goals.away)>=3 && (fixtureData.goals.home + fixtureData.goals.away<=6) ) 
+       return fixtureH2hFixtures.every(fixtureData=> (fixtureData.goals.home + fixtureData.goals.away)>=3 && (fixtureData.goals.home + fixtureData.goals.away<=6) ) && fixtureH2hFixtures.length>=3 
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===7) }// can look into making that betoption a enum
 }
@@ -192,7 +192,7 @@ export const predictBothHalVOver0_5 =({currentFixtures, allFixtures}:{currentFix
         }
        return (HomeTeamScroreInMostHomeFixtures({homefixtures: lastFiveHomeTeamHomeFixtures, minGoals: 2}) && awayTeamScroreInMostAwayFixtures({awayfixtures: lastFiveAwayTeamAwayFixtures, minGoals: 1}) &&
       (homeTeamScoresInMostHT({fixtures: lastFiveHomeTeamHomeFixtures, minGoals: 1, homeTeamId: currentFixture.teams.home.id}) && awayTeamScoresInMostHT({fixtures: lastFiveAwayTeamAwayFixtures, minGoals: 1, awayTeamId: currentFixture.teams.away.id})))  ||
-      fixtureH2hFixtures.every(fixtureData=> (fixtureData.goals.home + fixtureData.goals.away)>=3 && (fixtureData.goals.home + fixtureData.goals.away<=6) ) 
+     ( fixtureH2hFixtures.every(fixtureData=> (fixtureData.goals.home + fixtureData.goals.away)>=3 && (fixtureData.goals.home + fixtureData.goals.away<=6) ) && fixtureH2hFixtures.length>=3 )
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===8) }// can look into making that betoption a enum
 }
@@ -242,7 +242,7 @@ export const predictHTDraw =({currentFixtures, allFixtures}:{currentFixtures: Fi
             return false
         }
        return (homeTeamFailScroringInMostHomeFixtures({homefixtures: lastFiveHomeTeamHomeFixtures}) && awayTeamFailScroringInMostAwayFixtures({awayfixtures: lastFiveAwayTeamAwayFixtures})) &&
-       fixtureH2hFixtures.every(fixture=> fixture.score.halftime.home + fixture.score.halftime.away ===0)
+       fixtureH2hFixtures.every(fixture=> fixture.score.halftime.home + fixture.score.halftime.away ===0) && fixtureH2hFixtures.length>=3 
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===11) }// can look into making that betoption a enum
 }
@@ -298,7 +298,7 @@ export const predictMultiGoals2_4 =({currentFixtures, allFixtures}:{currentFixtu
         if(lastFiveAwayTeamAwayFixtures.length <3 || lastFiveHomeTeamHomeFixtures.length<3){
             return false
         }
-       return fixtureH2hFixtures.every(fixtureData=> (fixtureData.goals.home + fixtureData.goals.away)>=2 && (fixtureData.goals.home + fixtureData.goals.away<=4) ) 
+       return fixtureH2hFixtures.every(fixtureData=> (fixtureData.goals.home + fixtureData.goals.away)>=2 && (fixtureData.goals.home + fixtureData.goals.away<=4) ) && fixtureH2hFixtures.length>=3 
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===17) }// can look into making that betoption a enum
 }
