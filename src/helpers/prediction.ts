@@ -317,7 +317,9 @@ export const predictMultiGoals0_2 =({currentFixtures, allFixtures}:{currentFixtu
         if(lastFiveAwayTeamAwayFixtures.length <3 || lastFiveHomeTeamHomeFixtures.length<3){
             return false
         }
-       return ((lastFiveHomeTeamHomeFixtures.every(fixtureData=> fixtureData.goals.home <=1) && lastFiveAwayTeamAwayFixtures.every(fixtureData=> fixtureData.goals.away <=1)))
+       return ((lastFiveHomeTeamHomeFixtures.every(fixtureData=> fixtureData.goals.home <=1) && lastFiveAwayTeamAwayFixtures.every(fixtureData=> fixtureData.goals.away <=1))) && fixtureH2hFixtures.every(fixtureData=>{
+           return (fixtureData.goals.home + fixtureData.goals.away)<3
+       })
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===18) }// can look into making that betoption a enum
 }
@@ -330,7 +332,9 @@ export const predictMultiGoals0_3 =({currentFixtures, allFixtures}:{currentFixtu
         if(lastFiveAwayTeamAwayFixtures.length <3 || lastFiveHomeTeamHomeFixtures.length<3){
             return false
         }
-        return ((lastFiveHomeTeamHomeFixtures.every(fixtureData=> fixtureData.goals.home <=1) && lastFiveAwayTeamAwayFixtures.every(fixtureData=> fixtureData.goals.away <=1)))
+        return ((lastFiveHomeTeamHomeFixtures.every(fixtureData=> fixtureData.goals.home <=1) && lastFiveAwayTeamAwayFixtures.every(fixtureData=> fixtureData.goals.away <=1))) && fixtureH2hFixtures.every(fixtureData=>{
+            return (fixtureData.goals.home + fixtureData.goals.away)<3
+        })
     })
     return {fixtures: predictedFixtures, option: betOptions.find(option=> option.id===19) }// can look into making that betoption a enum
 }
