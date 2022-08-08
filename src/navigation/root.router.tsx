@@ -12,7 +12,7 @@ const RootRouter: React.FC = () => {
     <Navbar fixed={true}/>
       <Routes>
           <Route index element={<HomeScreen />} />
-          <Route path='/bet' element={<BetScreen />} />
+          <Route path='/bEt' element={<BetScreen />} />
           <Route path='/predictions' element={<PredictionsScreen />} />
           <Route path='/fixtures' element={<FixturesScreen />} />
       </Routes>
