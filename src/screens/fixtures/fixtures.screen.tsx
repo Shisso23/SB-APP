@@ -442,35 +442,35 @@ const FixturesScreen: React.FC = () => {
                 return (
                   <div className=" flex flex-row border border-solid justify-between w-full">
                     <span className=" w-16">
-                      {teamStandings.league.standings[0][0].rank}
+                      {teamStandings.league?.standings[0][0].rank}
                     </span>
                     <span className=" w-40 truncate text-pink-700">
-                      {teamStandings.league.standings[0][0].team.name}
+                      {teamStandings.league?.standings[0][0].team.name}
                     </span>
                     <span className=" w-16">
-                      {teamStandings.league.standings[0][0].all.played}
+                      {teamStandings.league?.standings[0][0].all.played}
                     </span>
                     <span className=" w-16">
-                      {teamStandings.league.standings[0][0].all.win}
+                      {teamStandings.league?.standings[0][0].all.win}
                     </span>
                     <span className=" w-16">
-                      {teamStandings.league.standings[0][0].all.draw}
+                      {teamStandings.league?.standings[0][0].all.draw}
                     </span>
                     <span className=" w-16">
-                      {teamStandings.league.standings[0][0].all.lose}
+                      {teamStandings.league?.standings[0][0].all.lose}
                     </span>
                     <span className=" w-16">
-                      {teamStandings.league.standings[0][0].all.goals.for}
+                      {teamStandings.league?.standings[0][0].all.goals.for}
                     </span>
                     <span className=" w-16">
-                      {teamStandings.league.standings[0][0].all.goals.against}
+                      {teamStandings.league?.standings[0][0].all.goals.against}
                     </span>
                     <span className=" w-16">
-                      {teamStandings.league.standings[0][0].all.goals.for -
-                        teamStandings.league.standings[0][0].all.goals.against}
+                      {teamStandings.league?.standings[0][0].all.goals.for -
+                        teamStandings.league?.standings[0][0].all.goals.against}
                     </span>
                     <span className=" w-16">
-                      {teamStandings.league.standings[0][0].points}
+                      {teamStandings.league?.standings[0][0].points}
                     </span>
                   </div>
                 );
