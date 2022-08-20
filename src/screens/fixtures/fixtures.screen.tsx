@@ -24,9 +24,7 @@ import {
   getLastFiveTeamHomeFixtures,
 } from "../../helpers/prediction";
 import { getStandingsByTeamId } from "../../services/standings";
-import {
-  StandingsResponseModel,
-} from "../../models/standings-models";
+import { StandingsResponseModel } from "../../models/standings-models";
 
 Modal.setAppElement("#root");
 
@@ -217,8 +215,8 @@ const FixturesScreen: React.FC = () => {
   };
 
   const toggleModal = () => {
-    if(isModalOpen){
-      setFixtureTeamsStandings(undefined)
+    if (isModalOpen) {
+      setFixtureTeamsStandings(undefined);
     }
     setIsModalOpen(!isModalOpen);
   };
@@ -247,20 +245,71 @@ const FixturesScreen: React.FC = () => {
     });
   };
 
-  const getFixtureTeamsStandings = ({ homeTeamId, awayTeamId, season, leagueId}) => {
+  const getFixtureTeamsStandings = ({
+    homeTeamId,
+    awayTeamId,
+    season,
+    leagueId,
+  }) => {
     setLoadingStandings(true);
     Promise.all([
       getStandingsByTeamId({ teamId: homeTeamId, season, leagueId }),
       getStandingsByTeamId({ teamId: awayTeamId, season, leagueId }),
-    ]).then((response) => {
-      const sortedStandings = sortStandings([
-        response[0].response[0],
-        response[1].response[0],
-      ]);
-      setFixtureTeamsStandings(sortedStandings);
-    }).finally(()=>{
-      setLoadingStandings(false);
-    });
+    ])
+      .then((response) => {
+        const sortedStandings = sortStandings([
+          response[0].response[0],
+          response[1].response[0],
+        ]);
+        setFixtureTeamsStandings(sortedStandings);
+      })
+      .finally(() => {
+        setLoadingStandings(false);
+      });
+  };
+
+  const renderStandings = () => {
+    try {
+      return fixtureTeamsStandings.map((teamStandings) => {
+        return (
+          <div className=" flex flex-row border border-solid justify-between w-full">
+            <span className=" w-16">
+              {teamStandings.league?.standings[0][0].rank}
+            </span>
+            <span className=" w-40 truncate text-pink-700">
+              {teamStandings.league?.standings[0][0].team.name}
+            </span>
+            <span className=" w-16">
+              {teamStandings.league?.standings[0][0].all.played}
+            </span>
+            <span className=" w-16">
+              {teamStandings.league?.standings[0][0].all.win}
+            </span>
+            <span className=" w-16">
+              {teamStandings.league?.standings[0][0].all.draw}
+            </span>
+            <span className=" w-16">
+              {teamStandings.league?.standings[0][0].all.lose}
+            </span>
+            <span className=" w-16">
+              {teamStandings.league?.standings[0][0].all.goals.for}
+            </span>
+            <span className=" w-16">
+              {teamStandings.league?.standings[0][0].all.goals.against}
+            </span>
+            <span className=" w-16">
+              {teamStandings.league?.standings[0][0].all.goals.for -
+                teamStandings.league?.standings[0][0].all.goals.against}
+            </span>
+            <span className=" w-16">
+              {teamStandings.league?.standings[0][0].points}
+            </span>
+          </div>
+        );
+      });
+    } catch (exp) {
+      return <div>Standings not available for this!</div>;
+    }
   };
 
   const renderModalContent = () => {
@@ -418,66 +467,33 @@ const FixturesScreen: React.FC = () => {
             homeTeamId: homeTeam.id,
             awayTeamId: awayTeam.id,
             season: allFixtures[0]?.league.season,
-            leagueId: fixtureH2h[0]?.league.id
+            leagueId: fixtureH2h[0]?.league.id,
           })}
         >
           View teams Standings
         </button>
-        {loadingStandings? <CircularProgress />: fixtureTeamsStandings && (
-          <>
-            <div className=" flex flex-row border border-solid justify-between font-bold bg-gray-400 w-9/12   ">
-              <span className=" w-16">Rank</span>
-              <span className=" w-40">Team</span>
-              <span className=" w-16">MP</span>
-              <span className=" w-16">W</span>
-              <span className=" w-16">D</span>
-              <span className=" w-16">L</span>
-              <span className=" w-16">GF</span>
-              <span className=" w-16">GA</span>
-              <span className=" w-16">GD</span>
-              <span className=" w-16">Pts</span>
-            </div>
-            <div className=" w-9/12">
-              {fixtureTeamsStandings.map((teamStandings) => {
-                return (
-                  <div className=" flex flex-row border border-solid justify-between w-full">
-                    <span className=" w-16">
-                      {teamStandings.league?.standings[0][0].rank}
-                    </span>
-                    <span className=" w-40 truncate text-pink-700">
-                      {teamStandings.league?.standings[0][0].team.name}
-                    </span>
-                    <span className=" w-16">
-                      {teamStandings.league?.standings[0][0].all.played}
-                    </span>
-                    <span className=" w-16">
-                      {teamStandings.league?.standings[0][0].all.win}
-                    </span>
-                    <span className=" w-16">
-                      {teamStandings.league?.standings[0][0].all.draw}
-                    </span>
-                    <span className=" w-16">
-                      {teamStandings.league?.standings[0][0].all.lose}
-                    </span>
-                    <span className=" w-16">
-                      {teamStandings.league?.standings[0][0].all.goals.for}
-                    </span>
-                    <span className=" w-16">
-                      {teamStandings.league?.standings[0][0].all.goals.against}
-                    </span>
-                    <span className=" w-16">
-                      {teamStandings.league?.standings[0][0].all.goals.for -
-                        teamStandings.league?.standings[0][0].all.goals.against}
-                    </span>
-                    <span className=" w-16">
-                      {teamStandings.league?.standings[0][0].points}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        || <div/>)}
+        {loadingStandings ? (
+          <CircularProgress />
+        ) : (
+          fixtureTeamsStandings &&
+          ((
+            <>
+              <div className=" flex flex-row border border-solid justify-between font-bold bg-gray-400 w-9/12   ">
+                <span className=" w-16">Rank</span>
+                <span className=" w-40">Team</span>
+                <span className=" w-16">MP</span>
+                <span className=" w-16">W</span>
+                <span className=" w-16">D</span>
+                <span className=" w-16">L</span>
+                <span className=" w-16">GF</span>
+                <span className=" w-16">GA</span>
+                <span className=" w-16">GD</span>
+                <span className=" w-16">Pts</span>
+              </div>
+              <div className=" w-9/12">{renderStandings()}</div>
+            </>
+          ) || <div />)
+        )}
       </div>
     );
   };
