@@ -35,7 +35,7 @@ const handleBetClick =()=>{
     className=" flex flex-grow items-center justify-center"
     >
        <button className=' bg-blue-400 rounded p-4 items-center self-center w-80 text-white hover:bg-blue-300' onClick={handleBetClick}>
-          BET
+          START
        </button>
     </div>
   );
