@@ -52,7 +52,13 @@ const FixturesScreen: React.FC = () => {
   const [predictedFixtures, setPredictedFixtures] = useState<
     {
       fixtures: FixtureDataModel[];
-      option: { name: String; id: number; level: number; shortName: String };
+      option: {
+        name: String;
+        id: number;
+        level: number;
+        shortName: String;
+        description: string;
+      };
     }[]
   >(); //TODO try making a model for the bet option and reuse it
   const [groupedPredictionsData, setGroupedPredictionsData] = useState<
@@ -64,6 +70,7 @@ const FixturesScreen: React.FC = () => {
           id: number;
           level: number;
           shortName: String;
+          description: string;
         };
       }[]
     >
@@ -312,6 +319,45 @@ const FixturesScreen: React.FC = () => {
     }
   };
 
+  const renderPreviousFixtures = (fixtureData: FixtureDataModel) => {
+    return (
+      <>
+        <span className="flex self-start text-left text-xs font-medium pl-1 mt-2">
+          {`${toMomentDate(fixtureData.fixture.date).format(
+            "DD-MMMM-YYYY HH:mm"
+          )}`}
+        </span>
+        <div className=" flex flex-row w-full p-x-2 py-3 border justify-start items-center border-solid border-t-0 border-b border-l-0 border-r-0 ">
+          <div className=" flex w-2/6 items-center">
+            <img
+              src={`${fixtureData.teams.home.logo}`}
+              alt="country flag"
+              width={17}
+              height={17}
+              className=" mr-1 mt-1"
+            />
+            <div className=" pt-1 truncate text-sm ">
+              {fixtureData.teams.home.name}
+            </div>
+          </div>
+          <div className=" flex mx-3 w-1/6 items-center text-sm justify-center bg-green-300">{`${fixtureData.score.fulltime.home} - ${fixtureData.score.fulltime.away}`}</div>
+          <div className=" flex items-center flex-row w-2/6 overflow-x-hidden ">
+            <img
+              src={`${fixtureData.teams.away.logo}`}
+              alt="country flag"
+              width={17}
+              height={17}
+              className=" mr-1 mt-1"
+            />
+            <div className=" pt-1 truncate text-sm">
+              {fixtureData.teams.away.name}
+            </div>
+         </div>
+        </div>
+      </>
+    );
+  };
+
   const renderModalContent = () => {
     const homeTeam = selectedFixtureRow?.teams.home;
     const awayTeam = selectedFixtureRow?.teams.away;
@@ -339,122 +385,42 @@ const FixturesScreen: React.FC = () => {
             Close
           </button>
         </div>
-        <span className=" text-2xl font-bold text-center">
-          Fixture Deatails
-        </span>
-        <div className=" flex flex-row justify-between items-center bg-blue-400 w-full mt-5 rounded-lg px-3 pb-3 listView overflow-x-scroll  ">
-          <div className=" flex flex-col mr-5">
+        <span className=" text-2xl font-bold text-center">Fixture Details</span>
+        <div className=" flex flex-row justify-between items-start bg-blue-400 w-full mt-5 rounded-lg px-3 pb-3 listView overflow-x-scroll  ">
+          <div className=" flex flex-grow flex-col mr-5 h-full">
             <div className="text-base font-bold text-center my-3">
               Head to Head
             </div>
             <div className="flex flex-col rounded-lg items-center justify-center">
               {fixtureH2h.map((fixtureData) => {
                 return (
-                  <div className=" flex flex-row w-full p-3 border justify-start items-center border-solid border-t-0 border-b border-l-0 border-r-0 ">
-                    <div className=" flex flex-row w-36">
-                      <img
-                        src={`${fixtureData.teams.home.logo}`}
-                        alt="country flag"
-                        width={30}
-                        height={30}
-                        className=" mr-1"
-                      />
-                      <div className=" pt-1 truncate">
-                        {fixtureData.teams.home.name}
-                      </div>
-                    </div>
-                    <div className=" flex mx-3 w-20 items-center justify-center bg-green-300">{`${fixtureData.score.fulltime.home} - ${fixtureData.score.fulltime.away}`}</div>
-                    <div className=" flex flex-row w-auto">
-                      <img
-                        src={`${fixtureData.teams.away.logo}`}
-                        alt="country flag"
-                        width={30}
-                        height={30}
-                        className=" mr-1"
-                      />
-                      <div className=" pt-1 truncate">
-                        {fixtureData.teams.away.name}
-                      </div>
-                    </div>
-                  </div>
+                  renderPreviousFixtures(fixtureData)
                 );
               })}
             </div>
           </div>
 
-          <div className=" flex flex-col mr-5">
+          <div className=" flex flex-grow flex-col mr-5 h-full">
             <div className="text-base font-bold text-center my-3">
               Home team Previous Home Matches
             </div>
             <div className="flex flex-col rounded-lg items-center justify-center">
               {homeTeamPreviousHomeFixtures.map((fixtureData) => {
                 return (
-                  <div className=" flex flex-row w-full p-3 border justify-start items-center border-solid border-t-0 border-b border-l-0 border-r-0 ">
-                    <div className=" flex flex-row w-36">
-                      <img
-                        src={`${fixtureData.teams.home.logo}`}
-                        alt="country flag"
-                        width={30}
-                        height={30}
-                        className=" mr-1"
-                      />
-                      <div className=" pt-1 truncate">
-                        {fixtureData.teams.home.name}
-                      </div>
-                    </div>
-                    <div className=" flex mx-3 w-20 items-center justify-center bg-green-300">{`${fixtureData.score.fulltime.home} - ${fixtureData.score.fulltime.away}`}</div>
-                    <div className=" flex flex-row w-auto">
-                      <img
-                        src={`${fixtureData.teams.away.logo}`}
-                        alt="country flag"
-                        width={30}
-                        height={30}
-                        className=" mr-1"
-                      />
-                      <div className=" pt-1 truncate">
-                        {fixtureData.teams.away.name}
-                      </div>
-                    </div>
-                  </div>
+                  renderPreviousFixtures(fixtureData)
                 );
               })}
             </div>
           </div>
 
-          <div className=" flex flex-col mr-5">
+          <div className=" flex flex-grow flex-col mr-5 h-full">
             <div className="text-base font-bold text-center my-3">
               Away team Previous Away Matches
             </div>
             <div className="flex flex-col rounded-lg items-center justify-center">
               {awayTeamPreviousAwayFixtures.map((fixtureData) => {
                 return (
-                  <div className=" flex flex-row w-full p-3 border justify-start items-center border-solid border-t-0 border-b border-l-0 border-r-0 ">
-                    <div className=" flex w-36">
-                      <img
-                        src={`${fixtureData.teams.home.logo}`}
-                        alt="country flag"
-                        width={30}
-                        height={30}
-                        className=" mr-1"
-                      />
-                      <div className=" pt-1 truncate ">
-                        {fixtureData.teams.home.name}
-                      </div>
-                    </div>
-                    <div className=" flex mx-3 w-20 items-center justify-center bg-green-300">{`${fixtureData.score.fulltime.home} - ${fixtureData.score.fulltime.away}`}</div>
-                    <div className=" flex flex-row w-auto overflow-x-hidden ">
-                      <img
-                        src={`${fixtureData.teams.away.logo}`}
-                        alt="country flag"
-                        width={30}
-                        height={30}
-                        className=" mr-1"
-                      />
-                      <div className=" pt-1 truncate">
-                        {fixtureData.teams.away.name}
-                      </div>
-                    </div>
-                  </div>
+                  renderPreviousFixtures(fixtureData)
                 );
               })}
             </div>
@@ -535,10 +501,23 @@ const FixturesScreen: React.FC = () => {
                     (OptionShortName) => {
                       return (
                         <>
-                          <div className=" text-lg text-white font-bold bg-blue-500 mb-2">
-                            {!groupedPredictionsData[OptionShortName].every(
-                              (predFixture) => predFixture.fixtures.length === 0
-                            ) && <div>{OptionShortName}</div>}
+                          <div className=" flex flex-col items-center">
+                            <div className=" text-base text-white font-bold bg-blue-500 mb-2">
+                              {!groupedPredictionsData[OptionShortName].every(
+                                (predFixture) =>
+                                  predFixture.fixtures.length === 0
+                              ) && <div>{OptionShortName}</div>}
+                            </div>
+                            <span className=" text-white text-xs bg-blue-500">
+                              {!groupedPredictionsData[OptionShortName].every(
+                                (predFixture) =>
+                                  predFixture.fixtures.length === 0
+                              ) &&
+                                betOptions.find(
+                                  (option) =>
+                                    option.shortName === OptionShortName
+                                ).description}
+                            </span>
                           </div>
                           {groupedPredictionsData[OptionShortName].map(
                             (predictedionResult, predResultIndex) => {
@@ -552,7 +531,7 @@ const FixturesScreen: React.FC = () => {
                                         fixtureData
                                       )}
                                     >
-                                      <div className=" text-left w-2/6">
+                                      <div className=" text-left w-2/6 text-sm">
                                         {`${fixtureData.league.name} (${fixtureData.league.country})`}
                                         <div>
                                           {`${toMomentDate(
@@ -560,29 +539,29 @@ const FixturesScreen: React.FC = () => {
                                           ).format("DD-MMMM-YYYY HH:mm")}`}
                                         </div>
                                       </div>
-                                      <div className=" flex flex-row  self-center justify-between flex-grow overflow-x-hidden">
+                                      <div className=" flex flex-row w-4/6  self-center justify-between flex-grow overflow-x-hidden">
                                         <div className=" flex flex-row w-1/2 pl-1">
                                           <img
                                             src={`${fixtureData.teams.home.logo}`}
                                             alt="country flag"
-                                            width={30}
-                                            height={30}
-                                            className=" mr-1"
+                                            width={17}
+                                            height={17}
+                                            className=" mr-1 mt-1"
                                           />
-                                          <div className=" text-base font-semibold  pr-3 text-black w-2/3 truncate ">
+                                          <div className=" text-xs font-semibold truncate  pr-3 text-black w-2/3 ">
                                             {fixtureData.teams.home.name}
                                           </div>
-                                        </div>
+                                        </div> 
                                         <div className=" flex justify-start w-1/2 pl-1 overflow-x-hidden">
                                           <div className=" flex flex-row float-left w-full ">
                                             <img
                                               src={`${fixtureData.teams.away.logo}`}
                                               alt="country flag"
-                                              width={30}
-                                              height={30}
-                                              className=" mr-1"
+                                              width={17}
+                                              height={17}
+                                              className=" mr-1 mt-1"
                                             />
-                                            <div className="  text-base font-semibold text-black truncate">
+                                            <div className="  text-sm truncate font-semibold text-black">
                                               {fixtureData.teams.away.name}
                                             </div>
                                           </div>

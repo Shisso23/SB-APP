@@ -5,6 +5,7 @@ export class betOptionModel {
     public id: number;
     public level: number;
     public shortName: String;
+    public description: string;
     public predict: ({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[]})=> {fixtures: FixtureDataModel[], option: betOptionModel}
     /**
      *
@@ -15,6 +16,7 @@ export class betOptionModel {
         this.level = init.level;
         this.shortName = init.shortName;
         this.predict = init.predict
+        this.description = init.description;
     }
 }
 
