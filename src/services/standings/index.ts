@@ -17,3 +17,18 @@ export const getStandingsByTeamId = async ({teamId, season, leagueId}: {teamId:n
         results: (await response).data.results
     })
 } 
+
+
+export const getStandingsByLeagueId = async ({season, leagueId}: { season: number, leagueId: number}) => {
+    const response=  authNetworkService.get(endpoint, {
+        params: {
+            season,
+            league: leagueId
+        }
+    })
+    return new StandingsModel({
+        errors: (await response).data.errors,
+        response: (await response).data.response,
+        results: (await response).data.results
+    })
+} 

@@ -11,6 +11,9 @@ import { LeagueDataLeagueModel, LeaguesFilterModel } from '../../models/leagues'
 import { CircularProgress, TextField } from '@mui/material';
 import Autocomplete from '@mui/material/Autocomplete';
 import { LeagueDataModel } from '../../models/leagues/index';
+import { getStandingsByLeagueId } from '../../services/standings';
+import { seasonsBack } from '../../variables/variables';
+import { StandingsModel } from '../../models/standings-models';
 
 const BetScreen: React.FC = () => {
   let {leagues, isLoadingLeagues } : LeaguesState = useSelector(leaguesSelector);
@@ -22,10 +25,11 @@ const BetScreen: React.FC = () => {
   const [leaguesFilters, setLeaguesFilters] = useState<LeaguesFilterModel>({current: true, season: 2022, type: 'league'});
   const [searchedLeagues, setSearchedLeagues] = useState<LeagueDataModel[] | []>([]);
   const [filteredLeagues, setFilteredLeagues] = useState<LeagueDataModel[]>(leagues?.response)
+  const [leaguesStandings, setLeaguesStandings] = useState<StandingsModel[]>();
   const dispatch: any = useDispatch();
   
   useEffect(()=>{
-    dispatch( geFilteredLeaguesAction (leaguesFilters));
+    dispatch(geFilteredLeaguesAction (leaguesFilters));
   
     window.addEventListener('resize', updateWindowDimensions);
     window.addEventListener("load", handlePageRefresh);
@@ -63,9 +67,18 @@ const updateWindowDimensions =()=>{
 }
 
 const handleNextClick =()=>{
-  navigate('/fixtures', {state: {
-    selectedLeagues
-  }})
+  Promise.all(
+    selectedLeagues.map((league) => {
+     return getStandingsByLeagueId({leagueId: league.id, season: seasonsBack[0] });
+    })
+  ).then(standings=> {
+    setLeaguesStandings(standings)
+    navigate('/fixtures', {state: {
+      selectedLeagues,
+      leaguesStandings: standings
+    }})
+  });
+ 
 }
 
 const handleLeagueSelect =(e:ChangeEvent<HTMLInputElement>, league: LeagueDataLeagueModel)=>{

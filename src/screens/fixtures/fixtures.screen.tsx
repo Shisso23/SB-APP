@@ -23,14 +23,18 @@ import {
   getLastFiveTeamAwayFixtures,
   getLastFiveTeamHomeFixtures,
 } from "../../helpers/prediction";
-import { getStandingsByTeamId } from "../../services/standings";
-import { StandingsResponseModel } from "../../models/standings-models";
+import {
+  getStandingsByLeagueId,
+  getStandingsByTeamId,
+} from "../../services/standings";
+import { StandingsModel, StandingsResponseModel } from "../../models/standings-models";
 
 Modal.setAppElement("#root");
 
 const FixturesScreen: React.FC = () => {
   type LocationState = {
     selectedLeagues: LeagueDataLeagueModel[];
+    leaguesStandings: StandingsModel[]
   };
   const navigate = useNavigate();
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
@@ -42,7 +46,7 @@ const FixturesScreen: React.FC = () => {
     new Date(moment().add(1, "days").format("YYYY-MM-DD"))
   );
   const location = useLocation();
-  const { selectedLeagues } = location.state as LocationState;
+  const { selectedLeagues, leaguesStandings } = location.state as LocationState;
   const [futureFixtures, setFutureFixtures] = useState<FixtureDataModel[]>([]);
   const [allFixtures, setAllFixtures] = useState<FixtureDataModel[]>();
   const [currentFixtures, setCurrentFixtures] = useState<FixtureDataModel[]>();
@@ -173,7 +177,7 @@ const FixturesScreen: React.FC = () => {
 
   const predict = () => {
     const predictions = selectedOptions.map((option: betOptionModel) =>
-      option.predict({ currentFixtures, allFixtures })
+      option.predict({ currentFixtures, allFixtures, leaguesStandings })
     );
     setPredictedFixtures(predictions);
   };
@@ -352,7 +356,7 @@ const FixturesScreen: React.FC = () => {
             <div className=" pt-1 truncate text-sm">
               {fixtureData.teams.away.name}
             </div>
-         </div>
+          </div>
         </div>
       </>
     );
@@ -393,9 +397,7 @@ const FixturesScreen: React.FC = () => {
             </div>
             <div className="flex flex-col rounded-lg items-center justify-center">
               {fixtureH2h.map((fixtureData) => {
-                return (
-                  renderPreviousFixtures(fixtureData)
-                );
+                return renderPreviousFixtures(fixtureData);
               })}
             </div>
           </div>
@@ -406,9 +408,7 @@ const FixturesScreen: React.FC = () => {
             </div>
             <div className="flex flex-col rounded-lg items-center justify-center">
               {homeTeamPreviousHomeFixtures.map((fixtureData) => {
-                return (
-                  renderPreviousFixtures(fixtureData)
-                );
+                return renderPreviousFixtures(fixtureData);
               })}
             </div>
           </div>
@@ -419,9 +419,7 @@ const FixturesScreen: React.FC = () => {
             </div>
             <div className="flex flex-col rounded-lg items-center justify-center">
               {awayTeamPreviousAwayFixtures.map((fixtureData) => {
-                return (
-                  renderPreviousFixtures(fixtureData)
-                );
+                return renderPreviousFixtures(fixtureData);
               })}
             </div>
           </div>
@@ -551,7 +549,7 @@ const FixturesScreen: React.FC = () => {
                                           <div className=" text-xs font-semibold truncate  pr-3 text-black w-2/3 ">
                                             {fixtureData.teams.home.name}
                                           </div>
-                                        </div> 
+                                        </div>
                                         <div className=" flex justify-start w-1/2 pl-1 overflow-x-hidden">
                                           <div className=" flex flex-row float-left w-full ">
                                             <img
