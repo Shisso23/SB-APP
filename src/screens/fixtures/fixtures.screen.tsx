@@ -43,7 +43,7 @@ const FixturesScreen: React.FC = () => {
   const [fromDate, setFromDate] = useState(new Date());
   const [loadingLeaguesFixtures, setLoadingLeaguesFixtures] = useState(false);
   const [toDate, setToDate] = useState(
-    new Date(moment().add(1, "days").format("YYYY-MM-DD"))
+    new Date(moment().add(2, "days").format("YYYY-MM-DD"))
   );
   const location = useLocation();
   const { selectedLeagues, leaguesStandings } = location.state as LocationState;
