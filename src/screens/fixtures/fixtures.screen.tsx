@@ -40,7 +40,7 @@ const FixturesScreen: React.FC = () => {
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [windowHeight, setWindowHeight] = useState(window.innerHeight);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [fromDate, setFromDate] = useState(new Date());
+  const [fromDate, setFromDate] = useState( new Date(moment().subtract(2, "days").format("YYYY-MM-DD")));
   const [loadingLeaguesFixtures, setLoadingLeaguesFixtures] = useState(false);
   const [toDate, setToDate] = useState(
     new Date(moment().add(2, "days").format("YYYY-MM-DD"))
@@ -184,7 +184,7 @@ const FixturesScreen: React.FC = () => {
 
   const filterFutureFixtures = (fixtures: FixtureDataModel[]) => {
     return fixtures.filter((fixtureData) => {
-      return toMomentDate(fixtureData.fixture.date).isSameOrAfter(currentDate);
+      return toMomentDate(fixtureData.fixture.date).isSameOrAfter(new Date(moment().subtract(1, 'days').format("YYYY-MM-DD")));
     });
   };
 
