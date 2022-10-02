@@ -49,7 +49,7 @@ export const predictOver1_5 = ({
       homeTeamGoalsPercentage({ homeTeamStanding }) >= 130 &&
       awayTeamGoalsPercentage({ awayTeamStanding }) >= 130 &&
       (againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 120 ||
-      againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 120)
+        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 120)
     );
   });
   return {
@@ -174,7 +174,9 @@ export const predictBothTeamsToScore = ({
       }) &&
       fixtureH2hFixtures.length >= 2 &&
       homeTeamGoalsPercentage({ homeTeamStanding }) >= 120 &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) >= 120
+      awayTeamGoalsPercentage({ awayTeamStanding }) >= 120 &&
+      againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 70 &&
+      againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 70
     );
   });
   return {
@@ -560,6 +562,11 @@ export const predictHomeOver1_5 = ({
       teamTwoId: currentFixture.teams.away.id,
       allFixtures,
     });
+    const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
+      standings: leaguesStandings,
+      awayTeamId: currentFixture.teams.away.id,
+      leagueId: currentFixture.league.id,
+    });
     const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
       standings: leaguesStandings,
       homeTeamId: currentFixture.teams.home.id,
@@ -585,7 +592,8 @@ export const predictHomeOver1_5 = ({
         homeTeamId: currentFixture.teams.home.id,
         minGoals: 1,
       }) &&
-      homeTeamGoalsPercentage({ homeTeamStanding }) >= 140
+      homeTeamGoalsPercentage({ homeTeamStanding }) >= 140 &&
+      againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 70
     );
   });
   return {
@@ -694,7 +702,7 @@ export const predictMultiGoals3_6 = ({
       homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
       awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
       (againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 120 ||
-      againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 120)
+        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 120)
     );
   });
   return {
@@ -747,7 +755,7 @@ export const predictBothHalVOver0_5 = ({
       homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
       awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
       (againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 120 ||
-      againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 120)
+        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 120)
     );
   });
   return {
@@ -950,6 +958,11 @@ export const predictAwayOver1_5 = ({
       awayTeamId: currentFixture.teams.away.id,
       leagueId: currentFixture.league.id,
     });
+    const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
+      standings: leaguesStandings,
+      homeTeamId: currentFixture.teams.home.id,
+      leagueId: currentFixture.league.id,
+    });
     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
       teamId: currentFixture.teams.home.id,
       allFixtures,
@@ -983,7 +996,8 @@ export const predictAwayOver1_5 = ({
         awayTeamId: currentFixture.teams.away.id,
         minGoals: 1,
       }) &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) >= 140
+      awayTeamGoalsPercentage({ awayTeamStanding }) >= 140 &&
+      againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 70
     );
   });
   return {
@@ -1009,6 +1023,11 @@ export const predictHomeOver0_5 = ({
     const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
       teamId: currentFixture.teams.away.id,
       allFixtures,
+    });
+    const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
+      standings: leaguesStandings,
+      awayTeamId: currentFixture.teams.away.id,
+      leagueId: currentFixture.league.id,
     });
     const fixtureH2hFixtures = getH2HFixtures({
       teamOneId: currentFixture.teams.home.id,
@@ -1041,7 +1060,8 @@ export const predictHomeOver0_5 = ({
         homeTeamId: currentFixture.teams.home.id,
         minGoals: 1,
       }) &&
-      homeTeamGoalsPercentage({ homeTeamStanding }) >= 120
+      homeTeamGoalsPercentage({ homeTeamStanding }) >= 120 &&
+      againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 70
     );
   });
   return {
@@ -1073,6 +1093,11 @@ export const predictAwayOver0_5 = ({
       teamTwoId: currentFixture.teams.away.id,
       allFixtures,
     });
+    const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
+      standings: leaguesStandings,
+      homeTeamId: currentFixture.teams.home.id,
+      leagueId: currentFixture.league.id,
+    });
     const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
       standings: leaguesStandings,
       awayTeamId: currentFixture.teams.away.id,
@@ -1098,7 +1123,8 @@ export const predictAwayOver0_5 = ({
         awayTeamId: currentFixture.teams.away.id,
         minGoals: 1,
       }) &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) >= 120
+      awayTeamGoalsPercentage({ awayTeamStanding }) >= 120 &&
+      againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 70
     );
   });
   return {
