@@ -77,7 +77,7 @@ export const betOptions: betOptionModel[] = [
     id: 5,
     level: 1,
     shortName: "H.W.E.H",
-    description: "",
+    description: "Home team wins either half",
     predict: (params: {
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];
@@ -130,7 +130,7 @@ export const betOptions: betOptionModel[] = [
     id: 14,
     level: 2,
     shortName: "A.W.E.H",
-    description: "",
+    description: "Away team wins either half",
     predict: (params: {
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];
