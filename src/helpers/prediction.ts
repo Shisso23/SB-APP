@@ -375,14 +375,30 @@ export const predictHomeOrDraw = ({
       lastFiveAwayTeamAwayFixtures.length >= 3
     ) {
       return (
-        lastFiveHomeTeamHomeFixtures.every(
+        (lastFiveHomeTeamHomeFixtures.every(
           (fixtureData) => fixtureData.teams.home.winner !== false
         ) &&
-        againstHomeTeamGoalsPercentage({ homeTeamStanding }) <= 140 &&
-        awayTeamFailWinningInMostAwayFixtures({
-          awayFixtures: lastFiveAwayTeamAwayFixtures,
+          againstHomeTeamGoalsPercentage({ homeTeamStanding }) <= 140 &&
+          awayTeamFailWinningInMostAwayFixtures({
+            awayFixtures: lastFiveAwayTeamAwayFixtures,
+          }) &&
+          awayTeamGoalsPercentage({ awayTeamStanding }) <= 80) ||
+        (homeTeamWinsMostMatches({
+          fixtures: lastFiveHomeTeamHomeFixtures,
+          homeTeamId: currentFixture.teams.home.id,
         }) &&
-        awayTeamGoalsPercentage({ awayTeamStanding }) <= 80
+          otherHomeTeamGoalsInAwayFixtures({
+            awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
+            goals: 1,
+          }) &&
+          awayTeamFailWinningInMostAwayFixtures({
+            awayFixtures: lastFiveAwayTeamAwayFixtures,
+          }) &&
+          homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
+          againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 140) ||
+        (homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
+          awayTeamGoalsPercentage({ awayTeamStanding }) <= 80 &&
+          againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 140)
       );
     }
     return false;
@@ -484,14 +500,30 @@ export const predictAwayOrDraw = ({
       lastFiveAwayTeamAwayFixtures.length >= 3
     ) {
       return (
-        lastFiveAwayTeamAwayFixtures.every(
+        (lastFiveAwayTeamAwayFixtures.every(
           (fixtureData) => fixtureData.teams.away.winner !== false
         ) &&
-        againstAwayTeamGoalsPercentage({ awayTeamStanding }) <= 140 &&
-        homeTeamFailWinningInMostHomeFixtures({
-          homefixtures: lastFiveHomeTeamHomeFixtures,
+          againstAwayTeamGoalsPercentage({ awayTeamStanding }) <= 140 &&
+          homeTeamFailWinningInMostHomeFixtures({
+            homefixtures: lastFiveHomeTeamHomeFixtures,
+          }) &&
+          homeTeamGoalsPercentage({ homeTeamStanding }) <= 80) ||
+        (awayTeamWinsMostMatchesTimes({
+          fixtures: lastFiveAwayTeamAwayFixtures,
+          awayTeamId: currentFixture.teams.away.id,
         }) &&
-        homeTeamGoalsPercentage({ homeTeamStanding }) <= 80
+          otherAwayTeamGoalsInHomeFixtures({
+            homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
+            goals: 1,
+          }) &&
+          homeTeamFailWinningInMostHomeFixtures({
+            homefixtures: lastFiveHomeTeamHomeFixtures,
+          }) &&
+          awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
+          againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 140) ||
+        (awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
+          homeTeamGoalsPercentage({ homeTeamStanding }) <= 80 &&
+          againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 140)
       );
     }
     return false;
