@@ -1905,7 +1905,7 @@ const otherHomeTeamMinMaxGoalsInAwayFixtures = ({
       conditionPassedCount += 1;
     }
   });
-  if (conditionPassedCount / awayTeamFixtures.length > 0.65) {
+  if (conditionPassedCount / awayTeamFixtures.length > 0.6) {
     return true;
   } else {
     return false;
@@ -1930,7 +1930,7 @@ const otherAwayTeamMinMaxGoalsInHomeFixtures = ({
       conditionPassedCount += 1;
     }
   });
-  if (conditionPassedCount / homeTeamFixtures.length > 0.65) {
+  if (conditionPassedCount / homeTeamFixtures.length > 0.6) {
     return true;
   } else {
     return false;
