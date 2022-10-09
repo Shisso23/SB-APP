@@ -1768,7 +1768,7 @@ export const HomeTeamScroreInMostHomeFixtures = ({
       conditionPassedCount += 1;
     }
   });
-  if (conditionPassedCount / homefixtures.length >= 1) {
+  if (conditionPassedCount / homefixtures.length >= 0.8) {
     return true;
   } else {
     return false;
@@ -1788,7 +1788,7 @@ export const awayTeamScroreInMostAwayFixtures = ({
       conditionPassedCount += 1;
     }
   });
-  if (conditionPassedCount / awayfixtures.length >= 1) {
+  if (conditionPassedCount / awayfixtures.length >= 0.8) {
     return true;
   } else {
     return false;
