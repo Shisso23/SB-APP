@@ -1279,6 +1279,7 @@ export const predictMultiGoals1_2Home = ({
         homefixtures: lastFiveHomeTeamHomeFixtures,
         minGoals: 1,
       }) &&
+      homeTeamMaxGoals({homeTeamFixtures: lastFiveHomeTeamHomeFixtures, maxGoals: 2}) &&
       otherHomeTeamGoalsInAwayFixtures({
         awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
         goals: 1,
@@ -1410,6 +1411,7 @@ export const predictMultiGoals2_3Home = ({
         homefixtures: lastFiveHomeTeamHomeFixtures,
         minGoals: 2,
       }) &&
+      homeTeamMaxGoals({homeTeamFixtures: lastFiveHomeTeamHomeFixtures, maxGoals: 3}) &&
       otherHomeTeamGoalsInAwayFixtures({
         awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
         goals: 2,
@@ -1475,6 +1477,7 @@ export const predictMultiGoals1_2Away = ({
         awayfixtures: lastFiveAwayTeamAwayFixtures,
         minGoals: 1,
       }) &&
+      awayTeamMaxGoals({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, maxGoals: 2}) &&
       otherAwayTeamGoalsInHomeFixtures({
         homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
         goals: 1,
@@ -1540,6 +1543,7 @@ export const predictMultiGoals2_3Away = ({
         awayfixtures: lastFiveAwayTeamAwayFixtures,
         minGoals: 2,
       }) &&
+      awayTeamMaxGoals({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, maxGoals: 3}) &&
       otherAwayTeamGoalsInHomeFixtures({
         homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
         goals: 1,
@@ -1805,31 +1809,44 @@ export const awayTeamFailWinningInMostAwayFixtures = ({
   }
 };
 
-export const awayeamWinInSomeH2HFixtures = ({
-  h2hFixtures,
-  awayTeamId,
+const homeTeamMaxGoals = ({
+  homeTeamFixtures,
+  maxGoals,
 }: {
-  h2hFixtures: FixtureDataModel[];
-  awayTeamId: number;
+  homeTeamFixtures: FixtureDataModel[];
+  maxGoals: number;
 }) => {
-  let conditionPassedCount = 0;
-  h2hFixtures.forEach((fixtureData) => {
-    if (
-      (fixtureData.goals.home > fixtureData.goals.away &&
-        fixtureData.teams.home.id === awayTeamId) ||
-      (fixtureData.goals.away > fixtureData.goals.home &&
-        fixtureData.teams.away.id === awayTeamId)
-    ) {
-      conditionPassedCount += 1;
+  let count = 0;
+  homeTeamFixtures.forEach((fixture) => {
+    if (fixture.goals.home <= maxGoals) {
+      count += 1;
     }
   });
-  if (conditionPassedCount / h2hFixtures.length >= 0.5) {
+  if (count / homeTeamFixtures.length >= 0.6) {
     return true;
-  } else {
-    return false;
   }
+  return false;
 };
 
+const awayTeamMaxGoals = ({
+  awayTeamFixtures,
+  maxGoals,
+}: {
+  awayTeamFixtures: FixtureDataModel[];
+  maxGoals: number;
+}) => {
+  let count = 0;
+  awayTeamFixtures.forEach((fixture) => {
+    if (fixture.goals.away <= maxGoals) {
+      count += 1;
+    }
+  });
+  if (count / awayTeamFixtures.length >= 0.6) {
+    return true;
+  }
+  return false;
+};
+ 
 const otherHomeTeamGoalsInAwayFixtures = ({
   awayTeamFixtures,
   goals,
