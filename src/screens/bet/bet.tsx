@@ -197,7 +197,7 @@ const BetScreen: React.FC = () => {
           )}
           <div className=" flex flex-row  w-full justify-center">
             <div className=" flex font-bold self-center text-lg py-2 bg-white h-14 w-64 mb-5 items-center justify-center text-center">
-              Select leagues for which to predict
+              Select leagues
             </div>
           </div>
 
@@ -209,26 +209,26 @@ const BetScreen: React.FC = () => {
               return (
                 <div
                   key={`${leagueData.league.id}`}
-                  className=" flex flex-row justify-between py-6 my-2 px-3 w-4/6 rounded-md bg-blue-300 hover:bg-blue-200"
+                  className=" flex flex-row justify-between py-3 my-2 px-3 w-4/6 items-center rounded-md bg-blue-300 hover:bg-blue-200"
                 >
                   <CheckBoxIcon
                     ref={checkBoxRef}
                     onChange={(e) => handleLeagueSelect(e, leagueData.league)}
                     size="medium"
                   />
-                  <div className=" flex text-lg font-semibold items-center justify-center text-black ml-20">
+                  <div className=" flex text-xs font-semibold items-center justify-center text-black ml-20">
                     {leagueData.league.name}
                   </div>
                   <div className=" flex flex-row">
-                    <div className=" px-2 text-lg text-black">
+                    <div className=" px-2  text-xs text-black">
                       {leagueData.country.name}
                     </div>
                     <div>
                       <img
                         src={`${leagueData.country.flag}`}
                         alt="country fla"
-                        width={40}
-                        height={40}
+                        width={17}
+                        height={17}
                       />
                     </div>
                   </div>

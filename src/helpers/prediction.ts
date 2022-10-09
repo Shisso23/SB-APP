@@ -10,101 +10,101 @@ import {
   StandingsDataLeagueModel,
 } from "../models/standings-models/index";
 
-export const predictOver1_5 = ({
-  currentFixtures,
-  allFixtures,
-  leaguesStandings,
-}: {
-  currentFixtures: FixtureDataModel[];
-  allFixtures: FixtureDataModel[];
-  leaguesStandings: StandingsModel[];
-}) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
-    const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
-      teamId: currentFixture.teams.home.id,
-      allFixtures,
-    });
-    const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
-      teamId: currentFixture.teams.away.id,
-      allFixtures,
-    });
-    const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
-      standings: leaguesStandings,
-      homeTeamId: currentFixture.teams.home.id,
-      leagueId: currentFixture.league.id,
-    });
-    const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
-      standings: leaguesStandings,
-      awayTeamId: currentFixture.teams.away.id,
-      leagueId: currentFixture.league.id,
-    });
+// export const predictOver1_5 = ({
+//   currentFixtures,
+//   allFixtures,
+//   leaguesStandings,
+// }: {
+//   currentFixtures: FixtureDataModel[];
+//   allFixtures: FixtureDataModel[];
+//   leaguesStandings: StandingsModel[];
+// }) => {
+//   const predictedFixtures = currentFixtures.filter((currentFixture) => {
+//     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
+//       teamId: currentFixture.teams.home.id,
+//       allFixtures,
+//     });
+//     const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
+//       teamId: currentFixture.teams.away.id,
+//       allFixtures,
+//     });
+//     const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
+//       standings: leaguesStandings,
+//       homeTeamId: currentFixture.teams.home.id,
+//       leagueId: currentFixture.league.id,
+//     });
+//     const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
+//       standings: leaguesStandings,
+//       awayTeamId: currentFixture.teams.away.id,
+//       leagueId: currentFixture.league.id,
+//     });
 
-    if (
-      lastFiveHomeTeamHomeFixtures.length < 3 ||
-      lastFiveAwayTeamAwayFixtures.length < 3
-    ) {
-      return false;
-    }
-    return (
-      homeTeamGoalsPercentage({ homeTeamStanding }) >= 130 &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) >= 130 &&
-      (againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 120 ||
-        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 120)
-    );
-  });
-  return {
-    fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 3),
-  };
-};
+//     if (
+//       lastFiveHomeTeamHomeFixtures.length < 3 ||
+//       lastFiveAwayTeamAwayFixtures.length < 3
+//     ) {
+//       return false;
+//     }
+//     return (
+//       homeTeamGoalsPercentage({ homeTeamStanding }) >= 130 &&
+//       awayTeamGoalsPercentage({ awayTeamStanding }) >= 130 &&
+//       (againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 120 ||
+//         againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 120)
+//     );
+//   });
+//   return {
+//     fixtures: predictedFixtures,
+//     option: betOptions.find((option) => option.id === 3),
+//   };
+// };
 
-export const predictOver2_5 = ({
-  currentFixtures,
-  allFixtures,
-  leaguesStandings,
-}: {
-  currentFixtures: FixtureDataModel[];
-  allFixtures: FixtureDataModel[];
-  leaguesStandings: StandingsModel[];
-}) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
-    const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
-      teamId: currentFixture.teams.home.id,
-      allFixtures,
-    });
-    const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
-      teamId: currentFixture.teams.away.id,
-      allFixtures,
-    });
-    const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
-      standings: leaguesStandings,
-      homeTeamId: currentFixture.teams.home.id,
-      leagueId: currentFixture.league.id,
-    });
-    const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
-      standings: leaguesStandings,
-      awayTeamId: currentFixture.teams.away.id,
-      leagueId: currentFixture.league.id,
-    });
+// export const predictOver2_5 = ({
+//   currentFixtures,
+//   allFixtures,
+//   leaguesStandings,
+// }: {
+//   currentFixtures: FixtureDataModel[];
+//   allFixtures: FixtureDataModel[];
+//   leaguesStandings: StandingsModel[];
+// }) => {
+//   const predictedFixtures = currentFixtures.filter((currentFixture) => {
+//     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
+//       teamId: currentFixture.teams.home.id,
+//       allFixtures,
+//     });
+//     const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
+//       teamId: currentFixture.teams.away.id,
+//       allFixtures,
+//     });
+//     const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
+//       standings: leaguesStandings,
+//       homeTeamId: currentFixture.teams.home.id,
+//       leagueId: currentFixture.league.id,
+//     });
+//     const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
+//       standings: leaguesStandings,
+//       awayTeamId: currentFixture.teams.away.id,
+//       leagueId: currentFixture.league.id,
+//     });
 
-    if (
-      lastFiveHomeTeamHomeFixtures.length < 3 ||
-      lastFiveAwayTeamAwayFixtures.length < 3
-    ) {
-      return false;
-    }
-    return (
-      homeTeamGoalsPercentage({ homeTeamStanding }) >= 160 &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) >= 160 &&
-      (againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 120 ||
-        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 120)
-    );
-  });
-  return {
-    fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 4),
-  };
-};
+//     if (
+//       lastFiveHomeTeamHomeFixtures.length < 3 ||
+//       lastFiveAwayTeamAwayFixtures.length < 3
+//     ) {
+//       return false;
+//     }
+//     return (
+//       homeTeamGoalsPercentage({ homeTeamStanding }) >= 160 &&
+//       awayTeamGoalsPercentage({ awayTeamStanding }) >= 160 &&
+//       (againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 120 ||
+//         againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 120)
+//     );
+//   });
+//   return {
+//     fixtures: predictedFixtures,
+//     option: betOptions.find((option) => option.id === 4),
+//   };
+// };
 
 export const predictBothTeamsToScore = ({
   currentFixtures,
@@ -122,11 +122,6 @@ export const predictBothTeamsToScore = ({
     });
     const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
       teamId: currentFixture.teams.away.id,
-      allFixtures,
-    });
-    const fixtureH2hFixtures = getH2HFixtures({
-      teamOneId: currentFixture.teams.home.id,
-      teamTwoId: currentFixture.teams.away.id,
       allFixtures,
     });
     const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
@@ -162,21 +157,10 @@ export const predictBothTeamsToScore = ({
         awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
         goals: 1,
       }) &&
-      homeTeamScroreInMostH2HFixtures({
-        h2hFixtures: fixtureH2hFixtures,
-        homeTeamId: currentFixture.teams.home.id,
-        minGoals: 1,
-      }) &&
-      awayTeamScroreInMostH2HFixtures({
-        h2hFixtures: fixtureH2hFixtures,
-        awayTeamId: currentFixture.teams.away.id,
-        minGoals: 1,
-      }) &&
-      fixtureH2hFixtures.length >= 2 &&
-      homeTeamGoalsPercentage({ homeTeamStanding }) >= 120 &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) >= 120 &&
-      againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 70 &&
-      againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 70
+      homeTeamGoalsPercentage({ homeTeamStanding }) >= 140 &&
+      awayTeamGoalsPercentage({ awayTeamStanding }) >= 140 &&
+      againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 120 &&
+      againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 120
     );
   });
   return {
@@ -203,11 +187,6 @@ export const predictHomeWinsEitherHalf = ({
       teamId: currentFixture.teams.away.id,
       allFixtures,
     });
-    const fixtureH2hFixtures = getH2HFixtures({
-      teamOneId: currentFixture.teams.home.id,
-      teamTwoId: currentFixture.teams.away.id,
-      allFixtures,
-    });
 
     const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
       standings: leaguesStandings,
@@ -220,26 +199,27 @@ export const predictHomeWinsEitherHalf = ({
       awayTeamId: currentFixture.teams.away.id,
       leagueId: currentFixture.league.id,
     });
-    if (
-      lastFiveAwayTeamAwayFixtures.length < 3 ||
-      lastFiveHomeTeamHomeFixtures.length < 3
-    ) {
-      return false;
+    if (lastFiveHomeTeamHomeFixtures.length >= 3) {
+      return (
+        (homeTeamWinsMostMatches({
+          fixtures: lastFiveHomeTeamHomeFixtures,
+          homeTeamId: currentFixture.teams.home.id,
+        }) &&
+          otherHomeTeamGoalsInAwayFixtures({
+            awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
+            goals: 1,
+          }) &&
+          awayTeamFailWinningInMostAwayFixtures({
+            awayFixtures: lastFiveAwayTeamAwayFixtures,
+          }) &&
+          homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
+          againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 140) ||
+        (homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
+          awayTeamGoalsPercentage({ awayTeamStanding }) <= 80 &&
+          againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 140)
+      );
     }
-    return (
-      (lastFiveHomeTeamHomeFixtures.every(
-        (fixtureData) => fixtureData.goals.home <= 1
-      ) &&
-        lastFiveAwayTeamAwayFixtures.every(
-          (fixtureData) => fixtureData.goals.away <= 1
-        ) &&
-        fixtureH2hFixtures.every((fixtureData) => {
-          return fixtureData.goals.home + fixtureData.goals.away < 3;
-        })) ||
-      (homeTeamGoalsPercentage({ homeTeamStanding }) >= 140 &&
-        awayTeamGoalsPercentage({ awayTeamStanding }) <= 100 &&
-        againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 150)
-    );
+    return false;
   });
 
   return {
@@ -266,11 +246,6 @@ export const predictAwayWinsEitherHalf = ({
       teamId: currentFixture.teams.away.id,
       allFixtures,
     });
-    const fixtureH2hFixtures = getH2HFixtures({
-      teamOneId: currentFixture.teams.home.id,
-      teamTwoId: currentFixture.teams.away.id,
-      allFixtures,
-    });
     const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
       standings: leaguesStandings,
       homeTeamId: currentFixture.teams.home.id,
@@ -282,27 +257,29 @@ export const predictAwayWinsEitherHalf = ({
       awayTeamId: currentFixture.teams.away.id,
       leagueId: currentFixture.league.id,
     });
-    if (
-      lastFiveAwayTeamAwayFixtures.length < 3 ||
-      lastFiveHomeTeamHomeFixtures.length < 3
-    ) {
-      return false;
+    if (lastFiveHomeTeamHomeFixtures.length >= 3) {
+      return (
+        (awayTeamWinsMostMatchesTimes({
+          fixtures: lastFiveAwayTeamAwayFixtures,
+          awayTeamId: currentFixture.teams.away.id,
+        }) &&
+          otherAwayTeamGoalsInHomeFixtures({
+            homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
+            goals: 1,
+          }) &&
+          homeTeamFailWinningInMostHomeFixtures({
+            homefixtures: lastFiveHomeTeamHomeFixtures,
+          }) &&
+          awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
+          againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 140) ||
+        (awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
+          homeTeamGoalsPercentage({ homeTeamStanding }) <= 80 &&
+          againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 140)
+      );
     }
-    return (
-      (lastFiveHomeTeamHomeFixtures.every(
-        (fixtureData) => fixtureData.goals.home <= 1
-      ) &&
-        lastFiveAwayTeamAwayFixtures.every(
-          (fixtureData) => fixtureData.goals.away <= 1
-        ) &&
-        fixtureH2hFixtures.every((fixtureData) => {
-          return fixtureData.goals.home + fixtureData.goals.away < 3;
-        })) ||
-      (awayTeamGoalsPercentage({ awayTeamStanding }) >= 140 &&
-        homeTeamGoalsPercentage({ homeTeamStanding }) <= 100 &&
-        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 150)
-    );
+    return false;
   });
+
   return {
     fixtures: predictedFixtures,
     option: betOptions.find((option) => option.id === 14),
@@ -327,22 +304,19 @@ export const predictHomeWin = ({
       teamId: currentFixture.teams.away.id,
       allFixtures,
     });
-    const fixtureH2hFixtures = getH2HFixtures({
-      teamOneId: currentFixture.teams.home.id,
-      teamTwoId: currentFixture.teams.away.id,
-      allFixtures,
-    });
     const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
       standings: leaguesStandings,
       homeTeamId: currentFixture.teams.home.id,
       leagueId: currentFixture.league.id,
     });
-    if (
-      lastFiveHomeTeamHomeFixtures.length >= 3 &&
-      fixtureH2hFixtures.length >= 2
-    ) {
+    const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
+      standings: leaguesStandings,
+      awayTeamId: currentFixture.teams.away.id,
+      leagueId: currentFixture.league.id,
+    });
+    if (lastFiveHomeTeamHomeFixtures.length >= 3) {
       return (
-        ((homeTeamWinsMostMatches({
+        (homeTeamWinsMostMatches({
           fixtures: lastFiveHomeTeamHomeFixtures,
           homeTeamId: currentFixture.teams.home.id,
         }) &&
@@ -353,22 +327,11 @@ export const predictHomeWin = ({
           awayTeamFailWinningInMostAwayFixtures({
             awayFixtures: lastFiveAwayTeamAwayFixtures,
           }) &&
-          homeTeamWinInSomeH2HFixtures({
-            h2hFixtures: fixtureH2hFixtures,
-            homeTeamId: currentFixture.teams.home.id,
-          })) ||
-          (awayTeamFailScroringInMostAwayFixtures({
-            awayfixtures: lastFiveAwayTeamAwayFixtures,
-          }) &&
-            HomeTeamScroreInMostHomeFixtures({
-              homefixtures: lastFiveHomeTeamHomeFixtures,
-              minGoals: 1,
-            }) &&
-            homeTeamWinInSomeH2HFixtures({
-              h2hFixtures: fixtureH2hFixtures,
-              homeTeamId: currentFixture.teams.home.id,
-            }))) &&
-        homeTeamGoalsPercentage({ homeTeamStanding }) >= 120
+          homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
+          againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 140) ||
+        (homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
+          awayTeamGoalsPercentage({ awayTeamStanding }) <= 80 &&
+          againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 140)
       );
     }
     return false;
@@ -397,10 +360,15 @@ export const predictHomeOrDraw = ({
       teamId: currentFixture.teams.away.id,
       allFixtures,
     });
-    const fixtureH2hFixtures = getH2HFixtures({
-      teamOneId: currentFixture.teams.home.id,
-      teamTwoId: currentFixture.teams.away.id,
-      allFixtures,
+    const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
+      standings: leaguesStandings,
+      awayTeamId: currentFixture.teams.away.id,
+      leagueId: currentFixture.league.id,
+    });
+    const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
+      standings: leaguesStandings,
+      homeTeamId: currentFixture.teams.home.id,
+      leagueId: currentFixture.league.id,
     });
     if (
       lastFiveHomeTeamHomeFixtures.length >= 3 &&
@@ -410,9 +378,11 @@ export const predictHomeOrDraw = ({
         lastFiveHomeTeamHomeFixtures.every(
           (fixtureData) => fixtureData.teams.home.winner !== false
         ) &&
+        againstHomeTeamGoalsPercentage({ homeTeamStanding }) <= 140 &&
         awayTeamFailWinningInMostAwayFixtures({
           awayFixtures: lastFiveAwayTeamAwayFixtures,
-        })
+        }) &&
+        awayTeamGoalsPercentage({ awayTeamStanding }) <= 80
       );
     }
     return false;
@@ -441,26 +411,23 @@ export const predictAwayWin = ({
       teamId: currentFixture.teams.away.id,
       allFixtures,
     });
-    const fixtureH2hFixtures = getH2HFixtures({
-      teamOneId: currentFixture.teams.home.id,
-      teamTwoId: currentFixture.teams.away.id,
-      allFixtures,
-    });
     const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
       standings: leaguesStandings,
       awayTeamId: currentFixture.teams.away.id,
       leagueId: currentFixture.league.id,
     });
+    const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
+      standings: leaguesStandings,
+      homeTeamId: currentFixture.teams.home.id,
+      leagueId: currentFixture.league.id,
+    });
 
-    if (
-      lastFiveAwayTeamAwayFixtures.length < 3 ||
-      fixtureH2hFixtures.length < 2
-    ) {
+    if (lastFiveAwayTeamAwayFixtures.length < 3) {
       return false;
     }
     //TODO filter the fixtures that passes the H wins either half test here and return it
     return (
-      ((awayTeamWinsMostMatchesTimes({
+      (awayTeamWinsMostMatchesTimes({
         fixtures: lastFiveAwayTeamAwayFixtures,
         awayTeamId: currentFixture.teams.away.id,
       }) &&
@@ -471,22 +438,11 @@ export const predictAwayWin = ({
         homeTeamFailWinningInMostHomeFixtures({
           homefixtures: lastFiveHomeTeamHomeFixtures,
         }) &&
-        awayeamWinInSomeH2HFixtures({
-          h2hFixtures: fixtureH2hFixtures,
-          awayTeamId: currentFixture.teams.away.id,
-        })) ||
-        (homeTeamFailScroringInMostHomeFixtures({
-          homefixtures: lastFiveHomeTeamHomeFixtures,
-        }) &&
-          awayTeamScroreInMostAwayFixtures({
-            awayfixtures: lastFiveAwayTeamAwayFixtures,
-            minGoals: 1,
-          }) &&
-          awayeamWinInSomeH2HFixtures({
-            h2hFixtures: fixtureH2hFixtures,
-            awayTeamId: currentFixture.teams.away.id,
-          }))) &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) >= 120
+        awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
+        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 140) ||
+      (awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
+        homeTeamGoalsPercentage({ homeTeamStanding }) <= 80 &&
+        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 140)
     );
   });
   return {
@@ -513,10 +469,15 @@ export const predictAwayOrDraw = ({
       teamId: currentFixture.teams.away.id,
       allFixtures,
     });
-    const fixtureH2hFixtures = getH2HFixtures({
-      teamOneId: currentFixture.teams.home.id,
-      teamTwoId: currentFixture.teams.away.id,
-      allFixtures,
+    const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
+      standings: leaguesStandings,
+      homeTeamId: currentFixture.teams.home.id,
+      leagueId: currentFixture.league.id,
+    });
+    const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
+      standings: leaguesStandings,
+      awayTeamId: currentFixture.teams.away.id,
+      leagueId: currentFixture.league.id,
     });
     if (
       lastFiveHomeTeamHomeFixtures.length >= 3 &&
@@ -526,9 +487,11 @@ export const predictAwayOrDraw = ({
         lastFiveAwayTeamAwayFixtures.every(
           (fixtureData) => fixtureData.teams.away.winner !== false
         ) &&
+        againstAwayTeamGoalsPercentage({ awayTeamStanding }) <= 140 &&
         homeTeamFailWinningInMostHomeFixtures({
           homefixtures: lastFiveHomeTeamHomeFixtures,
-        })
+        }) &&
+        homeTeamGoalsPercentage({ homeTeamStanding }) <= 80
       );
     }
     return false;
@@ -557,11 +520,6 @@ export const predictHomeOver1_5 = ({
       teamId: currentFixture.teams.away.id,
       allFixtures,
     });
-    const fixtureH2hFixtures = getH2HFixtures({
-      teamOneId: currentFixture.teams.home.id,
-      teamTwoId: currentFixture.teams.away.id,
-      allFixtures,
-    });
     const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
       standings: leaguesStandings,
       awayTeamId: currentFixture.teams.away.id,
@@ -572,10 +530,7 @@ export const predictHomeOver1_5 = ({
       homeTeamId: currentFixture.teams.home.id,
       leagueId: currentFixture.league.id,
     });
-    if (
-      lastFiveHomeTeamHomeFixtures.length < 3 ||
-      fixtureH2hFixtures.length < 2
-    ) {
+    if (lastFiveHomeTeamHomeFixtures.length < 3) {
       return false;
     }
     return (
@@ -587,13 +542,8 @@ export const predictHomeOver1_5 = ({
         awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
         goals: 1,
       }) &&
-      homeTeamScroreInMostH2HFixtures({
-        h2hFixtures: fixtureH2hFixtures,
-        homeTeamId: currentFixture.teams.home.id,
-        minGoals: 1,
-      }) &&
-      homeTeamGoalsPercentage({ homeTeamStanding }) >= 140 &&
-      againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 70
+      homeTeamGoalsPercentage({ homeTeamStanding }) >= 170 &&
+      againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 160
     );
   });
   return {
@@ -601,234 +551,234 @@ export const predictHomeOver1_5 = ({
     option: betOptions.find((option) => option.id === 2),
   }; //TODO can look into making that betoption id a enum
 };
-export const predictMultiGoals2_5 = ({
-  currentFixtures,
-  allFixtures,
-  leaguesStandings,
-}: {
-  currentFixtures: FixtureDataModel[];
-  allFixtures: FixtureDataModel[];
-  leaguesStandings: StandingsModel[];
-}) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
-    const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
-      teamId: currentFixture.teams.home.id,
-      allFixtures,
-    });
-    const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
-      teamId: currentFixture.teams.away.id,
-      allFixtures,
-    });
-    const fixtureH2hFixtures = getH2HFixtures({
-      teamOneId: currentFixture.teams.home.id,
-      teamTwoId: currentFixture.teams.away.id,
-      allFixtures,
-    });
-    const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
-      standings: leaguesStandings,
-      homeTeamId: currentFixture.teams.home.id,
-      leagueId: currentFixture.league.id,
-    });
-    const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
-      standings: leaguesStandings,
-      awayTeamId: currentFixture.teams.away.id,
-      leagueId: currentFixture.league.id,
-    });
-    if (
-      lastFiveHomeTeamHomeFixtures.length < 3 ||
-      lastFiveAwayTeamAwayFixtures.length < 3 ||
-      fixtureH2hFixtures.length < 3
-    ) {
-      return false;
-    }
-    return (
-      fixtureH2hFixtures.every(
-        (fixtureData) =>
-          fixtureData.goals.home + fixtureData.goals.away >= 2 &&
-          fixtureData.goals.home + fixtureData.goals.away <= 5
-      ) &&
-      fixtureH2hFixtures.length >= 2 &&
-      homeTeamGoalsPercentage({ homeTeamStanding }) >= 120 &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) >= 120
-    );
-  });
-  return {
-    fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 6),
-  }; // can look into making that betoption a enum
-};
+// export const predictMultiGoals2_5 = ({
+//   currentFixtures,
+//   allFixtures,
+//   leaguesStandings,
+// }: {
+//   currentFixtures: FixtureDataModel[];
+//   allFixtures: FixtureDataModel[];
+//   leaguesStandings: StandingsModel[];
+// }) => {
+//   const predictedFixtures = currentFixtures.filter((currentFixture) => {
+//     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
+//       teamId: currentFixture.teams.home.id,
+//       allFixtures,
+//     });
+//     const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
+//       teamId: currentFixture.teams.away.id,
+//       allFixtures,
+//     });
+//     const fixtureH2hFixtures = getH2HFixtures({
+//       teamOneId: currentFixture.teams.home.id,
+//       teamTwoId: currentFixture.teams.away.id,
+//       allFixtures,
+//     });
+//     const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
+//       standings: leaguesStandings,
+//       homeTeamId: currentFixture.teams.home.id,
+//       leagueId: currentFixture.league.id,
+//     });
+//     const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
+//       standings: leaguesStandings,
+//       awayTeamId: currentFixture.teams.away.id,
+//       leagueId: currentFixture.league.id,
+//     });
+//     if (
+//       lastFiveHomeTeamHomeFixtures.length < 3 ||
+//       lastFiveAwayTeamAwayFixtures.length < 3 ||
+//       fixtureH2hFixtures.length < 3
+//     ) {
+//       return false;
+//     }
+//     return (
+//       fixtureH2hFixtures.every(
+//         (fixtureData) =>
+//           fixtureData.goals.home + fixtureData.goals.away >= 2 &&
+//           fixtureData.goals.home + fixtureData.goals.away <= 5
+//       ) &&
+//       fixtureH2hFixtures.length >= 2 &&
+//       homeTeamGoalsPercentage({ homeTeamStanding }) >= 120 &&
+//       awayTeamGoalsPercentage({ awayTeamStanding }) >= 120
+//     );
+//   });
+//   return {
+//     fixtures: predictedFixtures,
+//     option: betOptions.find((option) => option.id === 6),
+//   }; // can look into making that betoption a enum
+// };
 
-export const predictMultiGoals3_6 = ({
-  currentFixtures,
-  allFixtures,
-  leaguesStandings,
-}: {
-  currentFixtures: FixtureDataModel[];
-  allFixtures: FixtureDataModel[];
-  leaguesStandings: StandingsModel[];
-}) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
-    const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
-      teamId: currentFixture.teams.home.id,
-      allFixtures,
-    });
-    const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
-      teamId: currentFixture.teams.away.id,
-      allFixtures,
-    });
-    const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
-      standings: leaguesStandings,
-      homeTeamId: currentFixture.teams.home.id,
-      leagueId: currentFixture.league.id,
-    });
-    const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
-      standings: leaguesStandings,
-      awayTeamId: currentFixture.teams.away.id,
-      leagueId: currentFixture.league.id,
-    });
-    const fixtureH2hFixtures = getH2HFixtures({
-      teamOneId: currentFixture.teams.home.id,
-      teamTwoId: currentFixture.teams.away.id,
-      allFixtures,
-    });
-    if (
-      lastFiveHomeTeamHomeFixtures.length < 3 ||
-      lastFiveAwayTeamAwayFixtures.length < 3 ||
-      fixtureH2hFixtures.length < 3
-    ) {
-      return false;
-    }
-    return (
-      homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
-      (againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 120 ||
-        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 120)
-    );
-  });
-  return {
-    fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 7),
-  }; // can look into making that betoption a enum
-};
+// export const predictMultiGoals3_6 = ({
+//   currentFixtures,
+//   allFixtures,
+//   leaguesStandings,
+// }: {
+//   currentFixtures: FixtureDataModel[];
+//   allFixtures: FixtureDataModel[];
+//   leaguesStandings: StandingsModel[];
+// }) => {
+//   const predictedFixtures = currentFixtures.filter((currentFixture) => {
+//     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
+//       teamId: currentFixture.teams.home.id,
+//       allFixtures,
+//     });
+//     const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
+//       teamId: currentFixture.teams.away.id,
+//       allFixtures,
+//     });
+//     const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
+//       standings: leaguesStandings,
+//       homeTeamId: currentFixture.teams.home.id,
+//       leagueId: currentFixture.league.id,
+//     });
+//     const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
+//       standings: leaguesStandings,
+//       awayTeamId: currentFixture.teams.away.id,
+//       leagueId: currentFixture.league.id,
+//     });
+//     const fixtureH2hFixtures = getH2HFixtures({
+//       teamOneId: currentFixture.teams.home.id,
+//       teamTwoId: currentFixture.teams.away.id,
+//       allFixtures,
+//     });
+//     if (
+//       lastFiveHomeTeamHomeFixtures.length < 3 ||
+//       lastFiveAwayTeamAwayFixtures.length < 3 ||
+//       fixtureH2hFixtures.length < 3
+//     ) {
+//       return false;
+//     }
+//     return (
+//       homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
+//       awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
+//       (againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 120 ||
+//         againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 120)
+//     );
+//   });
+//   return {
+//     fixtures: predictedFixtures,
+//     option: betOptions.find((option) => option.id === 7),
+//   }; // can look into making that betoption a enum
+// };
 
-export const predictBothHalVOver0_5 = ({
-  currentFixtures,
-  allFixtures,
-  leaguesStandings,
-}: {
-  currentFixtures: FixtureDataModel[];
-  allFixtures: FixtureDataModel[];
-  leaguesStandings: StandingsModel[];
-}) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
-    const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
-      teamId: currentFixture.teams.home.id,
-      allFixtures,
-    });
-    const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
-      teamId: currentFixture.teams.away.id,
-      allFixtures,
-    });
-    const fixtureH2hFixtures = getH2HFixtures({
-      teamOneId: currentFixture.teams.home.id,
-      teamTwoId: currentFixture.teams.away.id,
-      allFixtures,
-    });
-    const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
-      standings: leaguesStandings,
-      homeTeamId: currentFixture.teams.home.id,
-      leagueId: currentFixture.league.id,
-    });
-    const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
-      standings: leaguesStandings,
-      awayTeamId: currentFixture.teams.away.id,
-      leagueId: currentFixture.league.id,
-    });
+// export const predictBothHalVOver0_5 = ({
+//   currentFixtures,
+//   allFixtures,
+//   leaguesStandings,
+// }: {
+//   currentFixtures: FixtureDataModel[];
+//   allFixtures: FixtureDataModel[];
+//   leaguesStandings: StandingsModel[];
+// }) => {
+//   const predictedFixtures = currentFixtures.filter((currentFixture) => {
+//     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
+//       teamId: currentFixture.teams.home.id,
+//       allFixtures,
+//     });
+//     const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
+//       teamId: currentFixture.teams.away.id,
+//       allFixtures,
+//     });
+//     const fixtureH2hFixtures = getH2HFixtures({
+//       teamOneId: currentFixture.teams.home.id,
+//       teamTwoId: currentFixture.teams.away.id,
+//       allFixtures,
+//     });
+//     const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
+//       standings: leaguesStandings,
+//       homeTeamId: currentFixture.teams.home.id,
+//       leagueId: currentFixture.league.id,
+//     });
+//     const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
+//       standings: leaguesStandings,
+//       awayTeamId: currentFixture.teams.away.id,
+//       leagueId: currentFixture.league.id,
+//     });
 
-    if (
-      lastFiveHomeTeamHomeFixtures.length < 3 ||
-      lastFiveAwayTeamAwayFixtures.length < 3
-    ) {
-      return false;
-    }
-    return (
-      homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
-      (againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 120 ||
-        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 120)
-    );
-  });
-  return {
-    fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 8),
-  }; // can look into making that betoption a enum
-};
+//     if (
+//       lastFiveHomeTeamHomeFixtures.length < 3 ||
+//       lastFiveAwayTeamAwayFixtures.length < 3
+//     ) {
+//       return false;
+//     }
+//     return (
+//       homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
+//       awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
+//       (againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 120 ||
+//         againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 120)
+//     );
+//   });
+//   return {
+//     fixtures: predictedFixtures,
+//     option: betOptions.find((option) => option.id === 8),
+//   }; // can look into making that betoption a enum
+// };
 
-export const predictDrawOrGoal = ({
-  currentFixtures,
-  allFixtures,
-  leaguesStandings,
-}: {
-  currentFixtures: FixtureDataModel[];
-  allFixtures: FixtureDataModel[];
-  leaguesStandings: StandingsModel[];
-}) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
-    const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
-      teamId: currentFixture.teams.home.id,
-      allFixtures,
-    });
-    const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
-      teamId: currentFixture.teams.away.id,
-      allFixtures,
-    });
-    const fixtureH2hFixtures = getH2HFixtures({
-      teamOneId: currentFixture.teams.home.id,
-      teamTwoId: currentFixture.teams.away.id,
-      allFixtures,
-    });
+// export const predictDrawOrGoal = ({
+//   currentFixtures,
+//   allFixtures,
+//   leaguesStandings,
+// }: {
+//   currentFixtures: FixtureDataModel[];
+//   allFixtures: FixtureDataModel[];
+//   leaguesStandings: StandingsModel[];
+// }) => {
+//   const predictedFixtures = currentFixtures.filter((currentFixture) => {
+//     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
+//       teamId: currentFixture.teams.home.id,
+//       allFixtures,
+//     });
+//     const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
+//       teamId: currentFixture.teams.away.id,
+//       allFixtures,
+//     });
+//     const fixtureH2hFixtures = getH2HFixtures({
+//       teamOneId: currentFixture.teams.home.id,
+//       teamTwoId: currentFixture.teams.away.id,
+//       allFixtures,
+//     });
 
-    if (
-      lastFiveHomeTeamHomeFixtures.length < 3 ||
-      lastFiveAwayTeamAwayFixtures.length < 3
-    ) {
-      return false;
-    }
-    return (
-      awayTeamScroreInMostAwayFixtures({
-        awayfixtures: lastFiveAwayTeamAwayFixtures,
-        minGoals: 1,
-      }) &&
-      otherAwayTeamGoalsInHomeFixtures({
-        homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
-        goals: 1,
-      }) &&
-      HomeTeamScroreInMostHomeFixtures({
-        homefixtures: lastFiveHomeTeamHomeFixtures,
-        minGoals: 1,
-      }) &&
-      otherHomeTeamGoalsInAwayFixtures({
-        awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
-        goals: 1,
-      }) &&
-      homeTeamScroreInMostH2HFixtures({
-        h2hFixtures: fixtureH2hFixtures,
-        homeTeamId: currentFixture.teams.home.id,
-        minGoals: 1,
-      }) &&
-      awayTeamScroreInMostH2HFixtures({
-        h2hFixtures: fixtureH2hFixtures,
-        awayTeamId: currentFixture.teams.away.id,
-        minGoals: 1,
-      }) &&
-      fixtureH2hFixtures.length >= 2
-    );
-  });
-  return {
-    fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 9),
-  }; // can look into making that betoption a enum
-};
+//     if (
+//       lastFiveHomeTeamHomeFixtures.length < 3 ||
+//       lastFiveAwayTeamAwayFixtures.length < 3
+//     ) {
+//       return false;
+//     }
+//     return (
+//       awayTeamScroreInMostAwayFixtures({
+//         awayfixtures: lastFiveAwayTeamAwayFixtures,
+//         minGoals: 1,
+//       }) &&
+//       otherAwayTeamGoalsInHomeFixtures({
+//         homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
+//         goals: 1,
+//       }) &&
+//       HomeTeamScroreInMostHomeFixtures({
+//         homefixtures: lastFiveHomeTeamHomeFixtures,
+//         minGoals: 1,
+//       }) &&
+//       otherHomeTeamGoalsInAwayFixtures({
+//         awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
+//         goals: 1,
+//       }) &&
+//       homeTeamScroreInMostH2HFixtures({
+//         h2hFixtures: fixtureH2hFixtures,
+//         homeTeamId: currentFixture.teams.home.id,
+//         minGoals: 1,
+//       }) &&
+//       awayTeamScroreInMostH2HFixtures({
+//         h2hFixtures: fixtureH2hFixtures,
+//         awayTeamId: currentFixture.teams.away.id,
+//         minGoals: 1,
+//       }) &&
+//       fixtureH2hFixtures.length >= 2
+//     );
+//   });
+//   return {
+//     fixtures: predictedFixtures,
+//     option: betOptions.find((option) => option.id === 9),
+//   }; // can look into making that betoption a enum
+// };
 
 export const predictDraw = ({
   currentFixtures,
@@ -872,10 +822,10 @@ export const predictDraw = ({
       return false;
     }
     return (
-      homeTeamGoalsPercentage({ homeTeamStanding }) <= 90 &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) <= 90 &&
-      againstHomeTeamGoalsPercentage({ homeTeamStanding }) <= 120 &&
-      againstAwayTeamGoalsPercentage({ awayTeamStanding }) <= 120
+      homeTeamStanding.all.draw / homeTeamStanding.all.played >= 0.6 &&
+      awayTeamStanding.all.draw / awayTeamStanding.all.played >= 0.6 &&
+      homeTeamGoalsPercentage({ homeTeamStanding }) <= 140 &&
+      awayTeamGoalsPercentage({ awayTeamStanding }) <= 140
     );
   });
   return {
@@ -884,64 +834,64 @@ export const predictDraw = ({
   }; // can look into making that betoption a enum
 };
 
-export const predictHTDraw = ({
-  currentFixtures,
-  allFixtures,
-  leaguesStandings,
-}: {
-  currentFixtures: FixtureDataModel[];
-  allFixtures: FixtureDataModel[];
-  leaguesStandings: StandingsModel[];
-}) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
-    const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
-      teamId: currentFixture.teams.home.id,
-      allFixtures,
-    });
-    const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
-      teamId: currentFixture.teams.away.id,
-      allFixtures,
-    });
-    const fixtureH2hFixtures = getH2HFixtures({
-      teamOneId: currentFixture.teams.home.id,
-      teamTwoId: currentFixture.teams.away.id,
-      allFixtures,
-    });
-    if (
-      fixtureH2hFixtures.length < 2 ||
-      lastFiveAwayTeamAwayFixtures.length < 3 ||
-      lastFiveHomeTeamHomeFixtures.length < 3
-    ) {
-      return false;
-    }
-    return (
-      (homeTeamDrawMostFixtures({
-        fixtures: fixtureH2hFixtures,
-        homeTeamId: currentFixture.teams.home.id,
-      }) &&
-        awayTeamDrawMostFixtures({
-          fixtures: fixtureH2hFixtures,
-          awayTeamId: currentFixture.teams.away.id,
-        })) ||
-      (homeTeamFailScroringInMostHomeFixtures({
-        homefixtures: lastFiveHomeTeamHomeFixtures,
-      }) &&
-        awayTeamFailScroringInMostAwayFixtures({
-          awayfixtures: lastFiveAwayTeamAwayFixtures,
-        })) ||
-      (lastFiveHomeTeamHomeFixtures.every(
-        (fixtureData) => fixtureData.teams.home.winner !== false
-      ) &&
-        lastFiveAwayTeamAwayFixtures.every(
-          (fixtureData) => fixtureData.teams.away.winner !== false
-        ))
-    );
-  });
-  return {
-    fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 11),
-  }; // can look into making that betoption a enum
-};
+// export const predictHTDraw = ({
+//   currentFixtures,
+//   allFixtures,
+//   leaguesStandings,
+// }: {
+//   currentFixtures: FixtureDataModel[];
+//   allFixtures: FixtureDataModel[];
+//   leaguesStandings: StandingsModel[];
+// }) => {
+//   const predictedFixtures = currentFixtures.filter((currentFixture) => {
+//     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
+//       teamId: currentFixture.teams.home.id,
+//       allFixtures,
+//     });
+//     const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
+//       teamId: currentFixture.teams.away.id,
+//       allFixtures,
+//     });
+//     const fixtureH2hFixtures = getH2HFixtures({
+//       teamOneId: currentFixture.teams.home.id,
+//       teamTwoId: currentFixture.teams.away.id,
+//       allFixtures,
+//     });
+//     if (
+//       fixtureH2hFixtures.length < 2 ||
+//       lastFiveAwayTeamAwayFixtures.length < 3 ||
+//       lastFiveHomeTeamHomeFixtures.length < 3
+//     ) {
+//       return false;
+//     }
+//     return (
+//       (homeTeamDrawMostFixtures({
+//         fixtures: fixtureH2hFixtures,
+//         homeTeamId: currentFixture.teams.home.id,
+//       }) &&
+//         awayTeamDrawMostFixtures({
+//           fixtures: fixtureH2hFixtures,
+//           awayTeamId: currentFixture.teams.away.id,
+//         })) ||
+//       (homeTeamFailScroringInMostHomeFixtures({
+//         homefixtures: lastFiveHomeTeamHomeFixtures,
+//       }) &&
+//         awayTeamFailScroringInMostAwayFixtures({
+//           awayfixtures: lastFiveAwayTeamAwayFixtures,
+//         })) ||
+//       (lastFiveHomeTeamHomeFixtures.every(
+//         (fixtureData) => fixtureData.teams.home.winner !== false
+//       ) &&
+//         lastFiveAwayTeamAwayFixtures.every(
+//           (fixtureData) => fixtureData.teams.away.winner !== false
+//         ))
+//     );
+//   });
+//   return {
+//     fixtures: predictedFixtures,
+//     option: betOptions.find((option) => option.id === 11),
+//   }; // can look into making that betoption a enum
+// };
 
 export const predictAwayOver1_5 = ({
   currentFixtures,
@@ -971,15 +921,7 @@ export const predictAwayOver1_5 = ({
       teamId: currentFixture.teams.away.id,
       allFixtures,
     });
-    const fixtureH2hFixtures = getH2HFixtures({
-      teamOneId: currentFixture.teams.home.id,
-      teamTwoId: currentFixture.teams.away.id,
-      allFixtures,
-    });
-    if (
-      lastFiveAwayTeamAwayFixtures.length < 3 ||
-      fixtureH2hFixtures.length < 2
-    ) {
+    if (lastFiveAwayTeamAwayFixtures.length < 3) {
       return false;
     }
     return (
@@ -991,19 +933,14 @@ export const predictAwayOver1_5 = ({
         homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
         goals: 1,
       }) &&
-      awayTeamScroreInMostH2HFixtures({
-        h2hFixtures: fixtureH2hFixtures,
-        awayTeamId: currentFixture.teams.away.id,
-        minGoals: 1,
-      }) &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) >= 140 &&
-      againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 70
+      awayTeamGoalsPercentage({ awayTeamStanding }) >= 170 &&
+      againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 160
     );
   });
   return {
     fixtures: predictedFixtures,
     option: betOptions.find((option) => option.id === 13),
-  }; // can loo                           k into making that betoption a enum
+  }; // can look into making that betoption a enum
 };
 
 export const predictHomeOver0_5 = ({
@@ -1029,21 +966,13 @@ export const predictHomeOver0_5 = ({
       awayTeamId: currentFixture.teams.away.id,
       leagueId: currentFixture.league.id,
     });
-    const fixtureH2hFixtures = getH2HFixtures({
-      teamOneId: currentFixture.teams.home.id,
-      teamTwoId: currentFixture.teams.away.id,
-      allFixtures,
-    });
     const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
       standings: leaguesStandings,
       homeTeamId: currentFixture.teams.home.id,
       leagueId: currentFixture.league.id,
     });
 
-    if (
-      lastFiveHomeTeamHomeFixtures.length < 3 ||
-      fixtureH2hFixtures.length < 2
-    ) {
+    if (lastFiveHomeTeamHomeFixtures.length < 3) {
       return false;
     }
     return (
@@ -1055,13 +984,8 @@ export const predictHomeOver0_5 = ({
         awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
         goals: 1,
       }) &&
-      homeTeamScroreInMostH2HFixtures({
-        h2hFixtures: fixtureH2hFixtures,
-        homeTeamId: currentFixture.teams.home.id,
-        minGoals: 1,
-      }) &&
-      homeTeamGoalsPercentage({ homeTeamStanding }) >= 120 &&
-      againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 70
+      homeTeamGoalsPercentage({ homeTeamStanding }) >= 140 &&
+      againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 100
     );
   });
   return {
@@ -1088,11 +1012,6 @@ export const predictAwayOver0_5 = ({
       teamId: currentFixture.teams.away.id,
       allFixtures,
     });
-    const fixtureH2hFixtures = getH2HFixtures({
-      teamOneId: currentFixture.teams.home.id,
-      teamTwoId: currentFixture.teams.away.id,
-      allFixtures,
-    });
     const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
       standings: leaguesStandings,
       homeTeamId: currentFixture.teams.home.id,
@@ -1103,10 +1022,7 @@ export const predictAwayOver0_5 = ({
       awayTeamId: currentFixture.teams.away.id,
       leagueId: currentFixture.league.id,
     });
-    if (
-      lastFiveAwayTeamAwayFixtures.length < 3 ||
-      fixtureH2hFixtures.length < 2
-    ) {
+    if (lastFiveAwayTeamAwayFixtures.length < 3) {
       return false;
     }
     return (
@@ -1118,13 +1034,8 @@ export const predictAwayOver0_5 = ({
         homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
         goals: 1,
       }) &&
-      awayTeamScroreInMostH2HFixtures({
-        h2hFixtures: fixtureH2hFixtures,
-        awayTeamId: currentFixture.teams.away.id,
-        minGoals: 1,
-      }) &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) >= 120 &&
-      againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 70
+      awayTeamGoalsPercentage({ awayTeamStanding }) >= 140 &&
+      againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 100
     );
   });
   return {
@@ -1135,62 +1046,62 @@ export const predictAwayOver0_5 = ({
 
 // --- new Prediction functions
 
-export const predictMultiGoals2_4 = ({
-  currentFixtures,
-  allFixtures,
-  leaguesStandings,
-}: {
-  currentFixtures: FixtureDataModel[];
-  allFixtures: FixtureDataModel[];
-  leaguesStandings: StandingsModel[];
-}) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
-    const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
-      teamId: currentFixture.teams.home.id,
-      allFixtures,
-    });
-    const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
-      teamId: currentFixture.teams.away.id,
-      allFixtures,
-    });
-    const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
-      standings: leaguesStandings,
-      homeTeamId: currentFixture.teams.home.id,
-      leagueId: currentFixture.league.id,
-    });
+// export const predictMultiGoals2_4 = ({
+//   currentFixtures,
+//   allFixtures,
+//   leaguesStandings,
+// }: {
+//   currentFixtures: FixtureDataModel[];
+//   allFixtures: FixtureDataModel[];
+//   leaguesStandings: StandingsModel[];
+// }) => {
+//   const predictedFixtures = currentFixtures.filter((currentFixture) => {
+//     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
+//       teamId: currentFixture.teams.home.id,
+//       allFixtures,
+//     });
+//     const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
+//       teamId: currentFixture.teams.away.id,
+//       allFixtures,
+//     });
+//     const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
+//       standings: leaguesStandings,
+//       homeTeamId: currentFixture.teams.home.id,
+//       leagueId: currentFixture.league.id,
+//     });
 
-    const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
-      standings: leaguesStandings,
-      awayTeamId: currentFixture.teams.away.id,
-      leagueId: currentFixture.league.id,
-    });
-    const fixtureH2hFixtures = getH2HFixtures({
-      teamOneId: currentFixture.teams.home.id,
-      teamTwoId: currentFixture.teams.away.id,
-      allFixtures,
-    });
-    if (
-      lastFiveAwayTeamAwayFixtures.length < 3 ||
-      lastFiveHomeTeamHomeFixtures.length < 3
-    ) {
-      return false;
-    }
-    return (
-      fixtureH2hFixtures.every(
-        (fixtureData) =>
-          fixtureData.goals.home + fixtureData.goals.away >= 2 &&
-          fixtureData.goals.home + fixtureData.goals.away <= 4
-      ) &&
-      fixtureH2hFixtures.length >= 3 &&
-      homeTeamGoalsPercentage({ homeTeamStanding }) >= 120 &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) >= 120
-    );
-  });
-  return {
-    fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 17),
-  }; // can look into making that betoption a enum
-};
+//     const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
+//       standings: leaguesStandings,
+//       awayTeamId: currentFixture.teams.away.id,
+//       leagueId: currentFixture.league.id,
+//     });
+//     const fixtureH2hFixtures = getH2HFixtures({
+//       teamOneId: currentFixture.teams.home.id,
+//       teamTwoId: currentFixture.teams.away.id,
+//       allFixtures,
+//     });
+//     if (
+//       lastFiveAwayTeamAwayFixtures.length < 3 ||
+//       lastFiveHomeTeamHomeFixtures.length < 3
+//     ) {
+//       return false;
+//     }
+//     return (
+//       fixtureH2hFixtures.every(
+//         (fixtureData) =>
+//           fixtureData.goals.home + fixtureData.goals.away >= 2 &&
+//           fixtureData.goals.home + fixtureData.goals.away <= 4
+//       ) &&
+//       fixtureH2hFixtures.length >= 3 &&
+//       homeTeamGoalsPercentage({ homeTeamStanding }) >= 120 &&
+//       awayTeamGoalsPercentage({ awayTeamStanding }) >= 120
+//     );
+//   });
+//   return {
+//     fixtures: predictedFixtures,
+//     option: betOptions.find((option) => option.id === 17),
+//   }; // can look into making that betoption a enum
+// };
 
 export const predictMultiGoals0_2 = ({
   currentFixtures,
@@ -1210,11 +1121,6 @@ export const predictMultiGoals0_2 = ({
       teamId: currentFixture.teams.away.id,
       allFixtures,
     });
-    const fixtureH2hFixtures = getH2HFixtures({
-      teamOneId: currentFixture.teams.home.id,
-      teamTwoId: currentFixture.teams.away.id,
-      allFixtures,
-    });
     const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
       standings: leaguesStandings,
       homeTeamId: currentFixture.teams.home.id,
@@ -1233,17 +1139,10 @@ export const predictMultiGoals0_2 = ({
       return false;
     }
     return (
-      (lastFiveHomeTeamHomeFixtures.every(
-        (fixtureData) => fixtureData.goals.home <= 1
-      ) &&
-        lastFiveAwayTeamAwayFixtures.every(
-          (fixtureData) => fixtureData.goals.away <= 1
-        ) &&
-        fixtureH2hFixtures.every((fixtureData) => {
-          return fixtureData.goals.home + fixtureData.goals.away < 3;
-        })) ||
-      (homeTeamGoalsPercentage({ homeTeamStanding }) <= 70 &&
-        awayTeamGoalsPercentage({ awayTeamStanding }) <= 70)
+      homeTeamGoalsPercentage({ homeTeamStanding }) <= 70 &&
+      awayTeamGoalsPercentage({ awayTeamStanding }) <= 70 &&
+      againstHomeTeamGoalsPercentage({ homeTeamStanding }) <= 140 &&
+      againstAwayTeamGoalsPercentage({ awayTeamStanding }) <= 140
     );
   });
   return {
@@ -1252,65 +1151,65 @@ export const predictMultiGoals0_2 = ({
   }; // can look into making that betoption a enum
 };
 
-export const predictMultiGoals0_3 = ({
-  currentFixtures,
-  allFixtures,
-  leaguesStandings,
-}: {
-  currentFixtures: FixtureDataModel[];
-  allFixtures: FixtureDataModel[];
-  leaguesStandings: StandingsModel[];
-}) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
-    const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
-      teamId: currentFixture.teams.home.id,
-      allFixtures,
-    });
-    const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
-      teamId: currentFixture.teams.away.id,
-      allFixtures,
-    });
-    const fixtureH2hFixtures = getH2HFixtures({
-      teamOneId: currentFixture.teams.home.id,
-      teamTwoId: currentFixture.teams.away.id,
-      allFixtures,
-    });
-    const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
-      standings: leaguesStandings,
-      homeTeamId: currentFixture.teams.home.id,
-      leagueId: currentFixture.league.id,
-    });
+// export const predictMultiGoals0_3 = ({
+//   currentFixtures,
+//   allFixtures,
+//   leaguesStandings,
+// }: {
+//   currentFixtures: FixtureDataModel[];
+//   allFixtures: FixtureDataModel[];
+//   leaguesStandings: StandingsModel[];
+// }) => {
+//   const predictedFixtures = currentFixtures.filter((currentFixture) => {
+//     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
+//       teamId: currentFixture.teams.home.id,
+//       allFixtures,
+//     });
+//     const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
+//       teamId: currentFixture.teams.away.id,
+//       allFixtures,
+//     });
+//     const fixtureH2hFixtures = getH2HFixtures({
+//       teamOneId: currentFixture.teams.home.id,
+//       teamTwoId: currentFixture.teams.away.id,
+//       allFixtures,
+//     });
+//     const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
+//       standings: leaguesStandings,
+//       homeTeamId: currentFixture.teams.home.id,
+//       leagueId: currentFixture.league.id,
+//     });
 
-    const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
-      standings: leaguesStandings,
-      awayTeamId: currentFixture.teams.away.id,
-      leagueId: currentFixture.league.id,
-    });
-    if (
-      lastFiveAwayTeamAwayFixtures.length < 3 ||
-      lastFiveHomeTeamHomeFixtures.length < 3
-    ) {
-      return false;
-    }
-    return (
-      (lastFiveHomeTeamHomeFixtures.every(
-        (fixtureData) => fixtureData.goals.home <= 1
-      ) &&
-        lastFiveAwayTeamAwayFixtures.every(
-          (fixtureData) => fixtureData.goals.away <= 1
-        ) &&
-        fixtureH2hFixtures.every((fixtureData) => {
-          return fixtureData.goals.home + fixtureData.goals.away < 3;
-        })) ||
-      (homeTeamGoalsPercentage({ homeTeamStanding }) <= 90 &&
-        awayTeamGoalsPercentage({ awayTeamStanding }) <= 90)
-    );
-  });
-  return {
-    fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 19),
-  }; // can look into making that betoption a enum
-};
+//     const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
+//       standings: leaguesStandings,
+//       awayTeamId: currentFixture.teams.away.id,
+//       leagueId: currentFixture.league.id,
+//     });
+//     if (
+//       lastFiveAwayTeamAwayFixtures.length < 3 ||
+//       lastFiveHomeTeamHomeFixtures.length < 3
+//     ) {
+//       return false;
+//     }
+//     return (
+//       (lastFiveHomeTeamHomeFixtures.every(
+//         (fixtureData) => fixtureData.goals.home <= 1
+//       ) &&
+//         lastFiveAwayTeamAwayFixtures.every(
+//           (fixtureData) => fixtureData.goals.away <= 1
+//         ) &&
+//         fixtureH2hFixtures.every((fixtureData) => {
+//           return fixtureData.goals.home + fixtureData.goals.away < 3;
+//         })) ||
+//       (homeTeamGoalsPercentage({ homeTeamStanding }) <= 90 &&
+//         awayTeamGoalsPercentage({ awayTeamStanding }) <= 90)
+//     );
+//   });
+//   return {
+//     fixtures: predictedFixtures,
+//     option: betOptions.find((option) => option.id === 19),
+//   }; // can look into making that betoption a enum
+// };
 
 export const predictMultiGoals1_2Home = ({
   currentFixtures,
@@ -1330,46 +1229,37 @@ export const predictMultiGoals1_2Home = ({
       teamId: currentFixture.teams.home.id,
       allFixtures,
     });
-    const fixtureH2hFixtures = getH2HFixtures({
-      teamOneId: currentFixture.teams.home.id,
-      teamTwoId: currentFixture.teams.away.id,
-      allFixtures,
+    const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
+      standings: leaguesStandings,
+      awayTeamId: currentFixture.teams.away.id,
+      leagueId: currentFixture.league.id,
     });
     const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
       standings: leaguesStandings,
       homeTeamId: currentFixture.teams.home.id,
       leagueId: currentFixture.league.id,
     });
-    if (
-      lastFiveHomeTeamHomeFixtures.length < 3 ||
-      fixtureH2hFixtures.length < 2
-    ) {
+    if (lastFiveHomeTeamHomeFixtures.length < 3) {
       return false;
     }
     return (
-      lastFiveHomeTeamHomeFixtures.every(
-        (fixtureData) =>
-          fixtureData.goals.home >= 1 && fixtureData.goals.home <= 2
-      ) &&
-      otherHomeTeamGoalsInAwayFixtures({
-        awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
-        goals: 1,
-      }) &&
       HomeTeamScroreInMostHomeFixtures({
         homefixtures: lastFiveHomeTeamHomeFixtures,
         minGoals: 1,
       }) &&
+      otherHomeTeamGoalsInAwayFixtures({
+        awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
+        goals: 1,
+      }) &&
+      homeTeamGoalsPercentage({ homeTeamStanding }) >= 140 &&
+      homeTeamGoalsPercentage({ homeTeamStanding }) <= 170 &&
+      againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 100 &&
+      againstAwayTeamGoalsPercentage({ awayTeamStanding }) <= 140 &&
       otherHomeTeamMinMaxGoalsInAwayFixtures({
         awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
         minGoals: 1,
         maxGoals: 2,
-      }) &&
-      homeTeamScroreInMostH2HFixtures({
-        h2hFixtures: fixtureH2hFixtures,
-        homeTeamId: currentFixture.teams.home.id,
-        minGoals: 1,
-      }) &&
-      homeTeamGoalsPercentage({ homeTeamStanding }) >= 120
+      })
     );
   });
   return {
@@ -1378,71 +1268,71 @@ export const predictMultiGoals1_2Home = ({
   }; // can look into making that betoption a enum
 };
 
-export const predictMultiGoals1_3Home = ({
-  currentFixtures,
-  allFixtures,
-  leaguesStandings,
-}: {
-  currentFixtures: FixtureDataModel[];
-  allFixtures: FixtureDataModel[];
-  leaguesStandings: StandingsModel[];
-}) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
-    const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
-      teamId: currentFixture.teams.away.id,
-      allFixtures,
-    });
-    const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
-      teamId: currentFixture.teams.home.id,
-      allFixtures,
-    });
-    const fixtureH2hFixtures = getH2HFixtures({
-      teamOneId: currentFixture.teams.home.id,
-      teamTwoId: currentFixture.teams.away.id,
-      allFixtures,
-    });
-    const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
-      standings: leaguesStandings,
-      homeTeamId: currentFixture.teams.home.id,
-      leagueId: currentFixture.league.id,
-    });
-    if (
-      lastFiveHomeTeamHomeFixtures.length < 3 ||
-      fixtureH2hFixtures.length < 2
-    ) {
-      return false;
-    }
-    return (
-      lastFiveHomeTeamHomeFixtures.every(
-        (fixtureData) =>
-          fixtureData.goals.home >= 1 && fixtureData.goals.home <= 2
-      ) &&
-      otherHomeTeamGoalsInAwayFixtures({
-        awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
-        goals: 1,
-      }) &&
-      HomeTeamScroreInMostHomeFixtures({
-        homefixtures: lastFiveHomeTeamHomeFixtures,
-        minGoals: 1,
-      }) &&
-      otherHomeTeamMinMaxGoalsInAwayFixtures({
-        awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
-        minGoals: 1,
-        maxGoals: 2,
-      }) &&
-      homeTeamScroreInMostH2HFixtures({
-        h2hFixtures: fixtureH2hFixtures,
-        homeTeamId: currentFixture.teams.home.id,
-        minGoals: 1,
-      }) &&
-      homeTeamGoalsPercentage({ homeTeamStanding }) >= 120
-    );
-  });
-  return {
-    fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 21),
-  }; // can look into making that betoption a enum
-};
+// export const predictMultiGoals1_3Home = ({
+//   currentFixtures,
+//   allFixtures,
+//   leaguesStandings,
+// }: {
+//   currentFixtures: FixtureDataModel[];
+//   allFixtures: FixtureDataModel[];
+//   leaguesStandings: StandingsModel[];
+// }) => {
+//   const predictedFixtures = currentFixtures.filter((currentFixture) => {
+//     const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
+//       teamId: currentFixture.teams.away.id,
+//       allFixtures,
+//     });
+//     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
+//       teamId: currentFixture.teams.home.id,
+//       allFixtures,
+//     });
+//     const fixtureH2hFixtures = getH2HFixtures({
+//       teamOneId: currentFixture.teams.home.id,
+//       teamTwoId: currentFixture.teams.away.id,
+//       allFixtures,
+//     });
+//     const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
+//       standings: leaguesStandings,
+//       homeTeamId: currentFixture.teams.home.id,
+//       leagueId: currentFixture.league.id,
+//     });
+//     if (
+//       lastFiveHomeTeamHomeFixtures.length < 3 ||
+//       fixtureH2hFixtures.length < 2
+//     ) {
+//       return false;
+//     }
+//     return (
+//       lastFiveHomeTeamHomeFixtures.every(
+//         (fixtureData) =>
+//           fixtureData.goals.home >= 1 && fixtureData.goals.home <= 2
+//       ) &&
+//       otherHomeTeamGoalsInAwayFixtures({
+//         awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
+//         goals: 1,
+//       }) &&
+//       HomeTeamScroreInMostHomeFixtures({
+//         homefixtures: lastFiveHomeTeamHomeFixtures,
+//         minGoals: 1,
+//       }) &&
+//       otherHomeTeamMinMaxGoalsInAwayFixtures({
+//         awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
+//         minGoals: 1,
+//         maxGoals: 2,
+//       }) &&
+//       homeTeamScroreInMostH2HFixtures({
+//         h2hFixtures: fixtureH2hFixtures,
+//         homeTeamId: currentFixture.teams.home.id,
+//         minGoals: 1,
+//       }) &&
+//       homeTeamGoalsPercentage({ homeTeamStanding }) >= 120
+//     );
+//   });
+//   return {
+//     fixtures: predictedFixtures,
+//     option: betOptions.find((option) => option.id === 21),
+//   }; // can look into making that betoption a enum
+// };
 
 export const predictMultiGoals2_3Home = ({
   currentFixtures,
@@ -1472,6 +1362,11 @@ export const predictMultiGoals2_3Home = ({
       homeTeamId: currentFixture.teams.home.id,
       leagueId: currentFixture.league.id,
     });
+    const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
+      standings: leaguesStandings,
+      awayTeamId: currentFixture.teams.away.id,
+      leagueId: currentFixture.league.id,
+    });
     if (
       lastFiveHomeTeamHomeFixtures.length < 3 ||
       fixtureH2hFixtures.length < 2
@@ -1479,29 +1374,23 @@ export const predictMultiGoals2_3Home = ({
       return false;
     }
     return (
-      ((lastFiveHomeTeamHomeFixtures.every(
-        (fixtureData) =>
-          fixtureData.goals.home >= 2 && fixtureData.goals.home <= 3
-      ) &&
-        otherHomeTeamGoalsInAwayFixtures({
-          awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
-          goals: 1,
-        })) ||
-        (HomeTeamScroreInMostHomeFixtures({
-          homefixtures: lastFiveHomeTeamHomeFixtures,
-          minGoals: 2,
-        }) &&
-          otherHomeTeamMinMaxGoalsInAwayFixtures({
-            awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
-            minGoals: 2,
-            maxGoals: 3,
-          }) &&
-          homeTeamScroreInMostH2HFixtures({
-            h2hFixtures: fixtureH2hFixtures,
-            homeTeamId: currentFixture.teams.home.id,
-            minGoals: 1,
-          }))) &&
-      homeTeamGoalsPercentage({ homeTeamStanding }) >= 120
+      HomeTeamScroreInMostHomeFixtures({
+        homefixtures: lastFiveHomeTeamHomeFixtures,
+        minGoals: 2,
+      }) &&
+      otherHomeTeamGoalsInAwayFixtures({
+        awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
+        goals: 2,
+      }) &&
+      homeTeamGoalsPercentage({ homeTeamStanding }) >= 160 &&
+      homeTeamGoalsPercentage({ homeTeamStanding }) <= 190 &&
+      againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 120 &&
+      againstAwayTeamGoalsPercentage({ awayTeamStanding }) <= 160 &&
+      otherHomeTeamMinMaxGoalsInAwayFixtures({
+        awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
+        minGoals: 2,
+        maxGoals: 3,
+      })
     );
   });
   return {
@@ -1538,6 +1427,11 @@ export const predictMultiGoals1_2Away = ({
       awayTeamId: currentFixture.teams.away.id,
       leagueId: currentFixture.league.id,
     });
+    const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
+      standings: leaguesStandings,
+      homeTeamId: currentFixture.teams.home.id,
+      leagueId: currentFixture.league.id,
+    });
     if (
       lastFiveAwayTeamAwayFixtures.length < 3 ||
       fixtureH2hFixtures.length < 2
@@ -1545,29 +1439,23 @@ export const predictMultiGoals1_2Away = ({
       return false;
     }
     return (
-      ((lastFiveAwayTeamAwayFixtures.every(
-        (fixtureData) =>
-          fixtureData.goals.away >= 1 && fixtureData.goals.away <= 2
-      ) &&
-        otherAwayTeamGoalsInHomeFixtures({
-          homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
-          goals: 1,
-        })) ||
-        (awayTeamScroreInMostAwayFixtures({
-          awayfixtures: lastFiveAwayTeamAwayFixtures,
-          minGoals: 2,
-        }) &&
-          otherAwayTeamMinMaxGoalsInHomeFixtures({
-            homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
-            minGoals: 1,
-            maxGoals: 2,
-          }))) &&
-      awayTeamScroreInMostH2HFixtures({
-        h2hFixtures: fixtureH2hFixtures,
-        awayTeamId: currentFixture.teams.away.id,
+      awayTeamScroreInMostAwayFixtures({
+        awayfixtures: lastFiveAwayTeamAwayFixtures,
         minGoals: 1,
       }) &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) >= 120
+      otherAwayTeamGoalsInHomeFixtures({
+        homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
+        goals: 1,
+      }) &&
+      awayTeamGoalsPercentage({ awayTeamStanding }) >= 140 &&
+      awayTeamGoalsPercentage({ awayTeamStanding }) <= 170 &&
+      againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 100 &&
+      againstHomeTeamGoalsPercentage({ homeTeamStanding }) <= 140 &&
+      otherAwayTeamMinMaxGoalsInHomeFixtures({
+        homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
+        minGoals: 1,
+        maxGoals: 2,
+      })
     );
   });
   return {
@@ -1604,70 +1492,9 @@ export const predictMultiGoals2_3Away = ({
       awayTeamId: currentFixture.teams.away.id,
       leagueId: currentFixture.league.id,
     });
-    if (
-      lastFiveAwayTeamAwayFixtures.length < 3 ||
-      fixtureH2hFixtures.length < 2
-    ) {
-      return false;
-    }
-    return (
-      ((lastFiveAwayTeamAwayFixtures.every(
-        (fixtureData) =>
-          fixtureData.goals.away >= 2 && fixtureData.goals.away <= 3
-      ) &&
-        otherAwayTeamGoalsInHomeFixtures({
-          homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
-          goals: 1,
-        })) ||
-        (awayTeamScroreInMostAwayFixtures({
-          awayfixtures: lastFiveAwayTeamAwayFixtures,
-          minGoals: 2,
-        }) &&
-          otherAwayTeamMinMaxGoalsInHomeFixtures({
-            homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
-            minGoals: 2,
-            maxGoals: 3,
-          }))) &&
-      awayTeamScroreInMostH2HFixtures({
-        h2hFixtures: fixtureH2hFixtures,
-        awayTeamId: currentFixture.teams.away.id,
-        minGoals: 1,
-      }) &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) >= 120
-    );
-  });
-  return {
-    fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 24),
-  }; // can look into making that betoption a enum
-};
-
-export const predictMultiGoals1_3Away = ({
-  currentFixtures,
-  allFixtures,
-  leaguesStandings,
-}: {
-  currentFixtures: FixtureDataModel[];
-  allFixtures: FixtureDataModel[];
-  leaguesStandings: StandingsModel[];
-}) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
-    const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
-      teamId: currentFixture.teams.home.id,
-      allFixtures,
-    });
-    const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
-      teamId: currentFixture.teams.away.id,
-      allFixtures,
-    });
-    const fixtureH2hFixtures = getH2HFixtures({
-      teamOneId: currentFixture.teams.home.id,
-      teamTwoId: currentFixture.teams.away.id,
-      allFixtures,
-    });
-    const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
+    const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
       standings: leaguesStandings,
-      awayTeamId: currentFixture.teams.away.id,
+      homeTeamId: currentFixture.teams.home.id,
       leagueId: currentFixture.league.id,
     });
     if (
@@ -1677,36 +1504,96 @@ export const predictMultiGoals1_3Away = ({
       return false;
     }
     return (
-      ((lastFiveAwayTeamAwayFixtures.every(
-        (fixtureData) =>
-          fixtureData.goals.away >= 1 && fixtureData.goals.away <= 2
-      ) &&
-        otherAwayTeamGoalsInHomeFixtures({
-          homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
-          goals: 1,
-        })) ||
-        (awayTeamScroreInMostAwayFixtures({
-          awayfixtures: lastFiveAwayTeamAwayFixtures,
-          minGoals: 2,
-        }) &&
-          otherAwayTeamMinMaxGoalsInHomeFixtures({
-            homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
-            minGoals: 1,
-            maxGoals: 2,
-          }))) &&
-      awayTeamScroreInMostH2HFixtures({
-        h2hFixtures: fixtureH2hFixtures,
-        awayTeamId: currentFixture.teams.away.id,
-        minGoals: 1,
+      awayTeamScroreInMostAwayFixtures({
+        awayfixtures: lastFiveAwayTeamAwayFixtures,
+        minGoals: 2,
       }) &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) >= 120
+      otherAwayTeamGoalsInHomeFixtures({
+        homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
+        goals: 1,
+      }) &&
+      awayTeamGoalsPercentage({ awayTeamStanding }) >= 160 &&
+      awayTeamGoalsPercentage({ awayTeamStanding }) <= 190 &&
+      againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 120 &&
+      againstHomeTeamGoalsPercentage({ homeTeamStanding }) <= 160 &&
+      otherAwayTeamMinMaxGoalsInHomeFixtures({
+        homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
+        minGoals: 2,
+        maxGoals: 3,
+      })
     );
   });
   return {
     fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 25),
+    option: betOptions.find((option) => option.id === 24),
   }; // can look into making that betoption a enum
 };
+
+// export const predictMultiGoals1_3Away = ({
+//   currentFixtures,
+//   allFixtures,
+//   leaguesStandings,
+// }: {
+//   currentFixtures: FixtureDataModel[];
+//   allFixtures: FixtureDataModel[];
+//   leaguesStandings: StandingsModel[];
+// }) => {
+//   const predictedFixtures = currentFixtures.filter((currentFixture) => {
+//     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
+//       teamId: currentFixture.teams.home.id,
+//       allFixtures,
+//     });
+//     const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
+//       teamId: currentFixture.teams.away.id,
+//       allFixtures,
+//     });
+//     const fixtureH2hFixtures = getH2HFixtures({
+//       teamOneId: currentFixture.teams.home.id,
+//       teamTwoId: currentFixture.teams.away.id,
+//       allFixtures,
+//     });
+//     const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
+//       standings: leaguesStandings,
+//       awayTeamId: currentFixture.teams.away.id,
+//       leagueId: currentFixture.league.id,
+//     });
+//     if (
+//       lastFiveAwayTeamAwayFixtures.length < 3 ||
+//       fixtureH2hFixtures.length < 2
+//     ) {
+//       return false;
+//     }
+//     return (
+//       ((lastFiveAwayTeamAwayFixtures.every(
+//         (fixtureData) =>
+//           fixtureData.goals.away >= 1 && fixtureData.goals.away <= 2
+//       ) &&
+//         otherAwayTeamGoalsInHomeFixtures({
+//           homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
+//           goals: 1,
+//         })) ||
+//         (awayTeamScroreInMostAwayFixtures({
+//           awayfixtures: lastFiveAwayTeamAwayFixtures,
+//           minGoals: 2,
+//         }) &&
+//           otherAwayTeamMinMaxGoalsInHomeFixtures({
+//             homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
+//             minGoals: 1,
+//             maxGoals: 2,
+//           }))) &&
+//       awayTeamScroreInMostH2HFixtures({
+//         h2hFixtures: fixtureH2hFixtures,
+//         awayTeamId: currentFixture.teams.away.id,
+//         minGoals: 1,
+//       }) &&
+//       awayTeamGoalsPercentage({ awayTeamStanding }) >= 120
+//     );
+//   });
+//   return {
+//     fixtures: predictedFixtures,
+//     option: betOptions.find((option) => option.id === 25),
+//   }; // can look into making that betoption a enum
+// };
 
 export const getLastFiveTeamHomeFixtures = ({
   teamId,
@@ -1787,7 +1674,7 @@ export const HomeTeamScroreInMostHomeFixtures = ({
       conditionPassedCount += 1;
     }
   });
-  if (conditionPassedCount / homefixtures.length >= 0.9) {
+  if (conditionPassedCount / homefixtures.length >= 1) {
     return true;
   } else {
     return false;
@@ -1807,7 +1694,7 @@ export const awayTeamScroreInMostAwayFixtures = ({
       conditionPassedCount += 1;
     }
   });
-  if (conditionPassedCount / awayfixtures.length >= 0.7) {
+  if (conditionPassedCount / awayfixtures.length >= 1) {
     return true;
   } else {
     return false;
@@ -1886,85 +1773,6 @@ export const awayTeamFailWinningInMostAwayFixtures = ({
   }
 };
 
-export const awayTeamScroreInMostH2HFixtures = ({
-  h2hFixtures,
-  minGoals,
-  awayTeamId,
-}: {
-  h2hFixtures: FixtureDataModel[];
-  minGoals: number;
-  awayTeamId: number;
-}) => {
-  let conditionPassedCount = 0;
-  h2hFixtures.forEach((fixtureData) => {
-    if (
-      (fixtureData.goals.home >= minGoals &&
-        fixtureData.teams.home.id === awayTeamId) ||
-      (fixtureData.goals.away >= minGoals &&
-        fixtureData.teams.away.id === awayTeamId)
-    ) {
-      conditionPassedCount += 1;
-    }
-  });
-  if (conditionPassedCount / h2hFixtures.length >= 0.5) {
-    return true;
-  } else {
-    return false;
-  }
-};
-
-export const homeTeamScroreInMostH2HFixtures = ({
-  h2hFixtures,
-  minGoals,
-  homeTeamId,
-}: {
-  h2hFixtures: FixtureDataModel[];
-  minGoals: number;
-  homeTeamId: number;
-}) => {
-  let conditionPassedCount = 0;
-  h2hFixtures.forEach((fixtureData) => {
-    if (
-      (fixtureData.goals.home >= minGoals &&
-        fixtureData.teams.home.id === homeTeamId) ||
-      (fixtureData.goals.away >= minGoals &&
-        fixtureData.teams.away.id === homeTeamId)
-    ) {
-      conditionPassedCount += 1;
-    }
-  });
-  if (conditionPassedCount / h2hFixtures.length >= 0.5) {
-    return true;
-  } else {
-    return false;
-  }
-};
-
-export const homeTeamWinInSomeH2HFixtures = ({
-  h2hFixtures,
-  homeTeamId,
-}: {
-  h2hFixtures: FixtureDataModel[];
-  homeTeamId: number;
-}) => {
-  let conditionPassedCount = 0;
-  h2hFixtures.forEach((fixtureData) => {
-    if (
-      (fixtureData.goals.home > fixtureData.goals.away &&
-        fixtureData.teams.home.id === homeTeamId) ||
-      (fixtureData.goals.away > fixtureData.goals.home &&
-        fixtureData.teams.away.id === homeTeamId)
-    ) {
-      conditionPassedCount += 1;
-    }
-  });
-  if (conditionPassedCount / h2hFixtures.length >= 0.5) {
-    return true;
-  } else {
-    return false;
-  }
-};
-
 export const awayeamWinInSomeH2HFixtures = ({
   h2hFixtures,
   awayTeamId,
@@ -2003,7 +1811,7 @@ const otherHomeTeamGoalsInAwayFixtures = ({
       conditionPassedCount += 1;
     }
   });
-  if (conditionPassedCount / awayTeamFixtures.length >= 0.6) {
+  if (conditionPassedCount / awayTeamFixtures.length >= 0.8) {
     return true;
   } else {
     return false;
@@ -2023,7 +1831,7 @@ const otherAwayTeamGoalsInHomeFixtures = ({
       conditionPassedCount += 1;
     }
   });
-  if (conditionPassedCount / homeTeamFixtures.length >= 0.6) {
+  if (conditionPassedCount / homeTeamFixtures.length >= 0.8) {
     return true;
   } else {
     return false;
@@ -2048,7 +1856,7 @@ const otherHomeTeamMinMaxGoalsInAwayFixtures = ({
       conditionPassedCount += 1;
     }
   });
-  if (conditionPassedCount / awayTeamFixtures.length > 0.6) {
+  if (conditionPassedCount / awayTeamFixtures.length > 0.65) {
     return true;
   } else {
     return false;
@@ -2073,32 +1881,7 @@ const otherAwayTeamMinMaxGoalsInHomeFixtures = ({
       conditionPassedCount += 1;
     }
   });
-  if (conditionPassedCount / homeTeamFixtures.length > 0.6) {
-    return true;
-  } else {
-    return false;
-  }
-};
-
-const homeTeamWinsMostHalfTimes = ({
-  fixtures,
-  homeTeamId,
-}: {
-  fixtures: FixtureDataModel[];
-  homeTeamId: number;
-}) => {
-  let conditionPassedCount = 0;
-  fixtures.forEach((fixtureData) => {
-    if (
-      (fixtureData.score.halftime.home > fixtureData.score.halftime.away &&
-        fixtureData.teams.home.id === homeTeamId) ||
-      (fixtureData.score.halftime.away > fixtureData.score.halftime.home &&
-        fixtureData.teams.away.id === homeTeamId)
-    ) {
-      conditionPassedCount += 1;
-    }
-  });
-  if (conditionPassedCount / fixtures.length > 0.75) {
+  if (conditionPassedCount / homeTeamFixtures.length > 0.65) {
     return true;
   } else {
     return false;
@@ -2129,31 +1912,9 @@ const homeTeamWinsMostMatches = ({
     return false;
   }
 };
-
-const awayTeamWinsMostHalfTimes = ({
-  fixtures,
-  awayTeamId,
-}: {
-  fixtures: FixtureDataModel[];
-  awayTeamId: number;
-}) => {
-  let conditionPassedCount = 0;
-  fixtures.forEach((fixtureData) => {
-    if (
-      (fixtureData.score.halftime.home > fixtureData.score.halftime.away &&
-        fixtureData.teams.home.id === awayTeamId) ||
-      (fixtureData.score.halftime.away > fixtureData.score.halftime.home &&
-        fixtureData.teams.away.id === awayTeamId)
-    ) {
-      conditionPassedCount += 1;
-    }
-  });
-  if (conditionPassedCount / fixtures.length > 0.75) {
-    return true;
-  } else {
-    return false;
-  }
-};
+//  return false;
+//   }
+// };
 
 const awayTeamWinsMostMatchesTimes = ({
   fixtures,
@@ -2168,110 +1929,6 @@ const awayTeamWinsMostMatchesTimes = ({
       (fixtureData.score.fulltime.home > fixtureData.score.fulltime.away &&
         fixtureData.teams.home.id === awayTeamId) ||
       (fixtureData.score.fulltime.away > fixtureData.score.fulltime.home &&
-        fixtureData.teams.away.id === awayTeamId)
-    ) {
-      conditionPassedCount += 1;
-    }
-  });
-  if (conditionPassedCount / fixtures.length > 0.75) {
-    return true;
-  } else {
-    return false;
-  }
-};
-
-const homeTeamScoresInMostHT = ({
-  fixtures,
-  minGoals,
-  homeTeamId,
-}: {
-  fixtures: FixtureDataModel[];
-  minGoals: number;
-  homeTeamId: number;
-}) => {
-  let conditionPassedCount = 0;
-  fixtures.forEach((fixtureData) => {
-    if (
-      (fixtureData.score.halftime.home >= minGoals &&
-        fixtureData.teams.home.id === homeTeamId) ||
-      (fixtureData.score.halftime.away >= minGoals &&
-        fixtureData.teams.away.id === homeTeamId)
-    ) {
-      conditionPassedCount += 1;
-    }
-  });
-  if (conditionPassedCount / fixtures.length > 0.9) {
-    return true;
-  } else {
-    return false;
-  }
-};
-
-const awayTeamScoresInMostHT = ({
-  fixtures,
-  minGoals,
-  awayTeamId,
-}: {
-  fixtures: FixtureDataModel[];
-  minGoals: number;
-  awayTeamId: number;
-}) => {
-  let conditionPassedCount = 0;
-  fixtures.forEach((fixtureData) => {
-    if (
-      (fixtureData.score.halftime.away >= minGoals &&
-        fixtureData.teams.away.id === awayTeamId) ||
-      (fixtureData.score.halftime.home >= minGoals &&
-        fixtureData.teams.home.id === awayTeamId)
-    ) {
-      conditionPassedCount += 1;
-    }
-  });
-  if (conditionPassedCount / fixtures.length > 0.9) {
-    return true;
-  } else {
-    return false;
-  }
-};
-
-const homeTeamDrawMostFixtures = ({
-  fixtures,
-  homeTeamId,
-}: {
-  fixtures: FixtureDataModel[];
-  homeTeamId: number;
-}) => {
-  let conditionPassedCount = 0;
-  fixtures.forEach((fixtureData) => {
-    if (
-      (fixtureData.teams.home.winner === null &&
-        fixtureData.teams.home.id === homeTeamId) ||
-      (fixtureData.teams.away.winner === null &&
-        fixtureData.teams.away.id === homeTeamId)
-    ) {
-      conditionPassedCount += 1;
-    }
-  });
-  if (conditionPassedCount / fixtures.length > 0.75) {
-    return true;
-  } else {
-    return false;
-  }
-};
-
-const awayTeamDrawMostFixtures = ({
-  fixtures,
-  awayTeamId,
-}: {
-  fixtures: FixtureDataModel[];
-  awayTeamId: number;
-}) => {
-  let conditionPassedCount = 0;
-  fixtures.forEach((fixtureData) => {
-    if (
-      (fixtureData.teams.home.winner === null &&
-        fixtureData.teams.home.id === awayTeamId) ||
-      (fixtureData.teams.away.winner === null &&
         fixtureData.teams.away.id === awayTeamId)
     ) {
       conditionPassedCount += 1;
