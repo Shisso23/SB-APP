@@ -157,10 +157,10 @@ export const predictBothTeamsToScore = ({
         awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
         goals: 1,
       }) &&
-      homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
-      againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 100 &&
-      againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 100
+      homeTeamGoalsPercentage({ homeTeamStanding }) >= 130 &&
+      awayTeamGoalsPercentage({ awayTeamStanding }) >= 130 &&
+      againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 110 &&
+      againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 110
     );
   });
   return {
