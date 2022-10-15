@@ -900,8 +900,8 @@ export const predictDraw = ({
       return false;
     }
     return (
-      homeTeamStanding.all.draw / homeTeamStanding.all.played >= 0.6 &&
-      awayTeamStanding.all.draw / awayTeamStanding.all.played >= 0.6 &&
+      homeTeamStanding?.all.draw / homeTeamStanding?.all.played >= 0.6 &&
+      awayTeamStanding?.all.draw / awayTeamStanding?.all.played >= 0.6 &&
       homeTeamGoalsPercentage({ homeTeamStanding }) <= 140 &&
       awayTeamGoalsPercentage({ awayTeamStanding }) <= 140
     );
@@ -2104,8 +2104,8 @@ const homeTeamGoalsPercentage = ({
 }: {
   homeTeamStanding: StandingsDataStandingModel;
 }) => {
-  const numberOfMatches = homeTeamStanding?.all.played;
-  const goalsScored = homeTeamStanding?.all.goals.for;
+  const numberOfMatches = homeTeamStanding??.all.played;
+  const goalsScored = homeTeamStanding??.all.goals.for;
   return (goalsScored / numberOfMatches) * 100;
 };
 
@@ -2114,8 +2114,8 @@ const awayTeamGoalsPercentage = ({
 }: {
   awayTeamStanding: StandingsDataStandingModel;
 }) => {
-  const numberOfMatches = awayTeamStanding?.all.played;
-  const goalsScored = awayTeamStanding?.all.goals.for;
+  const numberOfMatches = awayTeamStanding??.all.played;
+  const goalsScored = awayTeamStanding??.all.goals.for;
   return (goalsScored / numberOfMatches) * 100;
 };
 
@@ -2124,8 +2124,8 @@ const againstHomeTeamGoalsPercentage = ({
 }: {
   homeTeamStanding: StandingsDataStandingModel;
 }) => {
-  const numberOfMatches = homeTeamStanding?.all.played;
-  const goalsScored = homeTeamStanding?.all.goals.against;
+  const numberOfMatches = homeTeamStanding??.all.played;
+  const goalsScored = homeTeamStanding??.all.goals.against;
   return (goalsScored / numberOfMatches) * 100;
 };
 
@@ -2134,7 +2134,7 @@ const againstAwayTeamGoalsPercentage = ({
 }: {
   awayTeamStanding: StandingsDataStandingModel;
 }) => {
-  const numberOfMatches = awayTeamStanding?.all.played;
-  const goalsScored = awayTeamStanding?.all.goals.against;
+  const numberOfMatches = awayTeamStanding??.all.played;
+  const goalsScored = awayTeamStanding??.all.goals.against;
   return (goalsScored / numberOfMatches) * 100;
 };
