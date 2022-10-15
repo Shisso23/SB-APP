@@ -1768,7 +1768,7 @@ export const HomeTeamScroreInMostHomeFixtures = ({
       conditionPassedCount += 1;
     }
   });
-  if (conditionPassedCount / homefixtures.length >= 0.8) {
+  if (conditionPassedCount / homefixtures.length >= 0.75) {
     return true;
   } else {
     return false;
@@ -1788,7 +1788,7 @@ export const awayTeamScroreInMostAwayFixtures = ({
       conditionPassedCount += 1;
     }
   });
-  if (conditionPassedCount / awayfixtures.length >= 0.8) {
+  if (conditionPassedCount / awayfixtures.length >= 0.75) {
     return true;
   } else {
     return false;
@@ -1918,7 +1918,7 @@ const otherHomeTeamGoalsInAwayFixtures = ({
       conditionPassedCount += 1;
     }
   });
-  if (conditionPassedCount / awayTeamFixtures.length >= 0.8) {
+  if (conditionPassedCount / awayTeamFixtures.length >= 0.75) {
     return true;
   } else {
     return false;
@@ -1938,7 +1938,7 @@ const otherAwayTeamGoalsInHomeFixtures = ({
       conditionPassedCount += 1;
     }
   });
-  if (conditionPassedCount / homeTeamFixtures.length >= 0.8) {
+  if (conditionPassedCount / homeTeamFixtures.length >= 0.75) {
     return true;
   } else {
     return false;
@@ -2104,8 +2104,8 @@ const homeTeamGoalsPercentage = ({
 }: {
   homeTeamStanding: StandingsDataStandingModel;
 }) => {
-  const numberOfMatches = homeTeamStanding??.all.played;
-  const goalsScored = homeTeamStanding??.all.goals.for;
+  const numberOfMatches = homeTeamStanding?.all.played;
+  const goalsScored = homeTeamStanding?.all.goals.for;
   return (goalsScored / numberOfMatches) * 100;
 };
 
@@ -2114,8 +2114,8 @@ const awayTeamGoalsPercentage = ({
 }: {
   awayTeamStanding: StandingsDataStandingModel;
 }) => {
-  const numberOfMatches = awayTeamStanding??.all.played;
-  const goalsScored = awayTeamStanding??.all.goals.for;
+  const numberOfMatches = awayTeamStanding?.all.played;
+  const goalsScored = awayTeamStanding?.all.goals.for;
   return (goalsScored / numberOfMatches) * 100;
 };
 
@@ -2124,8 +2124,8 @@ const againstHomeTeamGoalsPercentage = ({
 }: {
   homeTeamStanding: StandingsDataStandingModel;
 }) => {
-  const numberOfMatches = homeTeamStanding??.all.played;
-  const goalsScored = homeTeamStanding??.all.goals.against;
+  const numberOfMatches = homeTeamStanding?.all.played;
+  const goalsScored = homeTeamStanding?.all.goals.against;
   return (goalsScored / numberOfMatches) * 100;
 };
 
@@ -2134,7 +2134,7 @@ const againstAwayTeamGoalsPercentage = ({
 }: {
   awayTeamStanding: StandingsDataStandingModel;
 }) => {
-  const numberOfMatches = awayTeamStanding??.all.played;
-  const goalsScored = awayTeamStanding??.all.goals.against;
+  const numberOfMatches = awayTeamStanding?.all.played;
+  const goalsScored = awayTeamStanding?.all.goals.against;
   return (goalsScored / numberOfMatches) * 100;
 };
