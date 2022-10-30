@@ -26,6 +26,7 @@ import { LeagueDataModel } from "../../models/leagues/index";
 import { getStandingsByLeagueId } from "../../services/standings";
 import { seasonsBack } from "../../variables/variables";
 import { StandingsModel } from "../../models/standings-models";
+import { getFilteredLeagues } from "../../services/leagues";
 
 const BetScreen: React.FC = () => {
   let { leagues, isLoadingLeagues }: LeaguesState =
@@ -89,6 +90,14 @@ const BetScreen: React.FC = () => {
       setFilteredLeagues(searchedLeagues);
     }
   }, [searchedLeagues?.length]);
+
+  const handleChampionsLeagueCheck = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      getFilteredLeagues({ id: 2, season: 2022 }).then((league) => {
+        return setSelectedLeagues([...selectedLeagues, league.data]);
+      });
+    }
+  };
 
   const updateWindowDimensions = () => {
     setWindowHeight(window.innerHeight);
@@ -236,8 +245,22 @@ const BetScreen: React.FC = () => {
               );
             })}
           </div>
+          <div className=" flex">
+            <span className=" text-sm text-neutral-100">
+              UEFA champions League
+            </span>
+            <CheckBoxIcon
+              ref={checkBoxRef}
+              onChange={(e) => handleChampionsLeagueCheck(e)}
+              size="medium"
+            />
+          </div>
           <button
-            disabled={!selectedLeagues || selectedLeagues?.length === 0 || standingsLoading}
+            disabled={
+              !selectedLeagues ||
+              selectedLeagues?.length === 0 ||
+              standingsLoading
+            }
             style={{
               backgroundColor:
                 !selectedLeagues || selectedLeagues?.length === 0

@@ -1,11 +1,11 @@
 import {
-  // predictOver1_5,
+  predictOver1_5,
   predictBothTeamsToScore,
   predictHomeWinsEitherHalf,
   predictAwayWinsEitherHalf,
   predictHomeWin,
   predictHomeOver1_5,
-  // predictOver2_5,
+  predictOver2_5,
   // predictMultiGoals2_5,
   // predictMultiGoals3_6,
   // predictBothHalVOver0_5,
@@ -70,8 +70,8 @@ export const betOptions: betOptionModel[] = [
       leaguesStandings: StandingsModel[];
     }) => predictHomeOver1_5(params),
   },
-  // {name: 'over 1.5', id: 3, level: 1, shortName: 'Over 1.5', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictOver1_5(params)},
-  // {name: 'Over 2.5', id: 4, level: 2, shortName: 'Over 2.5', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictOver2_5(params)},
+  {name: 'over 1.5', id: 3, level: 1, shortName: 'Over 1.5', description: '2 goals or more in the match',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictOver1_5(params)},
+  {name: 'Over 2.5', id: 4, level: 2, shortName: 'Over 2.5', description: '3 goals or more in the match',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictOver2_5(params)},
   {
     name: "Home Wins Either Half",
     id: 5,
