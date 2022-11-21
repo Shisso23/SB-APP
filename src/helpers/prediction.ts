@@ -1,14 +1,14 @@
-import { FixtureDataModel } from "../models/fixtures";
+import {betOptionModel} from '../models/bet-option-model';
+import {FixtureDataModel} from '../models/fixtures';
+import {
+  StandingsDataStandingModel,
+  StandingsModel,
+} from '../models/standings-models';
 import {
   betOptions,
   numberOfH2HMatchesBack,
   numberOTeamLastFixturesBack,
 } from "../variables/variables";
-import {
-  StandingsDataStandingModel,
-  StandingsModel,
-  StandingsDataLeagueModel,
-} from "../models/standings-models/index";
 
 export const predictOver1_5 = ({
   currentFixtures,
@@ -19,7 +19,7 @@ export const predictOver1_5 = ({
   allFixtures: FixtureDataModel[];
   leaguesStandings: StandingsModel[];
 }) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
+  const predictedFixtures = currentFixtures.filter(currentFixture => {
     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
       teamId: currentFixture.teams.home.id,
       allFixtures,
@@ -46,15 +46,15 @@ export const predictOver1_5 = ({
       return false;
     }
     return (
-      homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
-      (againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 140 ||
-        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 140)
+      homeTeamGoalsPercentage({homeTeamStanding}) >= 170 &&
+      awayTeamGoalsPercentage({awayTeamStanding}) >= 170 &&
+      (againstAwayTeamGoalsPercentage({awayTeamStanding}) >= 140 ||
+        againstHomeTeamGoalsPercentage({homeTeamStanding}) >= 140)
     );
   });
   return {
     fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 3),
+    option: betOptions.find(option => option.id === 3) as betOptionModel,
   };
 };
 
@@ -67,7 +67,7 @@ export const predictOver2_5 = ({
   allFixtures: FixtureDataModel[];
   leaguesStandings: StandingsModel[];
 }) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
+  const predictedFixtures = currentFixtures.filter(currentFixture => {
     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
       teamId: currentFixture.teams.home.id,
       allFixtures,
@@ -94,15 +94,15 @@ export const predictOver2_5 = ({
       return false;
     }
     return (
-      homeTeamGoalsPercentage({ homeTeamStanding }) >= 170 &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) >= 170 &&
-      (againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 140 ||
-        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 140)
+      homeTeamGoalsPercentage({homeTeamStanding}) >= 190 &&
+      awayTeamGoalsPercentage({awayTeamStanding}) >= 190 &&
+      (againstAwayTeamGoalsPercentage({awayTeamStanding}) >= 140 ||
+        againstHomeTeamGoalsPercentage({homeTeamStanding}) >= 140)
     );
   });
   return {
     fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 4),
+    option: betOptions.find(option => option.id === 4) as betOptionModel,
   };
 };
 
@@ -115,7 +115,7 @@ export const predictBothTeamsToScore = ({
   allFixtures: FixtureDataModel[];
   leaguesStandings: StandingsModel[];
 }) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
+  const predictedFixtures = currentFixtures.filter(currentFixture => {
     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
       teamId: currentFixture.teams.home.id,
       allFixtures,
@@ -157,15 +157,15 @@ export const predictBothTeamsToScore = ({
         awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
         goals: 1,
       }) &&
-      homeTeamGoalsPercentage({ homeTeamStanding }) >= 140 &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) >= 140 &&
-      againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 100 &&
-      againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 100
+      homeTeamGoalsPercentage({homeTeamStanding}) >= 170 &&
+      awayTeamGoalsPercentage({awayTeamStanding}) >= 170 &&
+      againstAwayTeamGoalsPercentage({awayTeamStanding}) >= 130 &&
+      againstHomeTeamGoalsPercentage({homeTeamStanding}) >= 130
     );
   });
   return {
     fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 0),
+    option: betOptions.find(option => option.id === 0) as betOptionModel,
   };
 };
 
@@ -178,7 +178,7 @@ export const predictHomeWinsEitherHalf = ({
   allFixtures: FixtureDataModel[];
   leaguesStandings: StandingsModel[];
 }) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
+  const predictedFixtures = currentFixtures.filter(currentFixture => {
     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
       teamId: currentFixture.teams.home.id,
       allFixtures,
@@ -212,11 +212,11 @@ export const predictHomeWinsEitherHalf = ({
           awayTeamFailWinningInMostAwayFixtures({
             awayFixtures: lastFiveAwayTeamAwayFixtures,
           }) &&
-          homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
-          againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 140) ||
-          (homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
-            awayTeamGoalsPercentage({ awayTeamStanding }) <= 80 &&
-            againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 140)) &&
+          homeTeamGoalsPercentage({homeTeamStanding}) >= 170 &&
+          againstAwayTeamGoalsPercentage({awayTeamStanding}) >= 140) ||
+          (homeTeamGoalsPercentage({homeTeamStanding}) >= 170 &&
+            awayTeamGoalsPercentage({awayTeamStanding}) <= 80 &&
+            againstAwayTeamGoalsPercentage({awayTeamStanding}) >= 160)) &&
         HomeTeamScroreInMostHomeFixtures({
           homefixtures: lastFiveHomeTeamHomeFixtures,
           minGoals: 1,
@@ -225,9 +225,9 @@ export const predictHomeWinsEitherHalf = ({
           awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
           goals: 1,
         }) &&
-        homeTeamGoalsPercentage({ homeTeamStanding }) >= 140 &&
-        againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 100 &&
-        againstHomeTeamGoalsPercentage({ homeTeamStanding }) <= 140
+        homeTeamGoalsPercentage({homeTeamStanding}) >= 160 &&
+        againstAwayTeamGoalsPercentage({awayTeamStanding}) >= 130 &&
+        againstHomeTeamGoalsPercentage({homeTeamStanding}) <= 160
       );
     }
     return false;
@@ -235,7 +235,7 @@ export const predictHomeWinsEitherHalf = ({
 
   return {
     fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 5),
+    option: betOptions.find(option => option.id === 5) as betOptionModel,
   }; //TODO can look into making that betoption a enum
 };
 
@@ -248,7 +248,7 @@ export const predictAwayWinsEitherHalf = ({
   allFixtures: FixtureDataModel[];
   leaguesStandings: StandingsModel[];
 }) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
+  const predictedFixtures = currentFixtures.filter(currentFixture => {
     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
       teamId: currentFixture.teams.home.id,
       allFixtures,
@@ -281,11 +281,11 @@ export const predictAwayWinsEitherHalf = ({
           homeTeamFailWinningInMostHomeFixtures({
             homefixtures: lastFiveHomeTeamHomeFixtures,
           }) &&
-          awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
-          againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 140) ||
-          (awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
-            homeTeamGoalsPercentage({ homeTeamStanding }) <= 80 &&
-            againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 140)) &&
+          awayTeamGoalsPercentage({awayTeamStanding}) >= 170 &&
+          againstHomeTeamGoalsPercentage({homeTeamStanding}) >= 160) ||
+          (awayTeamGoalsPercentage({awayTeamStanding}) >= 170 &&
+            homeTeamGoalsPercentage({homeTeamStanding}) <= 80 &&
+            againstHomeTeamGoalsPercentage({homeTeamStanding}) >= 160)) &&
         awayTeamScroreInMostAwayFixtures({
           awayfixtures: lastFiveAwayTeamAwayFixtures,
           minGoals: 1,
@@ -294,9 +294,9 @@ export const predictAwayWinsEitherHalf = ({
           homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
           goals: 1,
         }) &&
-        awayTeamGoalsPercentage({ awayTeamStanding }) >= 140 &&
-        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 100 &&
-        againstAwayTeamGoalsPercentage({ awayTeamStanding }) <= 140
+        awayTeamGoalsPercentage({awayTeamStanding}) >= 160 &&
+        againstHomeTeamGoalsPercentage({homeTeamStanding}) >= 130 &&
+        againstAwayTeamGoalsPercentage({awayTeamStanding}) <= 160
       );
     }
     return false;
@@ -304,7 +304,7 @@ export const predictAwayWinsEitherHalf = ({
 
   return {
     fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 14),
+    option: betOptions.find(option => option.id === 14) as betOptionModel,
   }; //TODO can look into making that betoption id a enum
 };
 
@@ -317,7 +317,7 @@ export const predictHomeWin = ({
   allFixtures: FixtureDataModel[];
   leaguesStandings: StandingsModel[];
 }) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
+  const predictedFixtures = currentFixtures.filter(currentFixture => {
     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
       teamId: currentFixture.teams.home.id,
       allFixtures,
@@ -349,11 +349,11 @@ export const predictHomeWin = ({
           awayTeamFailWinningInMostAwayFixtures({
             awayFixtures: lastFiveAwayTeamAwayFixtures,
           }) &&
-          homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
-          againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 140) ||
-          (homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
-            awayTeamGoalsPercentage({ awayTeamStanding }) <= 80 &&
-            againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 140)) &&
+          homeTeamGoalsPercentage({homeTeamStanding}) >= 170 &&
+          againstAwayTeamGoalsPercentage({awayTeamStanding}) >= 160) ||
+          (homeTeamGoalsPercentage({homeTeamStanding}) >= 170 &&
+            awayTeamGoalsPercentage({awayTeamStanding}) <= 80 &&
+            againstAwayTeamGoalsPercentage({awayTeamStanding}) >= 160)) &&
         HomeTeamScroreInMostHomeFixtures({
           homefixtures: lastFiveHomeTeamHomeFixtures,
           minGoals: 1,
@@ -362,16 +362,16 @@ export const predictHomeWin = ({
           awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
           goals: 1,
         }) &&
-        homeTeamGoalsPercentage({ homeTeamStanding }) >= 140 &&
-        againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 100 &&
-        againstHomeTeamGoalsPercentage({ homeTeamStanding }) <= 140
+        homeTeamGoalsPercentage({homeTeamStanding}) >= 160 &&
+        againstAwayTeamGoalsPercentage({awayTeamStanding}) >= 130 &&
+        againstHomeTeamGoalsPercentage({homeTeamStanding}) <= 160
       );
     }
     return false;
   });
   return {
     fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 1),
+    option: betOptions.find(option => option.id === 1) as betOptionModel,
   }; //TODO can look into making that betoption id a enum
 };
 
@@ -384,7 +384,7 @@ export const predictHomeOrDraw = ({
   allFixtures: FixtureDataModel[];
   leaguesStandings: StandingsModel[];
 }) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
+  const predictedFixtures = currentFixtures.filter(currentFixture => {
     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
       teamId: currentFixture.teams.home.id,
       allFixtures,
@@ -409,13 +409,13 @@ export const predictHomeOrDraw = ({
     ) {
       return (
         ((lastFiveHomeTeamHomeFixtures.every(
-          (fixtureData) => fixtureData.teams.home.winner !== false
+          fixtureData => fixtureData.teams.home.winner !== false,
         ) &&
-          againstHomeTeamGoalsPercentage({ homeTeamStanding }) <= 140 &&
+          againstHomeTeamGoalsPercentage({homeTeamStanding}) <= 160 &&
           awayTeamFailWinningInMostAwayFixtures({
             awayFixtures: lastFiveAwayTeamAwayFixtures,
           }) &&
-          awayTeamGoalsPercentage({ awayTeamStanding }) <= 80) ||
+          awayTeamGoalsPercentage({awayTeamStanding}) <= 80) ||
           (homeTeamWinsMostMatches({
             fixtures: lastFiveHomeTeamHomeFixtures,
             homeTeamId: currentFixture.teams.home.id,
@@ -427,19 +427,19 @@ export const predictHomeOrDraw = ({
             awayTeamFailWinningInMostAwayFixtures({
               awayFixtures: lastFiveAwayTeamAwayFixtures,
             }) &&
-            homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
-            againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 140) ||
-          (homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
-            awayTeamGoalsPercentage({ awayTeamStanding }) <= 80 &&
-            againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 140)) &&
-        againstHomeTeamGoalsPercentage({ homeTeamStanding }) <= 140
+            homeTeamGoalsPercentage({homeTeamStanding}) >= 170 &&
+            againstAwayTeamGoalsPercentage({awayTeamStanding}) >= 160) ||
+          (homeTeamGoalsPercentage({homeTeamStanding}) >= 170 &&
+            awayTeamGoalsPercentage({awayTeamStanding}) <= 80 &&
+            againstAwayTeamGoalsPercentage({awayTeamStanding}) >= 160)) &&
+        againstHomeTeamGoalsPercentage({homeTeamStanding}) <= 160
       );
     }
     return false;
   });
   return {
     fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 26),
+    option: betOptions.find(option => option.id === 26) as betOptionModel,
   }; //TODO can look into making that betoption id a enum
 };
 
@@ -452,7 +452,7 @@ export const predictAwayWin = ({
   allFixtures: FixtureDataModel[];
   leaguesStandings: StandingsModel[];
 }) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
+  const predictedFixtures = currentFixtures.filter(currentFixture => {
     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
       teamId: currentFixture.teams.home.id,
       allFixtures,
@@ -488,11 +488,11 @@ export const predictAwayWin = ({
         homeTeamFailWinningInMostHomeFixtures({
           homefixtures: lastFiveHomeTeamHomeFixtures,
         }) &&
-        awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
-        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 140) ||
-        (awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
-          homeTeamGoalsPercentage({ homeTeamStanding }) <= 80 &&
-          againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 140)) &&
+        awayTeamGoalsPercentage({awayTeamStanding}) >= 170 &&
+        againstHomeTeamGoalsPercentage({homeTeamStanding}) >= 160) ||
+        (awayTeamGoalsPercentage({awayTeamStanding}) >= 170 &&
+          homeTeamGoalsPercentage({homeTeamStanding}) <= 80 &&
+          againstHomeTeamGoalsPercentage({homeTeamStanding}) >= 160)) &&
       awayTeamScroreInMostAwayFixtures({
         awayfixtures: lastFiveAwayTeamAwayFixtures,
         minGoals: 1,
@@ -501,14 +501,14 @@ export const predictAwayWin = ({
         homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
         goals: 1,
       }) &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) >= 140 &&
-      againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 100 &&
-      againstAwayTeamGoalsPercentage({ awayTeamStanding }) <= 140
+      awayTeamGoalsPercentage({awayTeamStanding}) >= 160 &&
+      againstHomeTeamGoalsPercentage({homeTeamStanding}) >= 130 &&
+      againstAwayTeamGoalsPercentage({awayTeamStanding}) <= 160
     );
   });
   return {
     fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 12),
+    option: betOptions.find(option => option.id === 12) as betOptionModel,
   }; //TODO can look into making that betoption id a enum
 };
 
@@ -521,7 +521,7 @@ export const predictAwayOrDraw = ({
   allFixtures: FixtureDataModel[];
   leaguesStandings: StandingsModel[];
 }) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
+  const predictedFixtures = currentFixtures.filter(currentFixture => {
     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
       teamId: currentFixture.teams.home.id,
       allFixtures,
@@ -546,13 +546,13 @@ export const predictAwayOrDraw = ({
     ) {
       return (
         ((lastFiveAwayTeamAwayFixtures.every(
-          (fixtureData) => fixtureData.teams.away.winner !== false
+          fixtureData => fixtureData.teams.away.winner !== false,
         ) &&
-          againstAwayTeamGoalsPercentage({ awayTeamStanding }) <= 140 &&
+          againstAwayTeamGoalsPercentage({awayTeamStanding}) <= 160 &&
           homeTeamFailWinningInMostHomeFixtures({
             homefixtures: lastFiveHomeTeamHomeFixtures,
           }) &&
-          homeTeamGoalsPercentage({ homeTeamStanding }) <= 80) ||
+          homeTeamGoalsPercentage({homeTeamStanding}) <= 80) ||
           (awayTeamWinsMostMatchesTimes({
             fixtures: lastFiveAwayTeamAwayFixtures,
             awayTeamId: currentFixture.teams.away.id,
@@ -564,19 +564,19 @@ export const predictAwayOrDraw = ({
             homeTeamFailWinningInMostHomeFixtures({
               homefixtures: lastFiveHomeTeamHomeFixtures,
             }) &&
-            awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
-            againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 140) ||
-          (awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
-            homeTeamGoalsPercentage({ homeTeamStanding }) <= 80 &&
-            againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 140)) &&
-        againstAwayTeamGoalsPercentage({ awayTeamStanding }) <= 140
+            awayTeamGoalsPercentage({awayTeamStanding}) >= 170 &&
+            againstHomeTeamGoalsPercentage({homeTeamStanding}) >= 160) ||
+          (awayTeamGoalsPercentage({awayTeamStanding}) >= 170 &&
+            homeTeamGoalsPercentage({homeTeamStanding}) <= 80 &&
+            againstHomeTeamGoalsPercentage({homeTeamStanding}) >= 160)) &&
+        againstAwayTeamGoalsPercentage({awayTeamStanding}) <= 160
       );
     }
     return false;
   });
   return {
     fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 27),
+    option: betOptions.find(option => option.id === 27) as betOptionModel,
   }; //TODO can look into making that betoption id a enum
 };
 
@@ -589,7 +589,7 @@ export const predictHomeOver1_5 = ({
   allFixtures: FixtureDataModel[];
   leaguesStandings: StandingsModel[];
 }) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
+  const predictedFixtures = currentFixtures.filter(currentFixture => {
     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
       teamId: currentFixture.teams.home.id,
       allFixtures,
@@ -620,13 +620,13 @@ export const predictHomeOver1_5 = ({
         awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
         goals: 1,
       }) &&
-      homeTeamGoalsPercentage({ homeTeamStanding }) >= 170 &&
-      againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 160
+      homeTeamGoalsPercentage({homeTeamStanding}) >= 190 &&
+      againstAwayTeamGoalsPercentage({awayTeamStanding}) >= 180
     );
   });
   return {
     fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 2),
+    option: betOptions.find(option => option.id === 2) as betOptionModel,
   }; //TODO can look into making that betoption id a enum
 };
 // export const predictMultiGoals2_5 = ({
@@ -682,7 +682,7 @@ export const predictHomeOver1_5 = ({
 //   });
 //   return {
 //     fixtures: predictedFixtures,
-//     option: betOptions.find((option) => option.id === 6),
+//     option: betOptions.find((option) => option.id === 6) as betOptionModel,
 //   }; // can look into making that betoption a enum
 // };
 
@@ -735,7 +735,7 @@ export const predictHomeOver1_5 = ({
 //   });
 //   return {
 //     fixtures: predictedFixtures,
-//     option: betOptions.find((option) => option.id === 7),
+//     option: betOptions.find((option) => option.id === 7) as betOptionModel,
 //   }; // can look into making that betoption a enum
 // };
 
@@ -788,7 +788,7 @@ export const predictHomeOver1_5 = ({
 //   });
 //   return {
 //     fixtures: predictedFixtures,
-//     option: betOptions.find((option) => option.id === 8),
+//     option: betOptions.find((option) => option.id === 8) as betOptionModel,
 //   }; // can look into making that betoption a enum
 // };
 
@@ -854,7 +854,7 @@ export const predictHomeOver1_5 = ({
 //   });
 //   return {
 //     fixtures: predictedFixtures,
-//     option: betOptions.find((option) => option.id === 9),
+//     option: betOptions.find((option) => option.id === 9) as betOptionModel,
 //   }; // can look into making that betoption a enum
 // };
 
@@ -867,7 +867,7 @@ export const predictDraw = ({
   allFixtures: FixtureDataModel[];
   leaguesStandings: StandingsModel[];
 }) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
+  const predictedFixtures = currentFixtures.filter(currentFixture => {
     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
       teamId: currentFixture.teams.home.id,
       allFixtures,
@@ -902,13 +902,13 @@ export const predictDraw = ({
     return (
       homeTeamStanding?.all.draw / homeTeamStanding?.all.played >= 0.45 &&
       awayTeamStanding?.all.draw / awayTeamStanding?.all.played >= 0.45 &&
-      homeTeamGoalsPercentage({ homeTeamStanding }) <= 140 &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) <= 140
+      homeTeamGoalsPercentage({homeTeamStanding}) <= 140 &&
+      awayTeamGoalsPercentage({awayTeamStanding}) <= 140
     );
   });
   return {
     fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 10),
+    option: betOptions.find(option => option.id === 10) as betOptionModel,
   }; // can look into making that betoption a enum
 };
 
@@ -967,7 +967,7 @@ export const predictDraw = ({
 //   });
 //   return {
 //     fixtures: predictedFixtures,
-//     option: betOptions.find((option) => option.id === 11),
+//     option: betOptions.find((option) => option.id === 11) as betOptionModel,
 //   }; // can look into making that betoption a enum
 // };
 
@@ -980,7 +980,7 @@ export const predictAwayOver1_5 = ({
   allFixtures: FixtureDataModel[];
   leaguesStandings: StandingsModel[];
 }) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
+  const predictedFixtures = currentFixtures.filter(currentFixture => {
     const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
       standings: leaguesStandings,
       awayTeamId: currentFixture.teams.away.id,
@@ -1011,13 +1011,13 @@ export const predictAwayOver1_5 = ({
         homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
         goals: 1,
       }) &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) >= 170 &&
-      againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 160
+      awayTeamGoalsPercentage({awayTeamStanding}) >= 190 &&
+      againstHomeTeamGoalsPercentage({homeTeamStanding}) >= 180
     );
   });
   return {
     fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 13),
+    option: betOptions.find(option => option.id === 13) as betOptionModel,
   }; // can look into making that betoption a enum
 };
 
@@ -1030,7 +1030,7 @@ export const predictHomeOver0_5 = ({
   allFixtures: FixtureDataModel[];
   leaguesStandings: StandingsModel[];
 }) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
+  const predictedFixtures = currentFixtures.filter(currentFixture => {
     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
       teamId: currentFixture.teams.home.id,
       allFixtures,
@@ -1062,13 +1062,13 @@ export const predictHomeOver0_5 = ({
         awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
         goals: 1,
       }) &&
-      homeTeamGoalsPercentage({ homeTeamStanding }) >= 140 &&
-      againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 100
+      homeTeamGoalsPercentage({homeTeamStanding}) >= 180 &&
+      againstAwayTeamGoalsPercentage({awayTeamStanding}) >= 140
     );
   });
   return {
     fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 15),
+    option: betOptions.find(option => option.id === 15) as betOptionModel,
   }; // can look into making that betoption a enum
 };
 
@@ -1081,7 +1081,7 @@ export const predictAwayOver0_5 = ({
   allFixtures: FixtureDataModel[];
   leaguesStandings: StandingsModel[];
 }) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
+  const predictedFixtures = currentFixtures.filter(currentFixture => {
     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
       teamId: currentFixture.teams.home.id,
       allFixtures,
@@ -1112,13 +1112,13 @@ export const predictAwayOver0_5 = ({
         homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
         goals: 1,
       }) &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) >= 140 &&
-      againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 100
+      awayTeamGoalsPercentage({awayTeamStanding}) >= 180 &&
+      againstHomeTeamGoalsPercentage({homeTeamStanding}) >= 140
     );
   });
   return {
     fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 16),
+    option: betOptions.find(option => option.id === 16) as betOptionModel,
   }; // can look into making that betoption a enum
 };
 
@@ -1177,7 +1177,7 @@ export const predictAwayOver0_5 = ({
 //   });
 //   return {
 //     fixtures: predictedFixtures,
-//     option: betOptions.find((option) => option.id === 17),
+//     option: betOptions.find((option) => option.id === 17) as betOptionModel,
 //   }; // can look into making that betoption a enum
 // };
 
@@ -1190,7 +1190,7 @@ export const predictMultiGoals0_2 = ({
   allFixtures: FixtureDataModel[];
   leaguesStandings: StandingsModel[];
 }) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
+  const predictedFixtures = currentFixtures.filter(currentFixture => {
     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
       teamId: currentFixture.teams.home.id,
       allFixtures,
@@ -1217,15 +1217,15 @@ export const predictMultiGoals0_2 = ({
       return false;
     }
     return (
-      homeTeamGoalsPercentage({ homeTeamStanding }) <= 70 &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) <= 70 &&
-      againstHomeTeamGoalsPercentage({ homeTeamStanding }) <= 140 &&
-      againstAwayTeamGoalsPercentage({ awayTeamStanding }) <= 140
+      homeTeamGoalsPercentage({homeTeamStanding}) <= 90 &&
+      awayTeamGoalsPercentage({awayTeamStanding}) <= 90 &&
+      againstHomeTeamGoalsPercentage({homeTeamStanding}) <= 120 &&
+      againstAwayTeamGoalsPercentage({awayTeamStanding}) <= 120
     );
   });
   return {
     fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 18),
+    option: betOptions.find(option => option.id === 18) as betOptionModel,
   }; // can look into making that betoption a enum
 };
 
@@ -1285,7 +1285,7 @@ export const predictMultiGoals0_2 = ({
 //   });
 //   return {
 //     fixtures: predictedFixtures,
-//     option: betOptions.find((option) => option.id === 19),
+//     option: betOptions.find((option) => option.id === 19) as betOptionModel,
 //   }; // can look into making that betoption a enum
 // };
 
@@ -1298,7 +1298,7 @@ export const predictMultiGoals1_2Home = ({
   allFixtures: FixtureDataModel[];
   leaguesStandings: StandingsModel[];
 }) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
+  const predictedFixtures = currentFixtures.filter(currentFixture => {
     const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
       teamId: currentFixture.teams.away.id,
       allFixtures,
@@ -1333,10 +1333,10 @@ export const predictMultiGoals1_2Home = ({
         awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
         goals: 1,
       }) &&
-      homeTeamGoalsPercentage({ homeTeamStanding }) >= 140 &&
-      homeTeamGoalsPercentage({ homeTeamStanding }) <= 170 &&
-      againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 100 &&
-      againstAwayTeamGoalsPercentage({ awayTeamStanding }) <= 140 &&
+      homeTeamGoalsPercentage({homeTeamStanding}) >= 180 &&
+      homeTeamGoalsPercentage({homeTeamStanding}) <= 220 &&
+      againstAwayTeamGoalsPercentage({awayTeamStanding}) >= 130 &&
+      againstAwayTeamGoalsPercentage({awayTeamStanding}) <= 160 &&
       otherHomeTeamMinMaxGoalsInAwayFixtures({
         awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
         minGoals: 1,
@@ -1346,7 +1346,7 @@ export const predictMultiGoals1_2Home = ({
   });
   return {
     fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 20),
+    option: betOptions.find(option => option.id === 20) as betOptionModel,
   }; // can look into making that betoption a enum
 };
 
@@ -1412,7 +1412,7 @@ export const predictMultiGoals1_2Home = ({
 //   });
 //   return {
 //     fixtures: predictedFixtures,
-//     option: betOptions.find((option) => option.id === 21),
+//     option: betOptions.find((option) => option.id === 21) as betOptionModel,
 //   }; // can look into making that betoption a enum
 // };
 
@@ -1425,7 +1425,7 @@ export const predictMultiGoals2_3Home = ({
   allFixtures: FixtureDataModel[];
   leaguesStandings: StandingsModel[];
 }) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
+  const predictedFixtures = currentFixtures.filter(currentFixture => {
     const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
       teamId: currentFixture.teams.away.id,
       allFixtures,
@@ -1468,10 +1468,10 @@ export const predictMultiGoals2_3Home = ({
         awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
         goals: 2,
       }) &&
-      homeTeamGoalsPercentage({ homeTeamStanding }) >= 160 &&
-      homeTeamGoalsPercentage({ homeTeamStanding }) <= 190 &&
-      againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 120 &&
-      againstAwayTeamGoalsPercentage({ awayTeamStanding }) <= 160 &&
+      homeTeamGoalsPercentage({homeTeamStanding}) >= 200 &&
+      homeTeamGoalsPercentage({homeTeamStanding}) <= 240 &&
+      againstAwayTeamGoalsPercentage({awayTeamStanding}) >= 140 &&
+      againstAwayTeamGoalsPercentage({awayTeamStanding}) <= 180 &&
       otherHomeTeamMinMaxGoalsInAwayFixtures({
         awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
         minGoals: 2,
@@ -1481,7 +1481,7 @@ export const predictMultiGoals2_3Home = ({
   });
   return {
     fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 22),
+    option: betOptions.find(option => option.id === 22) as betOptionModel,
   }; // can look into making that betoption a enum
 };
 
@@ -1494,7 +1494,7 @@ export const predictMultiGoals1_2Away = ({
   allFixtures: FixtureDataModel[];
   leaguesStandings: StandingsModel[];
 }) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
+  const predictedFixtures = currentFixtures.filter(currentFixture => {
     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
       teamId: currentFixture.teams.home.id,
       allFixtures,
@@ -1537,10 +1537,10 @@ export const predictMultiGoals1_2Away = ({
         homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
         goals: 1,
       }) &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) >= 140 &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) <= 170 &&
-      againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 100 &&
-      againstHomeTeamGoalsPercentage({ homeTeamStanding }) <= 140 &&
+      awayTeamGoalsPercentage({awayTeamStanding}) >= 180 &&
+      awayTeamGoalsPercentage({awayTeamStanding}) <= 220 &&
+      againstHomeTeamGoalsPercentage({homeTeamStanding}) >= 140 &&
+      againstHomeTeamGoalsPercentage({homeTeamStanding}) <= 160 &&
       otherAwayTeamMinMaxGoalsInHomeFixtures({
         homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
         minGoals: 1,
@@ -1550,7 +1550,7 @@ export const predictMultiGoals1_2Away = ({
   });
   return {
     fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 23),
+    option: betOptions.find(option => option.id === 23) as betOptionModel,
   }; // can look into making that betoption a enum
 };
 
@@ -1563,7 +1563,7 @@ export const predictMultiGoals2_3Away = ({
   allFixtures: FixtureDataModel[];
   leaguesStandings: StandingsModel[];
 }) => {
-  const predictedFixtures = currentFixtures.filter((currentFixture) => {
+  const predictedFixtures = currentFixtures.filter(currentFixture => {
     const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
       teamId: currentFixture.teams.home.id,
       allFixtures,
@@ -1580,7 +1580,7 @@ export const predictMultiGoals2_3Away = ({
     const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
       standings: leaguesStandings,
       awayTeamId: currentFixture.teams.away.id,
-      leagueId: currentFixture.league.id,
+      leagueId: currentFixture.league.id,     
     });
     const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
       standings: leaguesStandings,
@@ -1606,10 +1606,10 @@ export const predictMultiGoals2_3Away = ({
         homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
         goals: 1,
       }) &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) >= 160 &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) <= 190 &&
-      againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 120 &&
-      againstHomeTeamGoalsPercentage({ homeTeamStanding }) <= 160 &&
+      awayTeamGoalsPercentage({awayTeamStanding}) >= 200 &&
+      awayTeamGoalsPercentage({awayTeamStanding}) <= 240 &&
+      againstHomeTeamGoalsPercentage({homeTeamStanding}) >= 150 &&
+      againstHomeTeamGoalsPercentage({homeTeamStanding}) <= 180 &&
       otherAwayTeamMinMaxGoalsInHomeFixtures({
         homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
         minGoals: 2,
@@ -1619,7 +1619,7 @@ export const predictMultiGoals2_3Away = ({
   });
   return {
     fixtures: predictedFixtures,
-    option: betOptions.find((option) => option.id === 24),
+    option: betOptions.find(option => option.id === 24) as betOptionModel,
   }; // can look into making that betoption a enum
 };
 
@@ -1685,7 +1685,7 @@ export const predictMultiGoals2_3Away = ({
 //   });
 //   return {
 //     fixtures: predictedFixtures,
-//     option: betOptions.find((option) => option.id === 25),
+//     option: betOptions.find((option) => option.id === 25) as betOptionModel,
 //   }; // can look into making that betoption a enum
 // };
 
@@ -1697,10 +1697,10 @@ export const getLastFiveTeamHomeFixtures = ({
   allFixtures: FixtureDataModel[];
 }) => {
   return allFixtures
-    .filter((fixture) => {
+    .filter(fixture => {
       return (
         fixture.teams.home.id === teamId &&
-        fixture.fixture.status.short === "FT"
+        fixture.fixture.status.short === 'FT'
       );
     })
     .slice(0, numberOTeamLastFixturesBack)
@@ -1717,11 +1717,11 @@ export const getLastFiveTeamAwayFixtures = ({
   allFixtures: FixtureDataModel[];
 }) => {
   return allFixtures
-    .filter((fixture) => {
+    .filter(fixture => {
       return (
         (fixture.teams.away.id === teamId ||
           fixture.teams.away.id === teamId) &&
-        fixture.fixture.status.short === "FT"
+        fixture.fixture.status.short === 'FT'
       );
     })
     .slice(0, numberOTeamLastFixturesBack)
@@ -1740,13 +1740,13 @@ export const getH2HFixtures = ({
   allFixtures: FixtureDataModel[];
 }) => {
   return allFixtures
-    .filter((fixture) => {
+    .filter(fixture => {
       return (
         (fixture.teams.home.id === teamOneId ||
           fixture.teams.away.id === teamOneId) &&
         (fixture.teams.home.id === teamTwoId ||
           fixture.teams.away.id === teamTwoId) &&
-        fixture.fixture.status.short === "FT"
+        fixture.fixture.status.short === 'FT'
       );
     })
     .slice(0, numberOfH2HMatchesBack)
@@ -1763,7 +1763,7 @@ export const HomeTeamScroreInMostHomeFixtures = ({
   minGoals: number;
 }) => {
   let conditionPassedCount = 0;
-  homefixtures.forEach((fixtureData) => {
+  homefixtures.forEach(fixtureData => {
     if (fixtureData.goals.home >= minGoals) {
       conditionPassedCount += 1;
     }
@@ -1783,7 +1783,7 @@ export const awayTeamScroreInMostAwayFixtures = ({
   minGoals: number;
 }) => {
   let conditionPassedCount = 0;
-  awayfixtures.forEach((fixtureData) => {
+  awayfixtures.forEach(fixtureData => {
     if (fixtureData.goals.away >= minGoals) {
       conditionPassedCount += 1;
     }
@@ -1801,7 +1801,7 @@ export const awayTeamFailScroringInMostAwayFixtures = ({
   awayfixtures: FixtureDataModel[];
 }) => {
   let conditionPassedCount = 0;
-  awayfixtures.forEach((fixtureData) => {
+  awayfixtures.forEach(fixtureData => {
     if (fixtureData.goals.away < 1) {
       conditionPassedCount += 1;
     }
@@ -1819,7 +1819,7 @@ export const homeTeamFailScroringInMostHomeFixtures = ({
   homefixtures: FixtureDataModel[];
 }) => {
   let conditionPassedCount = 0;
-  homefixtures.forEach((fixtureData) => {
+  homefixtures.forEach(fixtureData => {
     if (fixtureData.goals.home < 1) {
       conditionPassedCount += 1;
     }
@@ -1837,7 +1837,7 @@ export const homeTeamFailWinningInMostHomeFixtures = ({
   homefixtures: FixtureDataModel[];
 }) => {
   let conditionPassedCount = 0;
-  homefixtures.forEach((fixtureData) => {
+  homefixtures.forEach(fixtureData => {
     if (fixtureData.goals.home <= fixtureData.goals.away) {
       conditionPassedCount += 1;
     }
@@ -1855,7 +1855,7 @@ export const awayTeamFailWinningInMostAwayFixtures = ({
   awayFixtures: FixtureDataModel[];
 }) => {
   let conditionPassedCount = 0;
-  awayFixtures.forEach((fixtureData) => {
+  awayFixtures.forEach(fixtureData => {
     if (fixtureData.goals.away <= fixtureData.goals.home) {
       conditionPassedCount += 1;
     }
@@ -1875,7 +1875,7 @@ const homeTeamMaxGoals = ({
   maxGoals: number;
 }) => {
   let count = 0;
-  homeTeamFixtures.forEach((fixture) => {
+  homeTeamFixtures.forEach(fixture => {
     if (fixture.goals.home <= maxGoals) {
       count += 1;
     }
@@ -1894,7 +1894,7 @@ const awayTeamMaxGoals = ({
   maxGoals: number;
 }) => {
   let count = 0;
-  awayTeamFixtures.forEach((fixture) => {
+  awayTeamFixtures.forEach(fixture => {
     if (fixture.goals.away <= maxGoals) {
       count += 1;
     }
@@ -1913,7 +1913,7 @@ const otherHomeTeamGoalsInAwayFixtures = ({
   goals: number;
 }) => {
   let conditionPassedCount = 0;
-  awayTeamFixtures.forEach((fixtureData) => {
+  awayTeamFixtures.forEach(fixtureData => {
     if (fixtureData.goals.home >= goals) {
       conditionPassedCount += 1;
     }
@@ -1933,7 +1933,7 @@ const otherAwayTeamGoalsInHomeFixtures = ({
   goals: number;
 }) => {
   let conditionPassedCount = 0;
-  homeTeamFixtures.forEach((fixtureData) => {
+  homeTeamFixtures.forEach(fixtureData => {
     if (fixtureData.goals.away >= goals) {
       conditionPassedCount += 1;
     }
@@ -1955,7 +1955,7 @@ const otherHomeTeamMinMaxGoalsInAwayFixtures = ({
   maxGoals: number;
 }) => {
   let conditionPassedCount = 0;
-  awayTeamFixtures.forEach((fixtureData) => {
+  awayTeamFixtures.forEach(fixtureData => {
     if (
       fixtureData.goals.home >= minGoals &&
       fixtureData.goals.home <= maxGoals
@@ -1980,7 +1980,7 @@ const otherAwayTeamMinMaxGoalsInHomeFixtures = ({
   maxGoals: number;
 }) => {
   let conditionPassedCount = 0;
-  homeTeamFixtures.forEach((fixtureData) => {
+  homeTeamFixtures.forEach(fixtureData => {
     if (
       fixtureData.goals.away >= minGoals &&
       fixtureData.goals.away <= maxGoals
@@ -2003,7 +2003,7 @@ const homeTeamWinsMostMatches = ({
   homeTeamId: number;
 }) => {
   let conditionPassedCount = 0;
-  fixtures.forEach((fixtureData) => {
+  fixtures.forEach(fixtureData => {
     if (
       (fixtureData.score.fulltime.home > fixtureData.score.fulltime.away &&
         fixtureData.teams.home.id === homeTeamId) ||
@@ -2031,7 +2031,7 @@ const awayTeamWinsMostMatchesTimes = ({
   awayTeamId: number;
 }) => {
   let conditionPassedCount = 0;
-  fixtures.forEach((fixtureData) => {
+  fixtures.forEach(fixtureData => {
     if (
       (fixtureData.score.fulltime.home > fixtureData.score.fulltime.away &&
         fixtureData.teams.home.id === awayTeamId) ||
@@ -2063,14 +2063,13 @@ export const getHomeTeamStanding = ({
   leagueId: number;
 }) => {
   let teamStanding: StandingsDataStandingModel;
-  standings.forEach((standing) => {
-    standing?.response[0]?.league.standings.forEach((teamStanding_) => {
-      teamStanding_.forEach((standing) => {
-        if (`${standing.team.id}` === `${homeTeamId}`) {
-          teamStanding = standing;
+  standings.forEach(standing => {
+    standing?.response[0]?.league.standings.forEach(teamStanding_ => {
+      teamStanding_.forEach(standing_ => {
+        if (`${standing_.team.id}` === `${homeTeamId}`) {
+          teamStanding = standing_;
         }
       });
-      console.log({ teamStanding1: teamStanding });
     });
   });
   return teamStanding;
@@ -2086,14 +2085,13 @@ export const getAwayTeamStanding = ({
   leagueId: number;
 }) => {
   let teamStanding: StandingsDataStandingModel;
-  standings.forEach((standing) => {
-    standing.response[0]?.league.standings.forEach((teamStanding_) => {
-      teamStanding_.forEach((standing) => {
-        if (`${standing.team.id}` === `${awayTeamId}`) {
-          teamStanding = standing;
+  standings.forEach(standing => {
+    standing.response[0]?.league.standings.forEach(teamStanding_ => {
+      teamStanding_.forEach(standing_ => {
+        if (`${standing_.team.id}` === `${awayTeamId}`) {
+          teamStanding = standing_;
         }
       });
-      console.log({ teamStanding2: teamStanding });
     });
   });
   return teamStanding;
