@@ -162,8 +162,8 @@ export const predictBothTeamsToScore = ({
       }) &&
       homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
       awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
-      againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 120 &&
-      againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 120) || 
+      againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 110 &&
+      againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 110) || 
       ((( HomeTeamScroreInMostHomeFixtures({
         homefixtures: lastFiveHomeTeamHomeFixtures,
         minGoals: 1,
@@ -173,7 +173,7 @@ export const predictBothTeamsToScore = ({
         goals: 1,
       }) &&
       homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
-      againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 120) && awayTeamScroreInMostH2HFixtures({awayTeamId: awayTeamId, minGoals: 1, h2hFixtures: getH2HFixtures({teamOneId: homeTeamId, teamTwoId: awayTeamId, allFixtures})}) && awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 && againstHomeTeamGoalsPercentage({homeTeamStanding})>=120) || 
+      againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 110) && awayTeamScroreInMostH2HFixtures({awayTeamId: awayTeamId, minGoals: 1, h2hFixtures: getH2HFixtures({teamOneId: homeTeamId, teamTwoId: awayTeamId, allFixtures})}) && awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 && againstHomeTeamGoalsPercentage({homeTeamStanding})>=110) || 
       (
         (awayTeamScroreInMostAwayFixtures({
           awayfixtures: lastFiveAwayTeamAwayFixtures,
@@ -184,7 +184,7 @@ export const predictBothTeamsToScore = ({
           goals: 1,
         }) &&
         awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
-        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 120) && homeTeamScroreInMostH2HFixtures({homeTeamId: homeTeamId, minGoals: 1, h2hFixtures: getH2HFixtures({teamOneId: homeTeamId, teamTwoId: awayTeamId, allFixtures})}) && homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 && againstAwayTeamGoalsPercentage({awayTeamStanding})>=120
+        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 110) && homeTeamScroreInMostH2HFixtures({homeTeamId: homeTeamId, minGoals: 1, h2hFixtures: getH2HFixtures({teamOneId: homeTeamId, teamTwoId: awayTeamId, allFixtures})}) && homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 && againstAwayTeamGoalsPercentage({awayTeamStanding})>=110
       )
       )
     );
