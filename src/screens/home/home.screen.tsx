@@ -1,16 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import images from '../../assets/images';
-import { StandingsModel } from '../../models/standings-models';
 
 const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [windowHeight, setWindowHeight] = useState(window.innerHeight);
-  const [leaguesStandings, setLeaguesStandings] = useState<StandingsModel[]>();
   
   useEffect(()=>{
-    // dispatch(geFilteredFixturesAction(fixtureFilters));
     window.addEventListener('resize', updateWindowDimensions)
     return ()=>{
       window.removeEventListener('resize', updateWindowDimensions)

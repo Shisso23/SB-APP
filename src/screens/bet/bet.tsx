@@ -1,171 +1,115 @@
-import React, {
-  ChangeEvent,
-  useEffect,
-  useState,
-  useRef,
-  ChangeEventHandler,
-} from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
-import CheckBoxIcon from "@mui/material/Checkbox";
+import React, { useEffect, useState } from 'react'
+import { useSelector, useDispatch } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
 
-import "./styles.css";
-import { geFilteredLeaguesAction } from "../../reducers/leagues/leagues.actions";
-import images from "../../assets/images";
+import './styles.css'
+import { geFilteredLeaguesAction } from '../../reducers/leagues/leagues.actions'
+import images from '../../assets/images'
 import {
   leaguesSelector,
   LeaguesState,
-} from "../../reducers/leagues/leagues.reducer";
-import {
-  LeagueDataLeagueModel,
-  LeaguesFilterModel,
-} from "../../models/leagues";
-import { CircularProgress, TextField } from "@mui/material";
-import Autocomplete from "@mui/material/Autocomplete";
-import { LeagueDataModel } from "../../models/leagues/index";
-import { getStandingsByLeagueId } from "../../services/standings";
-import { seasonsBack } from "../../variables/variables";
-import { StandingsModel } from "../../models/standings-models";
-import { getFilteredLeagues } from "../../services/leagues";
+} from '../../reducers/leagues/leagues.reducer'
+import { CircularProgress, TextField } from '@mui/material'
+import Autocomplete from '@mui/material/Autocomplete'
+import { LeagueDataModel, LeaguesFilterModel } from '../../models/leagues/index'
+import { getStandingsByLeagueId } from '../../services/standings'
+import { seasonsBack } from '../../variables/variables'
+import { StandingsModel } from '../../models/standings-models'
+import { favLeaguesMock, MockLeaguesStandings } from '../../mock-data'
 
 const BetScreen: React.FC = () => {
-  let { leagues, isLoadingLeagues }: LeaguesState =
-    useSelector(leaguesSelector);
-  const navigate = useNavigate();
-  const checkBoxRef = useRef(null);
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
-  const [windowHeight, setWindowHeight] = useState(window.innerHeight);
-  const [selectedLeagues, setSelectedLeagues] =
-    useState<LeagueDataLeagueModel[]>();
+  const { leagues, isLoadingLeagues }: LeaguesState = useSelector(
+    leaguesSelector,
+  )
+  const [allLeagues, setAllLeagues] = useState<LeagueDataModel[]>(
+    leagues?.response?.map((leagueData) => leagueData),
+  )
+  const navigate = useNavigate()
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth)
+  const [windowHeight, setWindowHeight] = useState(window.innerHeight)
   const [leaguesFilters, setLeaguesFilters] = useState<LeaguesFilterModel>({
     current: true,
     season: 2022,
-    type: "league",
-  });
+    type: 'league',
+  })
+  const dispatch: any = useDispatch()
   const [searchedLeagues, setSearchedLeagues] = useState<
     LeagueDataModel[] | []
-  >([]);
-  const [filteredLeagues, setFilteredLeagues] = useState<LeagueDataModel[]>(
-    leagues?.response
-  );
-  const [standingsLoading, setStandingsLoading] = useState(false);
-  const [leaguesStandings, setLeaguesStandings] = useState<StandingsModel[]>();
-  const dispatch: any = useDispatch();
+  >([])
+  const [standingsLoading, setStandingsLoading] = useState(false)
+  const [leaguesStandings, setLeaguesStandings] = useState<StandingsModel[]>()
 
   useEffect(() => {
-    dispatch(geFilteredLeaguesAction(leaguesFilters));
+    if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
+      // do nothing
+    } else {
+      setAllLeagues(leagues.response.map((leagueData) => leagueData))
+    }
+  }, [JSON.stringify(leagues)])
 
-    window.addEventListener("resize", updateWindowDimensions);
-    window.addEventListener("load", handlePageRefresh);
+  useEffect(() => {
+    if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
+      setAllLeagues(favLeaguesMock)
+    } else {
+      // production code
+      dispatch(geFilteredLeaguesAction(leaguesFilters))
+    }
+
+    window.addEventListener('resize', updateWindowDimensions)
     return () => {
-      window.removeEventListener("resize", updateWindowDimensions);
-      window.removeEventListener("load", handlePageRefresh);
-    };
-  }, []);
-
-  useEffect(() => {
-    handlePageRefresh();
-  }, [leagues?.response.length]);
-
-  const handlePageRefresh = () => {
-    if (searchedLeagues?.length === 0) {
-      setFilteredLeagues(leagues?.response);
-    } else {
-      setFilteredLeagues(searchedLeagues);
+      window.removeEventListener('resize', updateWindowDimensions)
     }
-  };
-
-  useEffect(() => {
-    if (searchedLeagues?.length === 0) {
-      setFilteredLeagues(leagues?.response);
-    } else {
-      setSelectedLeagues(
-        selectedLeagues?.filter((league) =>
-          searchedLeagues.some(
-            (searchedLeague: LeagueDataModel) =>
-              searchedLeague.league.id === league.id
-          )
-        )
-      );
-      setFilteredLeagues(searchedLeagues);
-    }
-  }, [searchedLeagues?.length]);
-
-  const handleChampionsLeagueCheck = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) {
-      getFilteredLeagues({ id: 2, season: 2022 }).then((league) => {
-        return setSelectedLeagues([...selectedLeagues, league.data]);
-      });
-    }
-  };
+  }, [])
 
   const updateWindowDimensions = () => {
-    setWindowHeight(window.innerHeight);
-    setWindowWidth(window.innerWidth);
-  };
+    setWindowHeight(window.innerHeight)
+    setWindowWidth(window.innerWidth)
+  }
 
   const handleNextClick = () => {
-    setStandingsLoading(true);
-    Promise.all(
-      selectedLeagues.map((league) => {
-        return getStandingsByLeagueId({
-          leagueId: league.id,
-          season: seasonsBack[0],
-        });
+    if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
+      // TODO use Mock standings
+      navigate('/fixtures', {
+        state: {
+          selectedLeagues: searchedLeagues.map(
+            (searchedLeague: LeagueDataModel) => searchedLeague.league,
+          ),
+          leaguesStandings: MockLeaguesStandings,
+        },
       })
-    )
-      .then((standings) => {
-        setLeaguesStandings(standings);
-        navigate("/fixtures", {
-          state: {
-            selectedLeagues,
-            leaguesStandings: standings,
-          },
-        });
-      })
-      .finally(() => {
-        setStandingsLoading(false);
-      });
-  };
-
-  const handleLeagueSelect = (
-    e: ChangeEvent<HTMLInputElement>,
-    league: LeagueDataLeagueModel
-  ) => {
-    if (e.target.checked) {
-      if (selectedLeagues) {
-        if (
-          selectedLeagues.every(
-            (leagueSelected) => leagueSelected.id !== league.id
-          )
-        ) {
-          setSelectedLeagues([...selectedLeagues, league]);
-        }
-      } else {
-        setSelectedLeagues([league]);
-      }
     } else {
-      if (
-        selectedLeagues &&
-        selectedLeagues.some(
-          (leagueSelected) => leagueSelected.id === league.id
-        )
-      ) {
-        setSelectedLeagues(
-          selectedLeagues?.filter(
-            (leagueSelected) => leagueSelected.id !== league.id
-          )
-        );
-      }
+      setStandingsLoading(true)
+      Promise.all(
+        searchedLeagues.map((searchedLeague: LeagueDataModel) => {
+          return getStandingsByLeagueId({
+            leagueId: searchedLeague.league.id,
+            season: seasonsBack[0],
+          })
+        }),
+      )
+        .then((standings) => {
+          setLeaguesStandings(standings)
+          navigate('/fixtures', {
+            state: {
+              selectedLeagues: searchedLeagues.map(
+                (searchedLeague: LeagueDataModel) => searchedLeague.league,
+              ),
+              leaguesStandings: standings,
+            },
+          })
+        })
+        .finally(() => {
+          setStandingsLoading(false)
+        })
     }
-  };
+  }
 
   return (
     <div
       style={{
         backgroundImage: ` url(${images.bgImage})`,
-        backgroundRepeat: "no-repeat",
-        backgroundSize: "cover",
+        backgroundRepeat: 'no-repeat',
+        backgroundSize: 'cover',
         width: windowWidth,
         height: windowHeight,
       }}
@@ -175,13 +119,13 @@ const BetScreen: React.FC = () => {
         <CircularProgress />
       ) : (
         <>
-          {leagues && (
-            <div className=" absolute float-right top-24 right-10">
+          {allLeagues && (
+            <div className=" flex flex-col items-center justify-center w-full px-20 mb-5">
               <div className=" text-white font-semibold">
                 Search league/ Country
               </div>
               <Autocomplete
-                className="bg-gray-200 w-64 rounded-lg"
+                className="bg-gray-200 min-w-full rounded-lg"
                 multiple
                 defaultValue={[]}
                 value={searchedLeagues}
@@ -189,85 +133,28 @@ const BetScreen: React.FC = () => {
                 getOptionLabel={(league: LeagueDataModel) =>
                   `${league.league.name} - ${league.country.name}`
                 }
-                options={leagues.response?.map(
-                  (league) => new LeagueDataModel(league)
+                options={allLeagues?.map(
+                  (league) => new LeagueDataModel(league),
                 )}
                 onChange={(event, value: LeagueDataModel[]) => {
-                  setSearchedLeagues(value);
+                  setSearchedLeagues(value)
                 }}
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    InputLabelProps={{ color: "primary", inputMode: "search" }}
+                    InputLabelProps={{ color: 'primary', inputMode: 'search' }}
                   />
                 )}
               />
             </div>
           )}
-          <div className=" flex flex-row  w-full justify-center">
-            <div className=" flex font-bold self-center text-lg py-2 bg-white h-14 w-64 mb-5 items-center justify-center text-center">
-              Select leagues
-            </div>
-          </div>
-
-          <div className=" flex flex-col w-9/12 overflow-y-scroll listView items-center">
-            <div className=" text-white flex w-4/6 ">
-              {selectedLeagues?.length || 0} Selected
-            </div>
-            {filteredLeagues?.map((leagueData) => {
-              return (
-                <div
-                  key={`${leagueData.league.id}`}
-                  className=" flex flex-row justify-between py-3 my-2 px-3 w-4/6 items-center rounded-md bg-blue-300 hover:bg-blue-200"
-                >
-                  <CheckBoxIcon
-                    ref={checkBoxRef}
-                    onChange={(e) => handleLeagueSelect(e, leagueData.league)}
-                    size="medium"
-                  />
-                  <div className=" flex text-xs font-semibold items-center justify-center text-black ml-20">
-                    {leagueData.league.name}
-                  </div>
-                  <div className=" flex flex-row">
-                    <div className=" px-2  text-xs text-black">
-                      {leagueData.country.name}
-                    </div>
-                    <div>
-                      <img
-                        src={`${leagueData.country.flag}`}
-                        alt="country fla"
-                        width={17}
-                        height={17}
-                      />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div className=" flex">
-            <span className=" text-sm text-neutral-100">
-              UEFA champions League
-            </span>
-            <CheckBoxIcon
-              ref={checkBoxRef}
-              onChange={(e) => handleChampionsLeagueCheck(e)}
-              size="medium"
-            />
-          </div>
           <button
-            disabled={
-              !selectedLeagues ||
-              selectedLeagues?.length === 0 ||
-              standingsLoading
-            }
+            disabled={searchedLeagues?.length === 0 || standingsLoading}
             style={{
               backgroundColor:
-                !selectedLeagues || selectedLeagues?.length === 0
-                  ? "gray"
-                  : "rgb(96 165 250)",
+                searchedLeagues?.length === 0 ? 'gray' : 'rgb(96 165 250)',
             }}
-            className=" flex bg-blue-400 rounded p-4 items-center justify-center self-end w-60 text-black hover:bg-blue-200 mr-5"
+            className=" flex bg-blue-400 rounded p-4 items-center justify-center self-end w-60 text-black hover:bg-blue-200 mr-20"
             onClick={handleNextClick}
           >
             Next
@@ -275,7 +162,7 @@ const BetScreen: React.FC = () => {
         </>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default BetScreen;
+export default BetScreen

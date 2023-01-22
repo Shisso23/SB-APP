@@ -268,6 +268,6 @@ export const numberOTeamLastFixturesBack = 5;
 
 export const numberOfSeasonsBack = 3;
 
-export const seasonsBack = [2022, 2021, 2020];
+export const seasonsBack = [2023, 2022, 2021];
 
 //TODO Should make these constants UPPERCASE
