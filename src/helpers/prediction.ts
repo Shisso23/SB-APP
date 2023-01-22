@@ -930,7 +930,7 @@ export const predictDraw = ({
         awayTeamStanding?.all.draw / awayTeamStanding?.all.played >= 0.45 &&
         homeTeamGoalsPercentage({ homeTeamStanding }) <= 120 &&
         awayTeamGoalsPercentage({ awayTeamStanding }) <= 120) || (
-        homeTeamStanding.all.draw > homeTeamStanding.all.lose && awayTeamStanding.all.draw > awayTeamStanding.all.lose && againstHomeTeamGoalsPercentage({ homeTeamStanding }) < 95 && againstAwayTeamGoalsPercentage({ awayTeamStanding }) < 95
+        homeTeamStanding?.all.draw > homeTeamStanding.all.lose && awayTeamStanding.all.draw > awayTeamStanding.all.lose && againstHomeTeamGoalsPercentage({ homeTeamStanding }) < 95 && againstAwayTeamGoalsPercentage({ awayTeamStanding }) < 95
       )
     );
   });
