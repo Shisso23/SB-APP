@@ -268,6 +268,6 @@ export const numberOTeamLastFixturesBack = 5;
 
 export const numberOfSeasonsBack = 3;
 
-export const seasonsBack = [2023, 2022, 2021];
+export const seasonsBack = [2022, 2021, 2020]; // modify this to work better. SHould not be hardcorded. Adding 2023 in janury gave me issues
 
 //TODO Should make these constants UPPERCASE
