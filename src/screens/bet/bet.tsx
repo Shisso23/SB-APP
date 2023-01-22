@@ -43,7 +43,7 @@ const BetScreen: React.FC = () => {
     if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
       // do nothing
     } else {
-      setAllLeagues(leagues.response.map((leagueData) => leagueData))
+      setAllLeagues(leagues?.response.map((leagueData) => leagueData))
     }
   }, [JSON.stringify(leagues)])
 
