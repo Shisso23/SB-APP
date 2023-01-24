@@ -4,7 +4,7 @@ import {
   predictHomeWinsEitherHalf,
   predictAwayWinsEitherHalf,
   predictHomeWin,
-  predictHomeOver1_5,
+  // predictHomeOver1_5,
   // predictOver2_5,
   // predictMultiGoals2_5,
   // predictMultiGoals3_6,
@@ -12,7 +12,7 @@ import {
   // predictDrawOrGoal,
   predictDraw,
   // predictHTDraw,
-  predictAwayOver1_5,
+  // predictAwayOver1_5,
   predictAwayWin,
   predictHomeOver0_5,
   predictAwayOver0_5,
@@ -27,8 +27,6 @@ import {
   // predictMultiGoals1_3Away,
   predictHomeOrDraw,
   predictAwayOrDraw,
-  predictOver1_5,
-  predictOver2_5,
 } from "../helpers/prediction";
 import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures/index";
@@ -62,20 +60,20 @@ export const betOptions: betOptionModel[] = [
       leaguesStandings: StandingsModel[];
     }) => predictHomeWin(params),
   },
-  {
-    name: "Home over 1.5",
-    id: 2,
-    level: 3,
-    shortName: "H.Over 1.5",
-    description: "Home team scores at least 2 goals",
-    predict: (params: {
-      currentFixtures: FixtureDataModel[];
-      allFixtures: FixtureDataModel[];
-      leaguesStandings: StandingsModel[];
-    }) => predictHomeOver1_5(params),
-  },
-  {name: 'over 1.5', id: 3, level: 1, shortName: 'Over 1.5', description: '2 goals or more in the match',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictOver1_5(params)},
-  {name: 'Over 2.5', id: 4, level: 2, shortName: 'Over 2.5', description: '3 goals or more in the match',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictOver2_5(params)},
+  // {
+  //   name: "Home over 1.5",
+  //   id: 2,
+  //   level: 3,
+  //   shortName: "H.Over 1.5",
+  //   description: "Home team scores at least 2 goals",
+  //   predict: (params: {
+  //     currentFixtures: FixtureDataModel[];
+  //     allFixtures: FixtureDataModel[];
+  //     leaguesStandings: StandingsModel[];
+  //   }) => predictHomeOver1_5(params),
+  // },
+  // {name: 'over 1.5', id: 3, level: 1, shortName: 'Over 1.5', description: '2 goals or more in the match',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictOver1_5(params)},
+  // {name: 'Over 2.5', id: 4, level: 2, shortName: 'Over 2.5', description: '3 goals or more in the match',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictOver2_5(params)},
   {
     name: "Home Wins Either Half",
     id: 5,
@@ -117,18 +115,18 @@ export const betOptions: betOptionModel[] = [
       leaguesStandings: StandingsModel[];
     }) => predictAwayWin(params),
   },
-  {
-    name: "Away over 1.5",
-    id: 13,
-    level: 4,
-    shortName: "A.Over 1.5",
-    description: "Away team scores at least 2 goals",
-    predict: (params: {
-      currentFixtures: FixtureDataModel[];
-      allFixtures: FixtureDataModel[];
-      leaguesStandings: StandingsModel[];
-    }) => predictAwayOver1_5(params),
-  },
+  // {
+  //   name: "Away over 1.5",
+  //   id: 13,
+  //   level: 4,
+  //   shortName: "A.Over 1.5",
+  //   description: "Away team scores at least 2 goals",
+  //   predict: (params: {
+  //     currentFixtures: FixtureDataModel[];
+  //     allFixtures: FixtureDataModel[];
+  //     leaguesStandings: StandingsModel[];
+  //   }) => predictAwayOver1_5(params),
+  // },
   {
     name: "Away wins either half",
     id: 14,
