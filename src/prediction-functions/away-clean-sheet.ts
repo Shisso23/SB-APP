@@ -39,7 +39,7 @@ export const predictAwayCleanSheet = ({
       }
       //TODO filter the fixtures that passes the H wins either half test here and return it
       return (
-        againstAwayTeamGoalsPercentage({ awayTeamStanding }) <= 85 &&
+        againstAwayTeamGoalsPercentage({ awayTeamStanding }) <= 90 &&
         homeTeamGoalsPercentage({ homeTeamStanding }) <= 90  && homeTeamFailScroringInMostHomeFixtures({homefixtures: lastFiveHomeTeamHomeFixtures})
       );
     });
