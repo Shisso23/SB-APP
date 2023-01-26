@@ -398,7 +398,7 @@ export const predictHomeOrDraw = ({
       lastFiveAwayTeamAwayFixtures.length >= 3
     ) {
       return (
-        ((lastFiveHomeTeamHomeFixtures.every(
+        (((lastFiveHomeTeamHomeFixtures.every(
           fixtureData => fixtureData.teams.home.winner !== false,
         ) &&
           againstHomeTeamGoalsPercentage({ homeTeamStanding }) <= 150 &&
@@ -423,7 +423,9 @@ export const predictHomeOrDraw = ({
             awayTeamGoalsPercentage({ awayTeamStanding }) <= 80 &&
             againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 150)) &&
         againstHomeTeamGoalsPercentage({ homeTeamStanding }) <= 150 &&
-        awayTeamFailWinningInMostAwayFixtures({awayFixtures: lastFiveAwayTeamAwayFixtures})
+        awayTeamFailWinningInMostAwayFixtures({awayFixtures: lastFiveAwayTeamAwayFixtures})) || 
+        againstHomeTeamGoalsPercentage({ homeTeamStanding }) <= 87 &&
+        awayTeamGoalsPercentage({ awayTeamStanding }) <= 90  && awayTeamFailScroringInMostAwayFixtures({awayfixtures: lastFiveAwayTeamAwayFixtures}) && (awayTeamStanding.rank > homeTeamStanding.rank )  && (awayTeamStanding.rank - homeTeamStanding.rank <=3)
       );
     }
     return false;
@@ -539,7 +541,7 @@ export const predictAwayOrDraw = ({
       lastFiveAwayTeamAwayFixtures.length >= 3
     ) {
       return (
-        ((lastFiveAwayTeamAwayFixtures.every(
+        (((lastFiveAwayTeamAwayFixtures.every(
           fixtureData => fixtureData.teams.away.winner !== false,
         ) &&
           againstAwayTeamGoalsPercentage({ awayTeamStanding }) <= 150 &&
@@ -566,7 +568,8 @@ export const predictAwayOrDraw = ({
         againstAwayTeamGoalsPercentage({ awayTeamStanding }) <= 150&&
         homeTeamFailWinningInMostHomeFixtures({
           homefixtures: lastFiveHomeTeamHomeFixtures,
-        }) 
+        })) ||  againstAwayTeamGoalsPercentage({ awayTeamStanding }) <= 87 &&
+        homeTeamGoalsPercentage({ homeTeamStanding }) <= 90  && homeTeamFailScroringInMostHomeFixtures({homefixtures: lastFiveHomeTeamHomeFixtures}) && (homeTeamStanding.rank> awayTeamStanding.rank )  && (homeTeamStanding.rank - awayTeamStanding.rank >=3)
       );
     }
     return false;
