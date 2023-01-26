@@ -48,8 +48,8 @@ export const predictOver1_5 = ({
     return (
       homeTeamGoalsPercentage({ homeTeamStanding }) >= 160 &&
       awayTeamGoalsPercentage({ awayTeamStanding }) >= 160 &&
-      (againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 110 &&
-        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 110)
+      (againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 140 &&
+        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 140)
     );
   });
   return {
@@ -96,8 +96,8 @@ export const predictOver2_5 = ({
     return (
       homeTeamGoalsPercentage({ homeTeamStanding }) >= 180 &&
       awayTeamGoalsPercentage({ awayTeamStanding }) >= 180 &&
-      (againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 110 &&
-        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 110)
+      (againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 140 &&
+        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 140)
     );
   });
   return {
