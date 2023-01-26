@@ -46,11 +46,11 @@ export const predictOver1_5 = ({
       return false;
     }
     return (
-      homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
+      homeTeamGoalsPercentage({ homeTeamStanding }) >= 160 &&
+      awayTeamGoalsPercentage({ awayTeamStanding }) >= 160 &&
       (againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 130 &&
-        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 130) || (homeTeamGoalsPercentage({homeTeamStanding})>=160 &&(homeTeamStanding.rank < awayTeamStanding.rank) && againstAwayTeamGoalsPercentage({awayTeamStanding})>=150) ||
-        (awayTeamGoalsPercentage({awayTeamStanding})>=160 &&(awayTeamStanding.rank< homeTeamStanding.rank) && againstHomeTeamGoalsPercentage({homeTeamStanding})>=150)
+        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 130) || (homeTeamGoalsPercentage({homeTeamStanding})>=180 &&(homeTeamStanding.rank < awayTeamStanding.rank) && againstAwayTeamGoalsPercentage({awayTeamStanding})>=150) ||
+        (awayTeamGoalsPercentage({awayTeamStanding})>=180 &&(awayTeamStanding.rank< homeTeamStanding.rank) && againstHomeTeamGoalsPercentage({homeTeamStanding})>=150)
     );
   });
   return {
@@ -614,7 +614,7 @@ export const predictHomeOver1_5 = ({
       return false;
     }
     return (
-      (homeTeamGoalsPercentage({homeTeamStanding})>=160 &&(homeTeamStanding.rank < awayTeamStanding.rank) && againstAwayTeamGoalsPercentage({awayTeamStanding})>=150) 
+      (homeTeamGoalsPercentage({homeTeamStanding})>=180 &&(homeTeamStanding.rank < awayTeamStanding.rank) && againstAwayTeamGoalsPercentage({awayTeamStanding})>=150) 
     );
   });
   return {
@@ -991,7 +991,7 @@ export const predictAwayOver1_5 = ({
     }
     return (
     
-      awayTeamGoalsPercentage({awayTeamStanding})>=160 &&(awayTeamStanding.rank< homeTeamStanding.rank) && againstHomeTeamGoalsPercentage({homeTeamStanding})>=150
+      awayTeamGoalsPercentage({awayTeamStanding})>=180 &&(awayTeamStanding.rank< homeTeamStanding.rank) && againstHomeTeamGoalsPercentage({homeTeamStanding})>=150
     );
   });
   return {
