@@ -498,7 +498,7 @@ export const predictAwayWin = ({
       homeTeamFailWinningInMostHomeFixtures({
         homefixtures: lastFiveHomeTeamHomeFixtures,
       }) 
-    );å
+    );
   });
   return {
     fixtures: predictedFixtures,
