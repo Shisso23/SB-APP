@@ -46,8 +46,8 @@ export const predictOver1_5 = ({
       return false;
     }
     return (
-      homeTeamGoalsPercentage({ homeTeamStanding }) >= 160 &&
-      awayTeamGoalsPercentage({ awayTeamStanding }) >= 160 &&
+      homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
+      awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
       (againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 140 &&
         againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 140)
     );
