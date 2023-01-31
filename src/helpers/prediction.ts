@@ -614,7 +614,7 @@ export const predictHomeOver1_5 = ({
       return false;
     }
     return (
-      (homeTeamGoalsPercentage({homeTeamStanding})>=180 &&(homeTeamStanding.rank < awayTeamStanding.rank) && againstAwayTeamGoalsPercentage({awayTeamStanding})>=150) 
+      (homeTeamGoalsPercentage({homeTeamStanding})>=180 &&(homeTeamStanding.rank < awayTeamStanding.rank) && againstAwayTeamGoalsPercentage({awayTeamStanding})>=150)  && otherHomeTeamGoalsInAwayFixtures({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, goals: 2})
     );
   });
   return {
@@ -991,7 +991,7 @@ export const predictAwayOver1_5 = ({
     }
     return (
     
-      awayTeamGoalsPercentage({awayTeamStanding})>=180 &&(awayTeamStanding.rank< homeTeamStanding.rank) && againstHomeTeamGoalsPercentage({homeTeamStanding})>=150
+      awayTeamGoalsPercentage({awayTeamStanding})>=180 &&(awayTeamStanding.rank< homeTeamStanding.rank) && againstHomeTeamGoalsPercentage({homeTeamStanding})>=150 && otherAwayTeamGoalsInHomeFixtures({goals: 2, homeTeamFixtures: lastFiveHomeTeamHomeFixtures})
     );
   });
   return {
