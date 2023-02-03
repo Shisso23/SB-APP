@@ -1,5 +1,5 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 export default function Navbar({ fixed }) {
   const [navbarOpen, setNavbarOpen] = React.useState(false);
@@ -9,14 +9,14 @@ export default function Navbar({ fixed }) {
   };
   return (
     <>
-      <nav className=" flex flex-wrap items-center justify-between px-2 py-3 bg-blue-400 mb-60 fixed w-full">
+      <nav className=" flex justify-between py-1 mb-12 fixed w-full shadow-md bg-gray-900">
         <div className="container px-4 mx-auto flex flex-wrap items-center justify-between">
           <div className="w-full relative flex justify-between lg:w-auto lg:static lg:block lg:justify-start">
-            <span className="text-sm font-bold leading-relaxed inline-block mr-4 py-2 whitespace-nowrap uppercase text-black">
+            <Link to="/" className="text-lg grow:1 font-bold leading-relaxed inline-block mr-4 py-2 whitespace-nowrap uppercase text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-teal-500">
               PREDICTZ
-            </span>
+            </Link>
             <button
-              className="text-black cursor-pointer text-xl leading-none px-3 py-1 border border-solid border-transparent rounded bg-transparent block lg:hidden outline-none focus:outline-none"
+              className="text-white cursor-pointer text-base leading-none px-3 py-1 border border-solid border-transparent rounded bg-gradient-to-r from-cyan-500 to-teal-500 block lg:hidden outline-none focus:outline-none"
               type="button"
               onClick={() => setNavbarOpen(!navbarOpen)}
             >
@@ -32,16 +32,16 @@ export default function Navbar({ fixed }) {
           >
             <ul className="flex flex-col lg:flex-row list-none lg:ml-auto">
               <li className="nav-item">
-                <span className="px-3 py-2 flex items-center text-xs uppercase font-bold leading-snug text-black hover:opacity-75">
-                  <i className="fab fa-facebook-square text-lg leading-lg text-white opacity-75"></i>
-                  <span className="ml-2">BET</span>
+                <span className="px-3 py-2 flex items-center text-base uppercase font-bold leading-snug text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-teal-500 hover:opacity-75">
+                  <i className="fab fa-facebook-square text-lg leading-base text-white opacity-75"></i>
+                  <span className="ml-2 cursor-pointer">LOGIN</span>
                 </span>
               </li>
               <li className="nav-item">
-                <span className="px-3 py-2 flex items-center text-xs uppercase font-bold leading-snug text-black hover:opacity-75">
-                  <i className="fab fa-twitter text-lg leading-lg text-white opacity-75"></i>
+                <span className="px-3 py-2 flex items-center text-base uppercase font-bold leading-snug text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-teal-500 hover:opacity-75 cursor-pointer">
+                  <i className="fab fa-twitter text-base leading-lg text-white opacity-75"></i>
                   <span className="ml-2" onClick={navigateToImagesForm}>
-                    LIVE
+                    SIGNUP
                   </span>
                 </span>
               </li>

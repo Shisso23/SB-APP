@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom'
 
 import './styles.css'
 import { geFilteredLeaguesAction } from '../../reducers/leagues/leagues.actions'
-import images from '../../assets/images'
 import {
   leaguesSelector,
   LeaguesState,
@@ -105,29 +104,16 @@ const BetScreen: React.FC = () => {
   }
 
   return (
-    <div
-      style={{
-        backgroundImage: ` url(${images.bgImage})`,
-        backgroundRepeat: 'no-repeat',
-        backgroundSize: 'cover',
-        width: windowWidth,
-        height: windowHeight,
-      }}
-      className=" flex flex-grow justify-center items-center flex-col pb-10 pt-28"
-    >
+    <div className=" flex flex-grow min-h-screen justify-center outline-none items-center flex-col bg-gray-900 pb-20 pt-28">
       {standingsLoading || isLoadingLeagues ? (
         <CircularProgress />
       ) : (
         <>
           {allLeagues && (
-            <div className=" flex flex-col items-center justify-center w-full px-20 mb-5">
-              <div className=" text-white font-semibold">
-                Search league/ Country
-              </div>
+            <div className=" flex items-center justify-center border-none w-full px-20 mb-5">
               <Autocomplete
-                className="bg-gray-200 min-w-full rounded-lg"
+                className="flex-grow pl-5 text-sm rounded-full w-full text-gray-100 placeholder-gray-200"
                 multiple
-                defaultValue={[]}
                 value={searchedLeagues}
                 id="leagueSearch"
                 getOptionLabel={(league: LeagueDataModel) =>
@@ -140,9 +126,9 @@ const BetScreen: React.FC = () => {
                   setSearchedLeagues(value)
                 }}
                 renderInput={(params) => (
-                  <TextField
+                  <TextField className="flex pl-5 bg-gray-200 outline-none text-sm rounded-full w-full text-gray-100 placeholder-gray-200"
                     {...params}
-                    InputLabelProps={{ color: 'primary', inputMode: 'search' }}
+                    InputLabelProps={{ color: 'primary', inputMode: 'search' }} placeholder="Enter league or Country"
                   />
                 )}
               />
@@ -150,11 +136,7 @@ const BetScreen: React.FC = () => {
           )}
           <button
             disabled={searchedLeagues?.length === 0 || standingsLoading}
-            style={{
-              backgroundColor:
-                searchedLeagues?.length === 0 ? 'gray' : 'rgb(96 165 250)',
-            }}
-            className=" flex bg-blue-400 rounded p-4 items-center justify-center self-end w-60 text-black hover:bg-blue-200 mr-20"
+            className="text-base flex bg-gradient-to-r from-cyan-500 to-teal-500 rounded p-3 items-center self-center justify-center w-40 text-white hover:bg-blue-200"
             onClick={handleNextClick}
           >
             Next
