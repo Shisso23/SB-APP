@@ -1041,8 +1041,9 @@ export const predictHomeOver0_5 = ({
         awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
         goals: 1,
       }) &&
-      homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
-      againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 120
+      homeTeamGoalsPercentage({ homeTeamStanding }) >= 130 &&
+       (homeTeamStanding.rank< awayTeamStanding.rank ) &&
+againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 120
     );
   });
   return {
@@ -1092,6 +1093,7 @@ export const predictAwayOver0_5 = ({
         goals: 1,
       }) &&
       awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
+        (awayTeamStanding.rank< homeTeamStanding.rank ) &&
       againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 120
     );
   });
