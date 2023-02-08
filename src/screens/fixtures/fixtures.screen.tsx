@@ -20,11 +20,6 @@ import { betOptions, levels, seasonsBack } from '../../variables/variables'
 import { betOptionModel } from '../../models/bet-option-model/index'
 import _, { Dictionary } from 'lodash'
 import {
-  getH2HFixtures,
-  getLastFiveTeamAwayFixtures,
-  getLastFiveTeamHomeFixtures,
-} from '../../helpers/prediction'
-import {
   getStandingsByTeamId,
 } from '../../services/standings'
 import {
@@ -32,6 +27,7 @@ import {
   StandingsResponseModel,
 } from '../../models/standings-models'
 import { goupedFixturesMock, mockFixtures } from '../../mock-data'
+import { getH2HFixtures, getLastFiveTeamAwayFixtures, getLastFiveTeamHomeFixtures } from '../../prediction-functions/shared-functions'
 
 Modal.setAppElement('#root')
 
