@@ -1,38 +1,7 @@
-import {
-  predictOver1_5,
-  predictBothTeamsToScore,
-  predictHomeWinsEitherHalf,
-  predictAwayWinsEitherHalf,
-  predictHomeWin,
-  predictHomeOver1_5,
-  predictOver2_5,
-  // predictMultiGoals2_5,
-  // predictMultiGoals3_6,
-  // predictBothHalVOver0_5,
-  // predictDrawOrGoal,
-  predictDraw,
-  predictHTDraw,
-  predictAwayOver1_5,
-  predictAwayWin,
-  predictHomeOver0_5,
-  predictAwayOver0_5,
-  // predictMultiGoals2_4,
-  predictMultiGoals0_2,
-  // predictMultiGoals0_3,
-  // predictMultiGoals1_2Home,
-  // predictMultiGoals1_3Home,
-  // predictMultiGoals2_3Home,
-  // predictMultiGoals1_2Away,
-  // predictMultiGoals2_3Away,
-  // predictMultiGoals1_3Away,
-  predictHomeOrDraw,
-  predictAwayOrDraw,
-} from "../helpers/prediction";
 import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures/index";
 import { StandingsModel } from "../models/standings-models/index";
-import { predictAwayCleanSheet } from "../prediction-functions/away-clean-sheet";
-import { predictHomeCleanSheet } from "../prediction-functions/home-clean-sheet";
+import predictionFunctions from "../prediction-functions";
 export const levels: number[] = [0, 1, 2, 3, 4, 5];
 
 export const betOptions: betOptionModel[] = [
@@ -46,7 +15,7 @@ export const betOptions: betOptionModel[] = [
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];
       leaguesStandings: StandingsModel[];
-    }) => predictBothTeamsToScore(params),
+    }) => predictionFunctions.predictBothTeamsToScore(params),
   },
   {
     name: "Home",
@@ -58,7 +27,7 @@ export const betOptions: betOptionModel[] = [
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];
       leaguesStandings: StandingsModel[];
-    }) => predictHomeWin(params),
+    }) => predictionFunctions.predictHomeWin(params),
   },
   {
     name: "Home over 1.5",
@@ -70,10 +39,10 @@ export const betOptions: betOptionModel[] = [
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];
       leaguesStandings: StandingsModel[];
-    }) => predictHomeOver1_5(params),
+    }) => predictionFunctions.predictHomeOver1_5(params),
   },
-  {name: 'over 1.5', id: 3, level: 1, shortName: 'Over 1.5', description: '2 goals or more in the match',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictOver1_5(params)},
-  {name: 'Over 2.5', id: 4, level: 2, shortName: 'Over 2.5', description: '3 goals or more in the match',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictOver2_5(params)},
+  {name: 'over 1.5', id: 3, level: 1, shortName: 'Over 1.5', description: '2 goals or more in the match',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predictOver1_5(params)},
+  // {name: 'Over 2.5', id: 4, level: 2, shortName: 'Over 2.5', description: '3 goals or more in the match',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictOver2_5(params)},
   {
     name: "Home Wins Either Half",
     id: 5,
@@ -84,7 +53,7 @@ export const betOptions: betOptionModel[] = [
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];
       leaguesStandings: StandingsModel[];
-    }) => predictHomeWinsEitherHalf(params),
+    }) => predictionFunctions.predictHomeWinsEitherHalf(params),
   },
   // {name: 'Multi Goals (2-5) Goals', id: 6, level: 2, shortName: '2->5 G', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictMultiGoals2_5(params)},
   // {name: 'Multi Goals (3-6) Goals', id: 7, level: 3, shortName: '3->6 G', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictMultiGoals3_6(params)},
@@ -100,9 +69,9 @@ export const betOptions: betOptionModel[] = [
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];
       leaguesStandings: StandingsModel[];
-    }) => predictDraw(params),
+    }) => predictionFunctions.predictDraw(params),
   },
-  {name: 'Half-Time Draw', id: 11, level: 4, shortName: 'HT-DRAW', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictHTDraw(params)},
+  {name: 'Half-Time Draw', id: 11, level: 4, shortName: 'HT-DRAW', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predictHTDraw(params)},
   {
     name: "Away",
     id: 12,
@@ -113,20 +82,20 @@ export const betOptions: betOptionModel[] = [
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];
       leaguesStandings: StandingsModel[];
-    }) => predictAwayWin(params),
+    }) => predictionFunctions.predictAwayWin(params),
   },
-  {
-    name: "Away over 1.5",
-    id: 13,
-    level: 4,
-    shortName: "A.Over 1.5",
-    description: "Away team scores at least 2 goals",
-    predict: (params: {
-      currentFixtures: FixtureDataModel[];
-      allFixtures: FixtureDataModel[];
-      leaguesStandings: StandingsModel[];
-    }) => predictAwayOver1_5(params),
-  },
+  // {
+  //   name: "Away over 1.5",
+  //   id: 13,
+  //   level: 4,
+  //   shortName: "A.Over 1.5",
+  //   description: "Away team scores at least 2 goals",
+  //   predict: (params: {
+  //     currentFixtures: FixtureDataModel[];
+  //     allFixtures: FixtureDataModel[];
+  //     leaguesStandings: StandingsModel[];
+  //   }) => predictAwayOver1_5(params),
+  // },
   {
     name: "Away wins either half",
     id: 14,
@@ -137,7 +106,7 @@ export const betOptions: betOptionModel[] = [
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];
       leaguesStandings: StandingsModel[];
-    }) => predictAwayWinsEitherHalf(params),
+    }) => predictionFunctions.predictAwayWinsEitherHalf(params),
   },
   {
     name: "Home over 0.5",
@@ -149,7 +118,7 @@ export const betOptions: betOptionModel[] = [
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];
       leaguesStandings: StandingsModel[];
-    }) => predictHomeOver0_5(params),
+    }) => predictionFunctions.predictHomeOver0_5(params),
   },
   {
     name: "Away over 0.5",
@@ -161,33 +130,33 @@ export const betOptions: betOptionModel[] = [
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];
       leaguesStandings: StandingsModel[];
-    }) => predictAwayOver0_5(params),
+    }) => predictionFunctions.predictAwayOver0_5(params),
   },
   //  {name: 'Multi Goals (2->4 ) Goals', id: 17, level: 3, shortName:'2->4 G', description: '2 to 4 goals in total score',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictMultiGoals2_4(params)},
-  {
-    name: "Multi Goals (0->2 ) Goals",
-    id: 18,
-    level: 3,
-    shortName: "0->2 G",
-    description: "0 to 2 goals in total score",
-    predict: (params: {
-      currentFixtures: FixtureDataModel[];
-      allFixtures: FixtureDataModel[];
-      leaguesStandings: StandingsModel[];
-    }) => predictMultiGoals0_2(params),
-  },
   // {
-  //   name: "Multi Goals (0->3 ) Goals",
-  //   id: 19,
-  //   level: 2,
-  //   shortName: "0->3 G",
-  //   description: "0 to 3 goals in total score",
+  //   name: "Multi Goals (0->2 ) Goals",
+  //   id: 18,
+  //   level: 3,
+  //   shortName: "0->2 G",
+  //   description: "0 to 2 goals in total score",
   //   predict: (params: {
   //     currentFixtures: FixtureDataModel[];
   //     allFixtures: FixtureDataModel[];
   //     leaguesStandings: StandingsModel[];
-  //   }) => predictMultiGoals0_3(params),
+  //   }) => predictMultiGoals0_2(params),
   // },
+  {
+    name: "Multi Goals (0->3 ) Goals",
+    id: 19,
+    level: 2,
+    shortName: "0->3 G",
+    description: "0 to 3 goals in total score",
+    predict: (params: {
+      currentFixtures: FixtureDataModel[];
+      allFixtures: FixtureDataModel[];
+      leaguesStandings: StandingsModel[];
+    }) => predictionFunctions.predictMultiGoals0_3(params),
+  },
   // {
   //   name: "Multi Goals H. (1->2 ) Goals",
   //   id: 20,
@@ -248,7 +217,7 @@ export const betOptions: betOptionModel[] = [
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];
       leaguesStandings: StandingsModel[];
-    }) => predictHomeOrDraw(params),
+    }) => predictionFunctions.predictHomeOrDraw(params),
   },
   {
     name: "Away or Draw",
@@ -260,32 +229,32 @@ export const betOptions: betOptionModel[] = [
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];
       leaguesStandings: StandingsModel[];
-    }) => predictAwayOrDraw(params),
+    }) => predictionFunctions.predictAwayOrDraw(params),
   },
-  {
-    name: "Home Clean sheet",
-    id: 28,
-    level: 3,
-    shortName: "Cleansheet home",
-    description: "Home team will not concede a goal",
-    predict: (params: {
-      currentFixtures: FixtureDataModel[];
-      allFixtures: FixtureDataModel[];
-      leaguesStandings: StandingsModel[];
-    }) => predictHomeCleanSheet(params),
-  },
-  {
-    name: "Away Clean sheet",
-    id: 29,
-    level: 3,
-    shortName: "Cleansheet away",
-    description: "Away team will not concede a goal",
-    predict: (params: {
-      currentFixtures: FixtureDataModel[];
-      allFixtures: FixtureDataModel[];
-      leaguesStandings: StandingsModel[];
-    }) => predictAwayCleanSheet(params),
-  },
+  // {
+  //   name: "Home Clean sheet",
+  //   id: 28,
+  //   level: 3,
+  //   shortName: "Cleansheet home",
+  //   description: "Home team will not concede a goal",
+  //   predict: (params: {
+  //     currentFixtures: FixtureDataModel[];
+  //     allFixtures: FixtureDataModel[];
+  //     leaguesStandings: StandingsModel[];
+  //   }) => predictHomeCleanSheet(params),
+  // },
+  // {
+  //   name: "Away Clean sheet",
+  //   id: 29,
+  //   level: 3,
+  //   shortName: "Cleansheet away",
+  //   description: "Away team will not concede a goal",
+  //   predict: (params: {
+  //     currentFixtures: FixtureDataModel[];
+  //     allFixtures: FixtureDataModel[];
+  //     leaguesStandings: StandingsModel[];
+  //   }) => predictAwayCleanSheet(params),
+  // },
 ];
 
 export const numberOfH2HMatchesBack = 4;

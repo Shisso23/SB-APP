@@ -1,9 +1,8 @@
-import { getAwayTeamStanding, getHomeTeamStanding, getLastFiveTeamAwayFixtures } from "../helpers/prediction";
 import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
 import { betOptions } from "../variables/variables";
-import { getLastFiveTeamHomeFixtures, againstHomeTeamGoalsPercentage, awayTeamGoalsPercentage, awayTeamFailScroringInMostAwayFixtures } from "./shared-functions";
+import { getLastFiveTeamHomeFixtures, againstHomeTeamGoalsPercentage, awayTeamGoalsPercentage, awayTeamFailScroringInMostAwayFixtures, getAwayTeamStanding, getHomeTeamStanding, getLastFiveTeamAwayFixtures } from "./shared-functions";
 
 export const predictHomeCleanSheet = ({
     currentFixtures,
