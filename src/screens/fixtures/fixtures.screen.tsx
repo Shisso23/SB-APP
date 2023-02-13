@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/ban-types */
-/* eslint-disable react-hooks/exhaustive-deps */
 
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Autocomplete, CircularProgress, TextField } from '@mui/material'
+import { CircularProgress } from '@mui/material'
 import moment from 'moment'
 import Modal from 'react-modal'
 import DatePicker from 'react-datepicker'
@@ -11,23 +10,24 @@ import 'react-datepicker/dist/react-datepicker.css'
 import './styles.css'
 
 import { FixturesFilterModel, FixturesModel } from '../../models/fixtures'
-import images from '../../assets/images'
 import { LeagueDataLeagueModel } from '../../models/leagues'
 import { getFilteredFixtures } from '../../services/fixtures/index'
 import { FixtureDataModel } from '../../models/fixtures/index'
 import { toMomentDate } from '../../helpers/dateTimeHelper'
-import { betOptions, levels, seasonsBack } from '../../variables/variables'
+import { betOptions, seasonsBack } from '../../variables/variables'
 import { betOptionModel } from '../../models/bet-option-model/index'
 import _, { Dictionary } from 'lodash'
-import {
-  getStandingsByTeamId,
-} from '../../services/standings'
+import { getStandingsByTeamId } from '../../services/standings'
 import {
   StandingsModel,
   StandingsResponseModel,
 } from '../../models/standings-models'
 import { goupedFixturesMock, mockFixtures } from '../../mock-data'
-import { getH2HFixtures, getLastFiveTeamAwayFixtures, getLastFiveTeamHomeFixtures } from '../../prediction-functions/shared-functions'
+import {
+  getH2HFixtures,
+  getLastFiveTeamAwayFixtures,
+  getLastFiveTeamHomeFixtures,
+} from '../../prediction-functions/shared-functions'
 
 Modal.setAppElement('#root')
 
@@ -37,8 +37,6 @@ const FixturesScreen: React.FC = () => {
     leaguesStandings: StandingsModel[]
   }
   const navigate = useNavigate()
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth)
-  const [windowHeight, setWindowHeight] = useState(window.innerHeight)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [fromDate, setFromDate] = useState(
     new Date(moment().format('YYYY-MM-DD')),
@@ -52,7 +50,7 @@ const FixturesScreen: React.FC = () => {
   const [futureFixtures, setFutureFixtures] = useState<FixtureDataModel[]>([])
   const [allFixtures, setAllFixtures] = useState<FixtureDataModel[]>()
   const [currentFixtures, setCurrentFixtures] = useState<FixtureDataModel[]>()
-  const [loadingStandings, setLoadingStandings] = useState<Boolean>(false)
+  const [loadingStandings, setLoadingStandings] = useState<boolean>(false)
   const [fixtureTeamsStandings, setFixtureTeamsStandings] = useState<
     StandingsResponseModel[]
   >()
@@ -60,10 +58,10 @@ const FixturesScreen: React.FC = () => {
     {
       fixtures: FixtureDataModel[]
       option: {
-        name: String
+        name: string
         id: number
         level: number
-        shortName: String
+        shortName: string
         description: string
       }
     }[]
@@ -73,25 +71,17 @@ const FixturesScreen: React.FC = () => {
       {
         fixtures: FixtureDataModel[]
         option: {
-          name: String
+          name: string
           id: number
           level: number
-          shortName: String
+          shortName: string
           description: string
         }
       }[]
     >
   >()
-  const [selectedLevels, setSeletedLevels] = useState<number[]>([
-    0,
-    1,
-    2,
-    3,
-    4,
-    5,
-  ])
   const [selectedOptions, setSelectedOptions] = useState<betOptionModel[] | []>(
-    [],
+    betOptions,
   )
   const [selectedFixtureRow, setSelectedFixtureRow] = useState<
     FixtureDataModel
@@ -100,21 +90,11 @@ const FixturesScreen: React.FC = () => {
   const [readyToFtechLeagues, setReadyToFetchLeagues] = useState(false)
 
   useEffect(() => {
-    window.addEventListener('resize', updateWindowDimensions)
     setReadyToFetchLeagues(true)
-    setSelectedOptions(
-      betOptions.filter((option) =>
-        selectedLevels.some((level) => option.level === level),
-      ),
-    )
     if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
       setPredictedFixtures(goupedFixturesMock)
     } else {
       // DO nothing
-    }
-
-    return () => {
-      window.removeEventListener('resize', updateWindowDimensions)
     }
   }, [])
 
@@ -155,18 +135,6 @@ const FixturesScreen: React.FC = () => {
   }, [futureFixtures?.length])
 
   useEffect(() => {
-    if (selectedLevels.length > 0) {
-      setSelectedOptions(
-        betOptions.filter((option) =>
-          selectedLevels.some((level) => option.level === level),
-        ),
-      )
-    } else {
-      setSelectedOptions([])
-    }
-  }, [selectedLevels.length])
-
-  useEffect(() => {
     if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
       // DO nothing
     } else {
@@ -192,7 +160,6 @@ const FixturesScreen: React.FC = () => {
       (predictedFixture) => predictedFixture.option.shortName,
     )
     setGroupedPredictionsData(groupedPredictionsData)
-    console.log({groupedPredictionsData})
   }, [JSON.stringify(predictedFixtures)])
 
   useEffect(() => {
@@ -200,6 +167,21 @@ const FixturesScreen: React.FC = () => {
      */
     setCurrentFixtures(filterFixtresBetweenDates(fromDate, toDate))
   }, [fromDate.toString(), toDate.toString()])
+
+  const addOrRemoveBetOptions = (id: number) => {
+    if (selectedOptions.some((option: betOptionModel) => option.id === id)) {
+      setSelectedOptions(
+        selectedOptions.filter((option: betOptionModel) => option.id !== id),
+      )
+    } else if (
+      !selectedOptions.some((option: betOptionModel) => option.id === id)
+    ) {
+      setSelectedOptions([
+        ...selectedOptions,
+        betOptions.find((option) => option.id === id),
+      ])
+    }
+  }
 
   const predict = () => {
     const predictions = selectedOptions.map((option: betOptionModel) =>
@@ -265,16 +247,6 @@ const FixturesScreen: React.FC = () => {
       setFixtureTeamsStandings(undefined)
     }
     setIsModalOpen(!isModalOpen)
-  }
-
-  const onLevelSelect = (selectedLevel: number) => () => {
-    if (selectedLevels.includes(selectedLevel)) {
-      setSeletedLevels(
-        selectedLevels.filter((level) => level !== selectedLevel),
-      )
-    } else {
-      setSeletedLevels([...selectedLevels, selectedLevel])
-    }
   }
 
   const handleFixtureRowClick = (selectedFixture: FixtureDataModel) => () => {
@@ -500,10 +472,29 @@ const FixturesScreen: React.FC = () => {
     )
   }
 
-  const updateWindowDimensions = () => {
-    setWindowHeight(window.innerHeight)
-    setWindowWidth(window.innerWidth)
+
+  const renderBetOptions = () => {
+    return (
+      <div className="flex w-11/12 items-center justify-between space-x-2 overflow-x-scroll px-4 mb-5 h-3/5 bg-white">
+        {betOptions.map((option) => (
+          <div
+            className={`flex w-96 items-start px-4 whitespace-nowrap cursor-pointer text-justify place-content-center bg-${
+              selectedOptions.some(
+                (option_: betOptionModel) => option_.id === option.id,
+              )
+                ? 'blue-300'
+                : 'white'
+            } border rounded h-1/2`}
+            key={option.id}
+            onClick={() => addOrRemoveBetOptions(option.id)}
+          >
+            {option.name}
+          </div>
+        ))}
+      </div>
+    )
   }
+
   return (
     <div className="h-screen flex flex-row bg-gray-900 overflow-y-auto"
     >
@@ -602,20 +593,19 @@ const FixturesScreen: React.FC = () => {
                                       {/* <div className=" flex flex-row justify-center items-center">
                                         <p>{`${predictedionResult.option.shortName}`}</p>
                                       </div> */}
-                                    </div>
-                                  )
-                                },
+                                </div>
                               )
                             },
-                          )}
-                        </>
-                      )
-                    },
-                  )) || <div />}
-              </div>
-            )}
-          </div>
-        </div>
+                          )
+                        },
+                      )}
+                    </>
+                  )
+                })) || <div />}
+            </div>
+          )}
+        </>
+      </div>
 
         {/* Right Panel */}
 

@@ -2,10 +2,10 @@ import { FixtureDataModel } from "../fixtures";
 import { StandingsModel } from "../standings-models";
 
 export class betOptionModel {
-    public name: String;
+    public name: string;
     public id: number;
     public level: number;
-    public shortName: String;
+    public shortName: string;
     public description: string;
     public predict: ({currentFixtures, allFixtures}:{currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> {fixtures: FixtureDataModel[], option: betOptionModel}
     /**

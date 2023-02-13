@@ -1,5 +1,5 @@
 export class FixturesModel {
-    public errors: String [];
+    public errors: string [];
     public results: number;
     public paging: FixturePagingModel;
     public response: FixtureDataModel[];
@@ -40,8 +40,8 @@ export class FixtureDataModel {
 
 export class FixtureDataFixtureModel {
     public id: number;
-    public timezone: String;
-    public date: String;
+    public timezone: string;
+    public date: string;
     public timestamp: number;
     public status: FixtureDataFixtureStatusModel
 
@@ -55,8 +55,8 @@ export class FixtureDataFixtureModel {
 }
 
 export class FixtureDataFixtureStatusModel {
-    public long: String;
-    public short: String;
+    public long: string;
+    public short: string;
     public elapsed: number;
     constructor(init: FixtureDataFixtureStatusModel) {
        this.long = init.long;
@@ -67,9 +67,9 @@ export class FixtureDataFixtureStatusModel {
 
 export class FixtureDataLeagueModel {
     public id: number;
-    public name: String;
-    public country: String;
-    public logo: String;
+    public name: string;
+    public country: string;
+    public logo: string;
     public season: number;
     constructor(init: FixtureDataLeagueModel) {
        this.id = init.id;
@@ -82,9 +82,9 @@ export class FixtureDataLeagueModel {
 
 export class FixtureDataTeamModel {
     public id: number;
-    public name: String;
-    public logo: String;
-    public winner: Boolean;
+    public name: string;
+    public logo: string;
+    public winner: boolean;
     constructor(init: FixtureDataTeamModel) {
        this.id = init.id;
        this.logo = init.logo;
@@ -124,16 +124,16 @@ export class FixtureDataScoreModel {
 
 
 export class FixturesFilterModel {
-    public h2h?: String;
-    public live?: String;
-    public date?: String;
+    public h2h?: string;
+    public live?: string;
+    public date?: string;
     public league?: number;
     public season?: number;
     public team?: number;
     public last?: number;
     public next?: number;
-    public from?: String;
-    public to?: String;
+    public from?: string;
+    public to?: string;
     constructor(init: FixturesFilterModel) {
        this.live = init.live;
        this.date = init.date;

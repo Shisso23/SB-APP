@@ -1,5 +1,5 @@
 export class LeaguesModel {
-    public errors: String [];
+    public errors: string [];
     public results: number;
     public paging: LeaguePagingModel;
     public response: LeagueDataModel[];
@@ -36,10 +36,10 @@ export class LeagueDataModel {
 
 export class LeagueDataLeagueModel {
     public id: number;
-    public name: String;
-    public type: String;
-    public logo: String;
-    public selected: String;
+    public name: string;
+    public type: string;
+    public logo: string;
+    public selected: string;
 
     constructor(init: LeagueDataLeagueModel) {
        this.id = init.id;
@@ -51,9 +51,9 @@ export class LeagueDataLeagueModel {
 }
 
 export class LeagueDataCountryModel {
-    public name: String;
-    public flag: String;
-    public code: String;
+    public name: string;
+    public flag: string;
+    public code: string;
     constructor(init: LeagueDataCountryModel) {
        this.name = init.name;
        this.code = init.code;
@@ -63,9 +63,9 @@ export class LeagueDataCountryModel {
 
 export class LeagueDataSeasonsModel {
     public year: number;
-    public start: String;
-    public end: String;
-    public current: Boolean
+    public start: string;
+    public end: string;
+    public current: boolean
     constructor(init: LeagueDataSeasonsModel) {
        this.year = init.year;
        this.start = init.start;
@@ -77,14 +77,14 @@ export class LeagueDataSeasonsModel {
 
 export class LeaguesFilterModel {
     public id?: number;
-    public name?: String;
-    public country?: String;
-    public code?: String;
+    public name?: string;
+    public country?: string;
+    public code?: string;
     public season?: number;
     public team?: number;
-    public type?: String;
-    public current?: Boolean;
-    public search?: String
+    public type?: string;
+    public current?: boolean;
+    public search?: string
     constructor(init: LeaguesFilterModel) {
        this.id = init.id;
        this.name = init.name;

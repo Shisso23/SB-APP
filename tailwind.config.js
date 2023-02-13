@@ -7,6 +7,13 @@ module.exports = {
         'gold': '#DFBD69',
         'gold2': '#daa520'
     }},
+
+    height: {
+      // fullScreen: '24rem',
+    },
+    width:{
+      'wfull': '200rem'
+    }
     },
   },
   plugins: [],

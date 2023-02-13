@@ -1,15 +1,15 @@
 import React from "react";
 import { useNavigate, Link } from "react-router-dom";
 
-export default function Navbar({ fixed }) {
+export default function Navbar() {
   const [navbarOpen, setNavbarOpen] = React.useState(false);
   const navigate = useNavigate();
 
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   const navigateToImagesForm = () => {
   };
   return (
-    <>
-      <nav className=" flex justify-between py-1 mb-12 fixed w-full shadow-md bg-gray-900">
+      <nav className=" flex justify-between py-1 w-full sticky shadow-md bg-gray-900 top-0 left-0 right-0 z-10">
         <div className="container px-4 mx-auto flex flex-wrap items-center justify-between">
           <div className="w-full relative flex justify-between lg:w-auto lg:static lg:block lg:justify-start">
             <Link to="/" className="text-lg sm:text-md grow:1 font-bold leading-relaxed inline-block mr-4 py-2 whitespace-nowrap uppercase text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-teal-500">
@@ -49,6 +49,5 @@ export default function Navbar({ fixed }) {
           </div>
         </div>
       </nav>
-    </>
   );
 }
