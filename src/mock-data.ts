@@ -840,10 +840,10 @@ export const MockLeaguesStandings :StandingsModel[]=[]
 export const goupedFixturesMock: {
   fixtures: FixtureDataModel[];
   option: {
-    name: String;
+    name: string;
     id: number;
     level: number;
-    shortName: String;
+    shortName: string;
     description: string;
   };
 }[] = [

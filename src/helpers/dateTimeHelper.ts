@@ -1,7 +1,7 @@
 import moment from "moment";
 
 
-export const toMomentDate = (dateString: String)=>{
+export const toMomentDate = (dateString: string)=>{
     const date: Date = new Date(dateString.toString());
     return moment(date);
 }

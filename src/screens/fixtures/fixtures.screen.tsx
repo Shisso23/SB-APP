@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/ban-types */
-/* eslint-disable react-hooks/exhaustive-deps */
 
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Autocomplete, CircularProgress, TextField } from '@mui/material'
+import { CircularProgress } from '@mui/material'
 import moment from 'moment'
 import Modal from 'react-modal'
 import DatePicker from 'react-datepicker'
@@ -11,23 +10,24 @@ import 'react-datepicker/dist/react-datepicker.css'
 import './styles.css'
 
 import { FixturesFilterModel, FixturesModel } from '../../models/fixtures'
-import images from '../../assets/images'
 import { LeagueDataLeagueModel } from '../../models/leagues'
 import { getFilteredFixtures } from '../../services/fixtures/index'
 import { FixtureDataModel } from '../../models/fixtures/index'
 import { toMomentDate } from '../../helpers/dateTimeHelper'
-import { betOptions, levels, seasonsBack } from '../../variables/variables'
+import { betOptions, seasonsBack } from '../../variables/variables'
 import { betOptionModel } from '../../models/bet-option-model/index'
 import _, { Dictionary } from 'lodash'
-import {
-  getStandingsByTeamId,
-} from '../../services/standings'
+import { getStandingsByTeamId } from '../../services/standings'
 import {
   StandingsModel,
   StandingsResponseModel,
 } from '../../models/standings-models'
 import { goupedFixturesMock, mockFixtures } from '../../mock-data'
-import { getH2HFixtures, getLastFiveTeamAwayFixtures, getLastFiveTeamHomeFixtures } from '../../prediction-functions/shared-functions'
+import {
+  getH2HFixtures,
+  getLastFiveTeamAwayFixtures,
+  getLastFiveTeamHomeFixtures,
+} from '../../prediction-functions/shared-functions'
 
 Modal.setAppElement('#root')
 
@@ -37,8 +37,6 @@ const FixturesScreen: React.FC = () => {
     leaguesStandings: StandingsModel[]
   }
   const navigate = useNavigate()
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth)
-  const [windowHeight, setWindowHeight] = useState(window.innerHeight)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [fromDate, setFromDate] = useState(
     new Date(moment().format('YYYY-MM-DD')),
@@ -52,7 +50,7 @@ const FixturesScreen: React.FC = () => {
   const [futureFixtures, setFutureFixtures] = useState<FixtureDataModel[]>([])
   const [allFixtures, setAllFixtures] = useState<FixtureDataModel[]>()
   const [currentFixtures, setCurrentFixtures] = useState<FixtureDataModel[]>()
-  const [loadingStandings, setLoadingStandings] = useState<Boolean>(false)
+  const [loadingStandings, setLoadingStandings] = useState<boolean>(false)
   const [fixtureTeamsStandings, setFixtureTeamsStandings] = useState<
     StandingsResponseModel[]
   >()
@@ -60,10 +58,10 @@ const FixturesScreen: React.FC = () => {
     {
       fixtures: FixtureDataModel[]
       option: {
-        name: String
+        name: string
         id: number
         level: number
-        shortName: String
+        shortName: string
         description: string
       }
     }[]
@@ -73,25 +71,17 @@ const FixturesScreen: React.FC = () => {
       {
         fixtures: FixtureDataModel[]
         option: {
-          name: String
+          name: string
           id: number
           level: number
-          shortName: String
+          shortName: string
           description: string
         }
       }[]
     >
   >()
-  const [selectedLevels, setSeletedLevels] = useState<number[]>([
-    0,
-    1,
-    2,
-    3,
-    4,
-    5,
-  ])
   const [selectedOptions, setSelectedOptions] = useState<betOptionModel[] | []>(
-    [],
+    betOptions,
   )
   const [selectedFixtureRow, setSelectedFixtureRow] = useState<
     FixtureDataModel
@@ -100,21 +90,11 @@ const FixturesScreen: React.FC = () => {
   const [readyToFtechLeagues, setReadyToFetchLeagues] = useState(false)
 
   useEffect(() => {
-    window.addEventListener('resize', updateWindowDimensions)
     setReadyToFetchLeagues(true)
-    setSelectedOptions(
-      betOptions.filter((option) =>
-        selectedLevels.some((level) => option.level === level),
-      ),
-    )
     if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
       setPredictedFixtures(goupedFixturesMock)
     } else {
       // DO nothing
-    }
-
-    return () => {
-      window.removeEventListener('resize', updateWindowDimensions)
     }
   }, [])
 
@@ -155,18 +135,6 @@ const FixturesScreen: React.FC = () => {
   }, [futureFixtures?.length])
 
   useEffect(() => {
-    if (selectedLevels.length > 0) {
-      setSelectedOptions(
-        betOptions.filter((option) =>
-          selectedLevels.some((level) => option.level === level),
-        ),
-      )
-    } else {
-      setSelectedOptions([])
-    }
-  }, [selectedLevels.length])
-
-  useEffect(() => {
     if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
       // DO nothing
     } else {
@@ -192,7 +160,6 @@ const FixturesScreen: React.FC = () => {
       (predictedFixture) => predictedFixture.option.shortName,
     )
     setGroupedPredictionsData(groupedPredictionsData)
-    console.log({groupedPredictionsData})
   }, [JSON.stringify(predictedFixtures)])
 
   useEffect(() => {
@@ -200,6 +167,21 @@ const FixturesScreen: React.FC = () => {
      */
     setCurrentFixtures(filterFixtresBetweenDates(fromDate, toDate))
   }, [fromDate.toString(), toDate.toString()])
+
+  const addOrRemoveBetOptions = (id: number) => {
+    if (selectedOptions.some((option: betOptionModel) => option.id === id)) {
+      setSelectedOptions(
+        selectedOptions.filter((option: betOptionModel) => option.id !== id),
+      )
+    } else if (
+      !selectedOptions.some((option: betOptionModel) => option.id === id)
+    ) {
+      setSelectedOptions([
+        ...selectedOptions,
+        betOptions.find((option) => option.id === id),
+      ])
+    }
+  }
 
   const predict = () => {
     const predictions = selectedOptions.map((option: betOptionModel) =>
@@ -265,16 +247,6 @@ const FixturesScreen: React.FC = () => {
       setFixtureTeamsStandings(undefined)
     }
     setIsModalOpen(!isModalOpen)
-  }
-
-  const onLevelSelect = (selectedLevel: number) => () => {
-    if (selectedLevels.includes(selectedLevel)) {
-      setSeletedLevels(
-        selectedLevels.filter((level) => level !== selectedLevel),
-      )
-    } else {
-      setSeletedLevels([...selectedLevels, selectedLevel])
-    }
   }
 
   const handleFixtureRowClick = (selectedFixture: FixtureDataModel) => () => {
@@ -500,197 +472,154 @@ const FixturesScreen: React.FC = () => {
     )
   }
 
-  const updateWindowDimensions = () => {
-    setWindowHeight(window.innerHeight)
-    setWindowWidth(window.innerWidth)
-  }
-  return (
-    <div
-      style={{
-        backgroundImage: ` url(${images.bgImage})`,
-        backgroundRepeat: 'no-repeat',
-        backgroundSize: 'cover',
-        width: windowWidth,
-        height: windowHeight,
-      }}
-      className="pb-10 pt-28 flex flex-grow "
-    >
-      <div className=" flex flex-row justify-center flex-grow overflow-x-scroll listView ">
-        <button
-          onClick={() => navigate(-1)}
-          className=" text-white border rounded-lg p-5 h-12 ml-2 flex items-center justify-center"
-        >
-          Go back
-        </button>
-        <div className=" flex flex-col justify-center flex-grow">
-          <div className=" flex font-bold self-center text-lg py-2 bg-gray-300 w-64 mb-5 items-center justify-center text-center">
-            Predictions
-          </div>
 
-          <div className=" flex overflow-y-scroll listView justify-center">
-            {loadingLeaguesFixtures ? (
-              <CircularProgress />
-            ) : (
-              <div className="flex flex-col w-10/12 items-center">
-                {(predictedFixtures &&
-                  Object.keys(groupedPredictionsData)?.map(
-                    (OptionShortName) => {
-                      return (
-                        <>
-                          <div className=" flex flex-col items-center">
-                            <div className=" text-base text-white font-bold bg-blue-500 mb-2">
-                              {!groupedPredictionsData[OptionShortName].every(
-                                (predFixture) =>
-                                  predFixture.fixtures.length === 0,
-                              ) && <div>{OptionShortName}</div>}
-                            </div>
-                            <span className=" text-white text-xs bg-blue-500">
-                              {!groupedPredictionsData[OptionShortName].every(
-                                (predFixture) =>
-                                  predFixture.fixtures.length === 0,
-                              ) &&
-                                betOptions.find(
-                                  (option) =>
-                                    option.shortName === OptionShortName,
-                                )?.description}
-                            </span>
-                          </div>
-                          {groupedPredictionsData[OptionShortName].map(
-                            (predictedionResult, predResultIndex) => {
-                              return predictedionResult.fixtures.map(
-                                (fixtureData, fixtureDataIndex) => {
-                                  return (
-                                    <div
-                                      key={`${predResultIndex}-${fixtureDataIndex}`}
-                                      className=" cursor-pointer flex flex-row py-6 my-2 px-2 w-4/6 rounded-md bg-blue-300 hover:bg-blue-200"
-                                      onClick={handleFixtureRowClick(
-                                        fixtureData,
-                                      )}
-                                    >
-                                      <div className=" text-left w-2/6 text-sm">
-                                        {`${fixtureData.league.name} (${fixtureData.league.country})`}
-                                        <div>
-                                          {`${toMomentDate(
-                                            fixtureData.fixture.date,
-                                          ).format('DD-MMMM-YYYY HH:mm')}`}
+  const renderBetOptions = () => {
+    return (
+      <div className="flex w-11/12 items-center justify-between space-x-2 overflow-x-scroll px-4 mb-5 h-3/5 bg-white">
+        {betOptions.map((option) => (
+          <div
+            className={`flex w-96 items-start px-4 whitespace-nowrap cursor-pointer text-justify place-content-center bg-${
+              selectedOptions.some(
+                (option_: betOptionModel) => option_.id === option.id,
+              )
+                ? 'blue-300'
+                : 'white'
+            } border rounded h-1/2`}
+            key={option.id}
+            onClick={() => addOrRemoveBetOptions(option.id)}
+          >
+            {option.name}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className=" flex flex-row overflow-hidden h-screen flex-grow bg-gray-900 pt-10 ">
+      <button
+        onClick={() => navigate(-1)}
+        className=" text-black border bg-slate-500 rounded-lg p-5 h-12 flex items-center justify-center w-2/12 mx-6"
+      >
+        Go back
+      </button>
+      <div className=" flex flex-col justify-center w-8/12 items-center">
+        <div className=" flex font-bold self-center text-lg py-2 bg-gray-300 w-3/12 mb-5 items-center justify-center text-center">
+          Select Bet Options
+        </div>
+        {renderBetOptions()}
+        <>
+          {loadingLeaguesFixtures ? (
+            <CircularProgress />
+          ) : (
+            <div className="flex overflow-y-scroll scroll-m-20 overflow-x-hidden pb-10 sxroll flex-grow max-h-fit flex-col w-full items-center">
+              {(predictedFixtures &&
+                Object.keys(groupedPredictionsData)?.map((OptionShortName) => {
+                  return (
+                    <>
+                      <div className=" flex flex-col items-center">
+                        <div className=" text-base text-white font-bold bg-blue-500 mb-2">
+                          {!groupedPredictionsData[OptionShortName].every(
+                            (predFixture) => predFixture.fixtures.length === 0,
+                          ) && <div>{OptionShortName}</div>}
+                        </div>
+                        <span className=" text-white text-xs bg-blue-500">
+                          {!groupedPredictionsData[OptionShortName].every(
+                            (predFixture) => predFixture.fixtures.length === 0,
+                          ) &&
+                            betOptions.find(
+                              (option) => option.shortName === OptionShortName,
+                            )?.description}
+                        </span>
+                      </div>
+                      {groupedPredictionsData[OptionShortName].map(
+                        (predictedionResult, predResultIndex) => {
+                          return predictedionResult.fixtures.map(
+                            (fixtureData, fixtureDataIndex) => {
+                              return (
+                                <div
+                                  key={`${predResultIndex}-${fixtureDataIndex}`}
+                                  className=" cursor-pointer flex flex-row py-6 my-2 px-2 w-full rounded-md bg-blue-300 hover:bg-blue-200"
+                                  onClick={handleFixtureRowClick(fixtureData)}
+                                >
+                                  <div className=" text-left w-2/6 text-sm">
+                                    {`${fixtureData.league.name} (${fixtureData.league.country})`}
+                                    <div>
+                                      {`${toMomentDate(
+                                        fixtureData.fixture.date,
+                                      ).format('DD-MMMM-YYYY HH:mm')}`}
+                                    </div>
+                                  </div>
+                                  <div className=" flex flex-row w-4/6  self-center justify-between flex-grow overflow-x-hidden">
+                                    <div className=" flex flex-row w-1/2 pl-1">
+                                      <img
+                                        src={`${fixtureData.teams.home.logo}`}
+                                        alt="country flag"
+                                        width={17}
+                                        height={17}
+                                        className=" mr-1 mt-1"
+                                      />
+                                      <div className=" text-xs font-semibold truncate  pr-3 text-black w-2/3 ">
+                                        {fixtureData.teams.home.name}
+                                      </div>
+                                    </div>
+                                    <div className=" flex justify-start w-1/2 pl-1 overflow-x-hidden">
+                                      <div className=" flex flex-row float-left w-full ">
+                                        <img
+                                          src={`${fixtureData.teams.away.logo}`}
+                                          alt="country flag"
+                                          width={17}
+                                          height={17}
+                                          className=" mr-1 mt-1"
+                                        />
+                                        <div className="  text-sm truncate font-semibold text-black">
+                                          {fixtureData.teams.away.name}
                                         </div>
                                       </div>
-                                      <div className=" flex flex-row w-4/6  self-center justify-between flex-grow overflow-x-hidden">
-                                        <div className=" flex flex-row w-1/2 pl-1">
-                                          <img
-                                            src={`${fixtureData.teams.home.logo}`}
-                                            alt="country flag"
-                                            width={17}
-                                            height={17}
-                                            className=" mr-1 mt-1"
-                                          />
-                                          <div className=" text-xs font-semibold truncate  pr-3 text-black w-2/3 ">
-                                            {fixtureData.teams.home.name}
-                                          </div>
-                                        </div>
-                                        <div className=" flex justify-start w-1/2 pl-1 overflow-x-hidden">
-                                          <div className=" flex flex-row float-left w-full ">
-                                            <img
-                                              src={`${fixtureData.teams.away.logo}`}
-                                              alt="country flag"
-                                              width={17}
-                                              height={17}
-                                              className=" mr-1 mt-1"
-                                            />
-                                            <div className="  text-sm truncate font-semibold text-black">
-                                              {fixtureData.teams.away.name}
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </div>
-                                      {/* <div className=" flex flex-row justify-center items-center">
+                                    </div>
+                                  </div>
+                                  {/* <div className=" flex flex-row justify-center items-center">
                                         <p>{`${predictedionResult.option.shortName}`}</p>
                                       </div> */}
-                                    </div>
-                                  )
-                                },
+                                </div>
                               )
                             },
-                          )}
-                        </>
-                      )
-                    },
-                  )) || <div />}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className=" w-2/12 flex  flex-col">
-          <div className=" text-white font-semibold">Bet Options</div>
-          <Autocomplete
-            className="bg-gray-200 w-64 rounded-lg max-h-48 overflow-y-auto"
-            multiple
-            defaultValue={[]}
-            value={selectedOptions}
-            id="Bet Options"
-            getOptionLabel={(option: betOptionModel) => `${option.name}`}
-            options={betOptions.map((option) => option)}
-            onChange={(event, value: betOptionModel[]) => {
-              setSelectedOptions(value)
-            }}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                InputLabelProps={{ color: 'primary', inputMode: 'search' }}
-              />
-            )}
-          />
-          <div className=" mt-5 ">
-            <div className=" text-white font-semibold ">
-              Fixtures dates
-              <div className=" flex flex-col justify-between w-full flex-grow  text-white text-base font-normal ">
-                <span className=" mb-1">From:</span>
-                <div>
-                  <DatePicker
-                    className=" text-black"
-                    minDate={minFixtureDate}
-                    selected={fromDate}
-                    onChange={(date: Date) => setFromDate(date)}
-                  />
-                </div>
-                <span className=" my-1">To:</span>
-                <div className=" w-1/2 ">
-                  <DatePicker
-                    className=" text-black"
-                    minDate={new Date()}
-                    selected={toDate}
-                    onChange={(date: Date) => setToDate(date)}
-                  />
-                </div>
-              </div>
+                          )
+                        },
+                      )}
+                    </>
+                  )
+                })) || <div />}
             </div>
-          </div>
-
-          {currentFixtures ? (
-            <div className=" mt-5 w-28 flex justify-between flex-wrap text-left">
-              <span className=" text-white font-semibold mb-2">
-                Select dificulty levels
-              </span>
-              {levels.map((level) => {
-                return (
-                  <button
-                    key={`${level}`}
-                    className={` rounded-lg p-2 outline-1 border font-bold text-lg text-white m-1 w-12 ${
-                      selectedLevels.includes(level)
-                        ? 'bg-blue-400 border-white'
-                        : 'bg-transparent border-blue-400'
-                    } `}
-                    onClick={onLevelSelect(level)}
-                  >
-                    {`${level}`}
-                  </button>
-                )
-              })}
-            </div>
-          ) : (
-            <></>
           )}
+        </>
+      </div>
+
+      <div className=" w-2/12 pl-10 mr-4 flex items-start  flex-col">
+        <div className=" mt-5">
+          <div className=" text-white font-semibold ">
+            Fixtures dates
+            <div className=" flex flex-col justify-between w-full  text-white text-base font-normal ">
+              <span className=" mb-1">From:</span>
+              <div>
+                <DatePicker
+                  className=" text-black"
+                  minDate={minFixtureDate}
+                  selected={fromDate}
+                  onChange={(date: Date) => setFromDate(date)}
+                />
+              </div>
+              <span className=" my-1">To:</span>
+              <div className=" w-1/2 ">
+                <DatePicker
+                  className=" text-black"
+                  minDate={new Date()}
+                  selected={toDate}
+                  onChange={(date: Date) => setToDate(date)}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       {groupedPredictionsData ? (

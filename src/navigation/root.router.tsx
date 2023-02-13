@@ -9,7 +9,7 @@ import FixturesScreen from '../screens/fixtures/fixtures.screen';
 const RootRouter: React.FC = () => {
   return (
   <BrowserRouter>
-    <Navbar fixed={true}/>
+    <Navbar/>
       <Routes>
           <Route index element={<HomeScreen />} />
           <Route path='/bEt' element={<BetScreen />} />

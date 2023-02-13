@@ -4,7 +4,7 @@ import { FixturesModel } from '../../models/fixtures/index';
 
 export interface FixturesState {
   fixtures: FixturesModel,
-  isLoadingFixtures: Boolean;
+  isLoadingFixtures: boolean;
 }
 
 const initialState: FixturesState = {
@@ -19,7 +19,7 @@ export const fixturesSlice = createSlice({
     setFixtures: (state, action: PayloadAction<FixturesModel>) => {
       state.fixtures = action.payload
     },
-    setIsLoadingFixtures: (state, action: PayloadAction<Boolean>) => {
+    setIsLoadingFixtures: (state, action: PayloadAction<boolean>) => {
       state.isLoadingFixtures = action.payload
     },
   },

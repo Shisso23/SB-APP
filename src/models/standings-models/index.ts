@@ -1,5 +1,5 @@
 export class StandingsModel {
-    public errors: String [];
+    public errors: string [];
     public results: number;
     public response: StandingsResponseModel[];
     /**
@@ -22,9 +22,9 @@ export class StandingsResponseModel {
 
 export class StandingsDataLeagueModel {
     public id: number;
-    public name: String;
-    public country: String;
-    public logo: String;
+    public name: string;
+    public country: string;
+    public logo: string;
     public season: number;
     public flag: string;
     public standings: StandingsDataStandingModel[][];
@@ -42,13 +42,13 @@ export class StandingsDataLeagueModel {
 export class StandingsDataStandingModel {
     public rank: number;
     public team: standingDataStandingsTeamModel;
-    public points: String;
+    public points: string;
     public goalsDiff: number;
     public season: number;
-    public group: String;
-    public form: String;
-    public status: String;
-    public description: String;
+    public group: string;
+    public form: string;
+    public status: string;
+    public description: string;
     public all: standingDataStandingsAllModel;
     constructor(init: StandingsDataStandingModel) {
        this.rank = init.rank;
@@ -66,8 +66,8 @@ export class StandingsDataStandingModel {
 
 export class standingDataStandingsTeamModel {
     public id: number;
-    public name: String;
-    public logo: String;
+    public name: string;
+    public logo: string;
     constructor(init: standingDataStandingsTeamModel) {
        this.id = init.id;
        this.logo = init.logo;

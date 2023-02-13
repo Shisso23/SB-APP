@@ -15,7 +15,7 @@ const PredictionsScreen: React.FC = () => {
   const location = useLocation();
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [windowHeight, setWindowHeight] = useState(window.innerHeight);
-  const [selectedBetOptions, setSelectedBetOptions] = useState<{name: String, id: number}[]>();
+  const [selectedBetOptions, setSelectedBetOptions] = useState<{name: string, id: number}[]>();
   const selectedLeagues  =  location.state
   
   useEffect(()=>{
@@ -37,7 +37,7 @@ const updateWindowDimensions =()=>{
   setWindowWidth(window.innerWidth);
 }
 
-const handleOptionSelect =(e:ChangeEvent<HTMLInputElement>, option: {id: number, name: String})=>{
+const handleOptionSelect =(e:ChangeEvent<HTMLInputElement>, option: {id: number, name: string})=>{
     if(e.target.checked){
         if(selectedBetOptions){
             if(selectedBetOptions.every(betOption => betOption.id !== option.id)){

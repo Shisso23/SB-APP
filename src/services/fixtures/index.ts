@@ -4,7 +4,7 @@ import {FixturesFilterModel} from '../../models/fixtures/index'
 const endpoint = 'fixtures';
 
 //date format: 2021-04-07
-export const getFixturesByDate = async (date: String) => {
+export const getFixturesByDate = async (date: string) => {
     return authNetworkService.get(endpoint, {
         params: {
             date
@@ -12,7 +12,7 @@ export const getFixturesByDate = async (date: String) => {
     })
 } 
 
-export const getFixturesBetweenTwoDates = async ({from, to}: { from: string; to: String}) => {
+export const getFixturesBetweenTwoDates = async ({from, to}: { from: string; to: string}) => {
     return authNetworkService.get(endpoint, {
         params: {
             from,

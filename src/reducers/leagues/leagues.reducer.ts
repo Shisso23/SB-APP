@@ -3,7 +3,7 @@ import type { PayloadAction } from '@reduxjs/toolkit'
 import { LeaguesModel } from '../../models/leagues/index';
 export interface LeaguesState {
   leagues: LeaguesModel,
-  isLoadingLeagues: Boolean;
+  isLoadingLeagues: boolean;
 }
 
 const initialState: LeaguesState = {
@@ -18,7 +18,7 @@ export const leaguesSlice = createSlice({
     setLeagues: (state, action: PayloadAction<LeaguesModel>) => {
       state.leagues = action.payload
     },
-    setIsLoadingLeagues: (state, action: PayloadAction<Boolean>) => {
+    setIsLoadingLeagues: (state, action: PayloadAction<boolean>) => {
       state.isLoadingLeagues = action.payload
     },
   },
