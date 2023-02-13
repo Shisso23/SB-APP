@@ -418,7 +418,7 @@ const FixturesScreen: React.FC = () => {
     })
 
     return (
-      <div className=" flex flex-col items-center justify-center listView">
+      <div className=" flex flex-col lg:flex-row items-center justify-center listView">
         <div className=" w-full">
           <button
             className=" bg-black text-white float-right py-3 px-5 rounded-lg"
@@ -427,10 +427,10 @@ const FixturesScreen: React.FC = () => {
             Close
           </button>
         </div>
-        <span className=" text-2xl font-bold text-center">Fixture Details</span>
-        <div className=" flex flex-row justify-between items-start bg-blue-400 w-full mt-5 rounded-lg px-3 pb-3 listView overflow-x-scroll  ">
+        <span className=" text-lg sm:text-2xl font-bold text-center">Fixture Details</span>
+        <div className=" flex flex-row justify-between items-start bg-blue-400 w-full mt-5 rounded-lg px-3 listView overflow-x-scroll  ">
           <div className=" flex flex-grow flex-col mr-5 h-full">
-            <div className="text-base font-bold text-center my-3">
+            <div className="text-xs sm:text-base font-bold text-center my-3">
               Head to Head
             </div>
             <div className="flex flex-col rounded-lg items-center justify-center">
@@ -441,7 +441,7 @@ const FixturesScreen: React.FC = () => {
           </div>
 
           <div className=" flex flex-grow flex-col mr-5 h-full">
-            <div className="text-base font-bold text-center my-3">
+            <div className="text-xs sm:text-base font-bold text-center my-3">
               Home team Previous Home Matches
             </div>
             <div className="flex flex-col rounded-lg items-center justify-center">
@@ -452,7 +452,7 @@ const FixturesScreen: React.FC = () => {
           </div>
 
           <div className=" flex flex-grow flex-col mr-5 h-full">
-            <div className="text-base font-bold text-center my-3">
+            <div className="text-xs sm:text-base font-bold text-center my-3">
               Away team Previous Away Matches
             </div>
             <div className="flex flex-col rounded-lg items-center justify-center">
@@ -464,7 +464,7 @@ const FixturesScreen: React.FC = () => {
         </div>
         <button
           style={{ backgroundColor: 'rgb(96 165 250)' }}
-          className=" flex bg-blue-400 rounded p-4 items-center justify-center self-center text-black hover:bg-blue-200 my-5"
+          className=" flex bg-blue-400 rounded p-2 sm:p-4 items-center justify-center self-center text-black hover:bg-blue-200 my-5"
           onClick={handleViewStandingsClick({
             homeTeamId: homeTeam.id,
             awayTeamId: awayTeam.id,
@@ -505,40 +505,35 @@ const FixturesScreen: React.FC = () => {
     setWindowWidth(window.innerWidth)
   }
   return (
-    <div
-      style={{
-        backgroundImage: ` url(${images.bgImage})`,
-        backgroundRepeat: 'no-repeat',
-        backgroundSize: 'cover',
-        width: windowWidth,
-        height: windowHeight,
-      }}
-      className="pb-10 pt-28 flex flex-grow "
+    <div className="h-screen flex flex-row bg-gray-900 overflow-y-auto"
     >
-      <div className=" flex flex-row justify-center flex-grow overflow-x-scroll listView ">
+      <div className=" flex flex-grow pt-14 px-2 listView">
         <button
           onClick={() => navigate(-1)}
-          className=" text-white border rounded-lg p-5 h-12 ml-2 flex items-center justify-center"
+          className=" text-white border rounded-lg p-3 text-sm h-8 sm:h-10 sm:text-base ml-2 flex items-center justify-center mt-3"
         >
-          Go back
+          Back
         </button>
-        <div className=" flex flex-col justify-center flex-grow">
-          <div className=" flex font-bold self-center text-lg py-2 bg-gray-300 w-64 mb-5 items-center justify-center text-center">
+
+        {/* Predictions */}
+
+        <div className=" flex flex-col justify-center w-11/12 flex-grow mt-3">
+          <div className=" flex font-bold self-center text-m py-2 border rounded-lg  bg-yellow-500 w-40 sm:w-64 sm:mb-5 mb-2 items-center justify-center text-center">
             Predictions
           </div>
 
-          <div className=" flex overflow-y-scroll listView justify-center">
+          <div className=" flex overflow-y-scroll listView justify-center bg-gray-900">
             {loadingLeaguesFixtures ? (
               <CircularProgress />
             ) : (
-              <div className="flex flex-col w-10/12 items-center">
+              <div className="flex flex-col w-80 sm:w-10/12 items-center">
                 {(predictedFixtures &&
                   Object.keys(groupedPredictionsData)?.map(
                     (OptionShortName) => {
                       return (
                         <>
                           <div className=" flex flex-col items-center">
-                            <div className=" text-base text-white font-bold bg-blue-500 mb-2">
+                            <div className=" text-base text-yellow-500 font-bold sm:mb-2">
                               {!groupedPredictionsData[OptionShortName].every(
                                 (predFixture) =>
                                   predFixture.fixtures.length === 0,
@@ -555,6 +550,7 @@ const FixturesScreen: React.FC = () => {
                                 )?.description}
                             </span>
                           </div>
+                          {/* Results */}
                           {groupedPredictionsData[OptionShortName].map(
                             (predictedionResult, predResultIndex) => {
                               return predictedionResult.fixtures.map(
@@ -562,12 +558,12 @@ const FixturesScreen: React.FC = () => {
                                   return (
                                     <div
                                       key={`${predResultIndex}-${fixtureDataIndex}`}
-                                      className=" cursor-pointer flex flex-row py-6 my-2 px-2 w-4/6 rounded-md bg-blue-300 hover:bg-blue-200"
+                                      className=" cursor-pointer flex flex-col sm:flex-row flex-grow text-xs md:text-m py-2 sm:py-6 my-2 px-2 w-4/6 rounded-md bg-cyan-500 backdrop-blur-[10px] hover:bg-cyan-400"
                                       onClick={handleFixtureRowClick(
                                         fixtureData,
                                       )}
                                     >
-                                      <div className=" text-left w-2/6 text-sm">
+                                      <div className=" text-left mb-2 sm:w-2/6 sm:ml-2 flex-row-reverse text-sm">
                                         {`${fixtureData.league.name} (${fixtureData.league.country})`}
                                         <div>
                                           {`${toMomentDate(
@@ -575,7 +571,7 @@ const FixturesScreen: React.FC = () => {
                                           ).format('DD-MMMM-YYYY HH:mm')}`}
                                         </div>
                                       </div>
-                                      <div className=" flex flex-row w-4/6  self-center justify-between flex-grow overflow-x-hidden">
+                                      <div className=" flex flex-row sm:w-4/6  self-center justify-between flex-grow overflow-x-hidden">
                                         <div className=" flex flex-row w-1/2 pl-1">
                                           <img
                                             src={`${fixtureData.teams.home.logo}`}
@@ -621,10 +617,13 @@ const FixturesScreen: React.FC = () => {
           </div>
         </div>
 
-        <div className=" w-2/12 flex  flex-col">
-          <div className=" text-white font-semibold">Bet Options</div>
+        {/* Right Panel */}
+
+          {/* Bet Otions */}
+        <div className="hidden md:inline-flex w-3/12 flex-col mt-3">
+          <div className=" text-yellow-500 font-semibold mb-3">Bet Options</div>
           <Autocomplete
-            className="bg-gray-200 w-64 rounded-lg max-h-48 overflow-y-auto"
+            className="bg-gray-100 w-64 rounded-lg max-h-48 overflow-y-auto scrollbar-none"
             multiple
             defaultValue={[]}
             value={selectedOptions}
@@ -642,13 +641,13 @@ const FixturesScreen: React.FC = () => {
             )}
           />
           <div className=" mt-5 ">
-            <div className=" text-white font-semibold ">
+            <div className=" text-yellow-500 font-semibold ">
               Fixtures dates
               <div className=" flex flex-col justify-between w-full flex-grow  text-white text-base font-normal ">
                 <span className=" mb-1">From:</span>
                 <div>
                   <DatePicker
-                    className=" text-black"
+                    className=" text-black border rounded-lg border-yellow-500"
                     minDate={minFixtureDate}
                     selected={fromDate}
                     onChange={(date: Date) => setFromDate(date)}
@@ -657,7 +656,7 @@ const FixturesScreen: React.FC = () => {
                 <span className=" my-1">To:</span>
                 <div className=" w-1/2 ">
                   <DatePicker
-                    className=" text-black"
+                    className=" text-black border rounded-lg border-yellow-500"
                     minDate={new Date()}
                     selected={toDate}
                     onChange={(date: Date) => setToDate(date)}
@@ -666,31 +665,6 @@ const FixturesScreen: React.FC = () => {
               </div>
             </div>
           </div>
-
-          {currentFixtures ? (
-            <div className=" mt-5 w-28 flex justify-between flex-wrap text-left">
-              <span className=" text-white font-semibold mb-2">
-                Select dificulty levels
-              </span>
-              {levels.map((level) => {
-                return (
-                  <button
-                    key={`${level}`}
-                    className={` rounded-lg p-2 outline-1 border font-bold text-lg text-white m-1 w-12 ${
-                      selectedLevels.includes(level)
-                        ? 'bg-blue-400 border-white'
-                        : 'bg-transparent border-blue-400'
-                    } `}
-                    onClick={onLevelSelect(level)}
-                  >
-                    {`${level}`}
-                  </button>
-                )
-              })}
-            </div>
-          ) : (
-            <></>
-          )}
         </div>
       </div>
       {groupedPredictionsData ? (

@@ -126,7 +126,7 @@ const BetScreen: React.FC = () => {
                   setSearchedLeagues(value)
                 }}
                 renderInput={(params) => (
-                  <TextField className="flex pl-5 bg-gray-200 outline-none text-sm rounded-full w-full text-gray-100 placeholder-gray-200"
+                  <TextField className="flex pl-5 bg-gray-200 outline-none text-sm rounded-full w-full text-gray-100"
                     {...params}
                     InputLabelProps={{ color: 'primary', inputMode: 'search' }} placeholder="Enter league or Country"
                   />

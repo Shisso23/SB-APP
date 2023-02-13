@@ -12,7 +12,7 @@ export default function Navbar({ fixed }) {
       <nav className=" flex justify-between py-1 mb-12 fixed w-full shadow-md bg-gray-900">
         <div className="container px-4 mx-auto flex flex-wrap items-center justify-between">
           <div className="w-full relative flex justify-between lg:w-auto lg:static lg:block lg:justify-start">
-            <Link to="/" className="text-lg grow:1 font-bold leading-relaxed inline-block mr-4 py-2 whitespace-nowrap uppercase text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-teal-500">
+            <Link to="/" className="text-lg sm:text-md grow:1 font-bold leading-relaxed inline-block mr-4 py-2 whitespace-nowrap uppercase text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-teal-500">
               PREDICTZ
             </Link>
             <button
