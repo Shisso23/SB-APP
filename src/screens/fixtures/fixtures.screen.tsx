@@ -477,10 +477,10 @@ const FixturesScreen: React.FC = () => {
 
   const renderBetOptions = () => {
     return (
-      <div className="flex self-center items-center justify-between space-x-2 py-1 overflow-x-scroll betOptions h-full px-4 mb-5 flex-grow-0 ">
+      <div className="flex self-center items-center justify-between space-x-2 py-1 overflow-x-scroll betOptions  px-4 mb-5 flex-grow-0 ">
         {betOptions.map((option) => (
           <div
-            className={`flex w-96 items-center border border-white justify-center p-3 whitespace-nowrap h-full cursor-pointer text-justify place-content-center bg-${
+            className={`flex w-96 items-center border border-white justify-center p-2 whitespace-nowrap h-full cursor-pointer text-justify place-content-center bg-${
               selectedOptions.some(
                 (option_: betOptionModel) => option_.id === option.id,
               )
@@ -498,8 +498,9 @@ const FixturesScreen: React.FC = () => {
   }
 
   return (
-    <div className=" screen-h self-start absolute w-screen">
-      <div className=" flex flex-row overflow-hidden h-full flex-grow bg-gray-900 ">
+    <div className=" screen-h self-start justify-between absolute w-screen pt-4 flex flex-col bg-gray-900">
+      <div className=" h-16 w-full mb-5 bg-gray-900">{renderBetOptions()}</div>
+      <div className=" flex flex-row overflow-hidden h-full bg-gray-900 pb-100  flex-1 ">
         <button
           onClick={() => navigate(-1)}
           className="  bg-slate-500 w-1/12 mx-6 text-white border rounded-lg p-3 text-sm h-8 sm:h-10 sm:text-xs ml-2 overflow-hidden flex items-center justify-center mt-3"
@@ -511,10 +512,8 @@ const FixturesScreen: React.FC = () => {
             className=" flex font-bold self-center text-lg py-2 items-center justify-center text-center text-m border rounded-lg bg-yellow-500 w-40 
         sm:w-64 sm:mb-5 mb-2 "
           >
-            Select Bet Options
+            Predictions
           </div>
-          <div className=" h-16 w-full mb-5">{renderBetOptions()}</div>
-
           <>
             {loadingLeaguesFixtures ? (
               <CircularProgress />
@@ -529,10 +528,12 @@ const FixturesScreen: React.FC = () => {
                     )
                   }
                   ) 
-                  ? (
+                  ? selectedOptions.length===0?<div className="font-bold flex items-center justify-center text-lg text-slate-300">
+                  Please select bet options!
+                </div>: (
                     <div className="font-bold flex items-center justify-center text-lg text-slate-300">
-                      No predictions were made for provided dates. Please try
-                      different dates!
+                      No predictions were made for selected dates. Please try
+                      different dates
                     </div>
                   ) : (
                     (predictedFixtures &&
