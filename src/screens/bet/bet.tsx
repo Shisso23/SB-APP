@@ -76,7 +76,8 @@ const BetScreen: React.FC = () => {
           leaguesStandings: MockLeaguesStandings,
         },
       })
-    } else {
+    } 
+    else {
       setStandingsLoading(true)
       Promise.all(
         searchedLeagues.map((searchedLeague: LeagueDataModel) => {

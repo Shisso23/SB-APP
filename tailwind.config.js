@@ -10,6 +10,7 @@ module.exports = {
 
     height: {
       // fullScreen: '24rem',
+      betoptionHeight: '38rem'
     },
     width:{
       'wfull': '200rem'

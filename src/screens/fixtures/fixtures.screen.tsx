@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-types */
 
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { CircularProgress } from '@mui/material'
 import moment from 'moment'
@@ -81,21 +81,23 @@ const FixturesScreen: React.FC = () => {
     >
   >()
   const [selectedOptions, setSelectedOptions] = useState<betOptionModel[] | []>(
-    betOptions,
+    [],
   )
   const [selectedFixtureRow, setSelectedFixtureRow] = useState<
     FixtureDataModel
   >()
   const minFixtureDate = new Date()
-  const [readyToFtechLeagues, setReadyToFetchLeagues] = useState(false)
+  const [readyToFtechLeagues, setReadyToFetchLeagues] = useState<boolean>(false)
 
   useEffect(() => {
     setReadyToFetchLeagues(true)
+    console.log('ready to fetch')
     if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
       setPredictedFixtures(goupedFixturesMock)
     } else {
       // DO nothing
     }
+    setSelectedOptions(betOptions)
   }, [])
 
   useEffect(() => {
@@ -103,13 +105,17 @@ const FixturesScreen: React.FC = () => {
       setAllFixtures(mockFixtures)
       setFutureFixtures(mockFixtures)
     } else {
+      console.log('Second effect')
+      console.log({ readyToFtechLeagues })
       if (readyToFtechLeagues) {
+        console.log('now ready')
         fetchLeaguesSeasonsFixtures()
       }
     }
   }, [readyToFtechLeagues])
 
   const fetchLeaguesSeasonsFixtures = async () => {
+    console.log('This gets called')
     getLeaguesSeasonsFixtures()
       .then((responses) => {
         setAllFixtures(
@@ -207,7 +213,7 @@ const FixturesScreen: React.FC = () => {
     if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
       //TODO use Mock data here
     } else {
-      getFixtureTeamsStandings({ homeTeamId, awayTeamId, season, leagueId })
+    getFixtureTeamsStandings({ homeTeamId, awayTeamId, season, leagueId })
     }
   }
 
@@ -390,7 +396,7 @@ const FixturesScreen: React.FC = () => {
     })
 
     return (
-      <div className=" flex flex-col lg:flex-row items-center justify-center listView">
+      <div className=" flex flex-col items-center justify-center listView">
         <div className=" w-full">
           <button
             className=" bg-black text-white float-right py-3 px-5 rounded-lg"
@@ -399,7 +405,9 @@ const FixturesScreen: React.FC = () => {
             Close
           </button>
         </div>
-        <span className=" text-lg sm:text-2xl font-bold text-center">Fixture Details</span>
+        <span className=" text-lg sm:text-2xl font-bold text-center">
+          Fixture Details
+        </span>
         <div className=" flex flex-row justify-between items-start bg-blue-400 w-full mt-5 rounded-lg px-3 listView overflow-x-scroll  ">
           <div className=" flex flex-grow flex-col mr-5 h-full">
             <div className="text-xs sm:text-base font-bold text-center my-3">
@@ -472,13 +480,12 @@ const FixturesScreen: React.FC = () => {
     )
   }
 
-
   const renderBetOptions = () => {
     return (
-      <div className="flex w-11/12 items-center justify-between space-x-2 overflow-x-scroll px-4 mb-5 h-3/5 bg-white">
+      <div className="flex self-center items-center justify-between space-x-2 py-1 overflow-x-scroll betOptions h-full px-4 mb-5 flex-grow-0">
         {betOptions.map((option) => (
           <div
-            className={`flex w-96 items-start px-4 whitespace-nowrap cursor-pointer text-justify place-content-center bg-${
+            className={`flex w-96 items-center justify-center p-3 whitespace-nowrap h-full cursor-pointer text-justify place-content-center bg-${
               selectedOptions.some(
                 (option_: betOptionModel) => option_.id === option.id,
               )
@@ -496,28 +503,28 @@ const FixturesScreen: React.FC = () => {
   }
 
   return (
-    <div className="h-screen flex flex-row bg-gray-900 overflow-y-auto"
-    >
-      <div className=" flex flex-grow pt-14 px-2 listView">
+    <div className=" screen-h self-start absolute w-screen">
+      <div className=" flex flex-row overflow-hidden h-full flex-grow bg-gray-900 ">
         <button
           onClick={() => navigate(-1)}
-          className=" text-white border rounded-lg p-3 text-sm h-8 sm:h-10 sm:text-base ml-2 flex items-center justify-center mt-3"
+          className="  bg-slate-500 w-1/12 mx-6 text-white border rounded-lg p-3 text-sm h-8 sm:h-10 sm:text-base ml-2 flex items-center justify-center mt-3"
         >
           Back
         </button>
-
-        {/* Predictions */}
-
-        <div className=" flex flex-col justify-center w-11/12 flex-grow mt-3">
-          <div className=" flex font-bold self-center text-m py-2 border rounded-lg  bg-yellow-500 w-40 sm:w-64 sm:mb-5 mb-2 items-center justify-center text-center">
-            Predictions
+        <div className=" flex flex-col justify-center w-8/12 items-center flex-grow">
+          <div
+            className=" flex font-bold self-center text-lg py-2 items-center justify-center text-center text-m border rounded-lg bg-yellow-500 w-40 
+        sm:w-64 sm:mb-5 mb-2 "
+          >
+            Select Bet Options
           </div>
+          <div className=" h-16 w-full">{renderBetOptions()}</div>
 
-          <div className=" flex overflow-y-scroll listView justify-center bg-gray-900">
+          <>
             {loadingLeaguesFixtures ? (
               <CircularProgress />
             ) : (
-              <div className="flex flex-col w-80 sm:w-10/12 items-center">
+              <div className="flex overflow-y-scroll listView scroll-m-20 overflow-x-hidden pb-10 sxroll flex-col w-full items-center">
                 {(predictedFixtures &&
                   Object.keys(groupedPredictionsData)?.map(
                     (OptionShortName) => {
@@ -541,7 +548,6 @@ const FixturesScreen: React.FC = () => {
                                 )?.description}
                             </span>
                           </div>
-                          {/* Results */}
                           {groupedPredictionsData[OptionShortName].map(
                             (predictedionResult, predResultIndex) => {
                               return predictedionResult.fixtures.map(
@@ -549,7 +555,7 @@ const FixturesScreen: React.FC = () => {
                                   return (
                                     <div
                                       key={`${predResultIndex}-${fixtureDataIndex}`}
-                                      className=" cursor-pointer flex flex-col sm:flex-row flex-grow text-xs md:text-m py-2 sm:py-6 my-2 px-2 w-4/6 rounded-md bg-cyan-500 backdrop-blur-[10px] hover:bg-cyan-400"
+                                      className=" cursor-pointer flex py-6 my-2 px-2 w-full rounded-md text-xs md:text-m flex-col sm:flex-row bg-cyan-500 backdrop-blur-[10px] hover:bg-cyan-400"
                                       onClick={handleFixtureRowClick(
                                         fixtureData,
                                       )}
@@ -562,7 +568,7 @@ const FixturesScreen: React.FC = () => {
                                           ).format('DD-MMMM-YYYY HH:mm')}`}
                                         </div>
                                       </div>
-                                      <div className=" flex flex-row sm:w-4/6  self-center justify-between flex-grow overflow-x-hidden">
+                                      <div className=" flex flex-row sm:w-4/6 self-center justify-between flex-grow overflow-x-hidden">
                                         <div className=" flex flex-row w-1/2 pl-1">
                                           <img
                                             src={`${fixtureData.teams.home.logo}`}
@@ -593,47 +599,26 @@ const FixturesScreen: React.FC = () => {
                                       {/* <div className=" flex flex-row justify-center items-center">
                                         <p>{`${predictedionResult.option.shortName}`}</p>
                                       </div> */}
-                                </div>
+                                    </div>
+                                  )
+                                },
                               )
                             },
-                          )
-                        },
-                      )}
-                    </>
-                  )
-                })) || <div />}
-            </div>
-          )}
-        </>
-      </div>
-
-        {/* Right Panel */}
-
-          {/* Bet Otions */}
-        <div className="hidden md:inline-flex w-3/12 flex-col mt-3">
-          <div className=" text-yellow-500 font-semibold mb-3">Bet Options</div>
-          <Autocomplete
-            className="bg-gray-100 w-64 rounded-lg max-h-48 overflow-y-auto scrollbar-none"
-            multiple
-            defaultValue={[]}
-            value={selectedOptions}
-            id="Bet Options"
-            getOptionLabel={(option: betOptionModel) => `${option.name}`}
-            options={betOptions.map((option) => option)}
-            onChange={(event, value: betOptionModel[]) => {
-              setSelectedOptions(value)
-            }}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                InputLabelProps={{ color: 'primary', inputMode: 'search' }}
-              />
+                          )}
+                        </>
+                      )
+                    },
+                  )) || <div className="bg-slate-600 w-96 h-96" />}
+              </div>
             )}
-          />
-          <div className=" mt-5 ">
+          </>
+        </div>
+
+        <div className=" w-3/12 pl-10 flex items-center  flex-col">
+          <div className=" mt-5">
             <div className=" text-yellow-500 font-semibold ">
               Fixtures dates
-              <div className=" flex flex-col justify-between w-full flex-grow  text-white text-base font-normal ">
+              <div className=" flex flex-col justify-between w-full  text-white text-base font-normal ">
                 <span className=" mb-1">From:</span>
                 <div>
                   <DatePicker
@@ -656,19 +641,19 @@ const FixturesScreen: React.FC = () => {
             </div>
           </div>
         </div>
+        {groupedPredictionsData ? (
+          <Modal
+            isOpen={isModalOpen}
+            overlayClassName=" z-40 w-3/4 h-2/4"
+            onRequestClose={toggleModal}
+            contentLabel="My dialog"
+          >
+            {(selectedFixtureRow && renderModalContent()) || <></>}
+          </Modal>
+        ) : (
+          <></>
+        )}
       </div>
-      {groupedPredictionsData ? (
-        <Modal
-          isOpen={isModalOpen}
-          overlayClassName=" z-40 w-3/4 h-2/4"
-          onRequestClose={toggleModal}
-          contentLabel="My dialog"
-        >
-          {(selectedFixtureRow && renderModalContent()) || <></>}
-        </Modal>
-      ) : (
-        <></>
-      )}
     </div>
   )
 }
