@@ -482,14 +482,14 @@ const FixturesScreen: React.FC = () => {
 
   const renderBetOptions = () => {
     return (
-      <div className="flex self-center items-center justify-between space-x-2 py-1 overflow-x-scroll betOptions h-full px-4 mb-5 flex-grow-0">
+      <div className="flex self-center items-center justify-between space-x-2 py-1 overflow-x-scroll betOptions h-full px-4 mb-5 flex-grow-0 ">
         {betOptions.map((option) => (
           <div
-            className={`flex w-96 items-center justify-center p-3 whitespace-nowrap h-full cursor-pointer text-justify place-content-center bg-${
+            className={`flex w-96 items-center border border-white justify-center p-3 whitespace-nowrap h-full cursor-pointer text-justify place-content-center bg-${
               selectedOptions.some(
                 (option_: betOptionModel) => option_.id === option.id,
               )
-                ? 'blue-300'
+                ? 'cyan-500'
                 : 'white'
             } border rounded h-1/2`}
             key={option.id}
@@ -511,14 +511,14 @@ const FixturesScreen: React.FC = () => {
         >
           Back
         </button>
-        <div className=" flex flex-col justify-center w-8/12 items-center flex-grow">
+        <div className=" flex flex-col justify-center w-9/12 items-center flex-grow">
           <div
             className=" flex font-bold self-center text-lg py-2 items-center justify-center text-center text-m border rounded-lg bg-yellow-500 w-40 
         sm:w-64 sm:mb-5 mb-2 "
           >
             Select Bet Options
           </div>
-          <div className=" h-16 w-full">{renderBetOptions()}</div>
+          <div className=" h-16 w-full mb-5">{renderBetOptions()}</div>
 
           <>
             {loadingLeaguesFixtures ? (
@@ -614,9 +614,8 @@ const FixturesScreen: React.FC = () => {
           </>
         </div>
 
-        <div className=" w-3/12 pl-10 flex items-center  flex-col">
-          <div className=" mt-5">
-            <div className=" text-yellow-500 font-semibold ">
+        <div className=" w-2/12 flex flex-row justify-center text-yellow-500 font-semibold mt-28">
+            <div>
               Fixtures dates
               <div className=" flex flex-col justify-between w-full  text-white text-base font-normal ">
                 <span className=" mb-1">From:</span>
@@ -639,7 +638,6 @@ const FixturesScreen: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
         </div>
         {groupedPredictionsData ? (
           <Modal
