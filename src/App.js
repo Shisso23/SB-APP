@@ -1,8 +1,8 @@
-import React from 'react'
 import RootRouter from "./navigation/root.router";
 
-const App = () => {
+function App () {
   return (
+    // eslint-disable-next-line react/react-in-jsx-scope
     <RootRouter/>
   );
 }
