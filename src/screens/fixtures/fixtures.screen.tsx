@@ -91,7 +91,6 @@ const FixturesScreen: React.FC = () => {
 
   useEffect(() => {
     setReadyToFetchLeagues(true)
-    console.log('ready to fetch')
     if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
       setPredictedFixtures(goupedFixturesMock)
     } else {
@@ -105,17 +104,13 @@ const FixturesScreen: React.FC = () => {
       setAllFixtures(mockFixtures)
       setFutureFixtures(mockFixtures)
     } else {
-      console.log('Second effect')
-      console.log({ readyToFtechLeagues })
       if (readyToFtechLeagues) {
-        console.log('now ready')
         fetchLeaguesSeasonsFixtures()
       }
     }
   }, [readyToFtechLeagues])
 
   const fetchLeaguesSeasonsFixtures = async () => {
-    console.log('This gets called')
     getLeaguesSeasonsFixtures()
       .then((responses) => {
         setAllFixtures(
@@ -529,7 +524,6 @@ const FixturesScreen: React.FC = () => {
                   // eslint-disable-next-line no-constant-condition
                   groupedPredictionsData&&  Object.keys(groupedPredictionsData)?.every((optionKey) =>
                    { 
-                    console.log({optionKey, lkist: groupedPredictionsData[optionKey]})
                     return groupedPredictionsData[optionKey]?.every(
                       (prediction) => prediction?.fixtures?.length === 0,
                     )
