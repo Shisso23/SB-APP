@@ -14,6 +14,14 @@ import { predictHomeOver1_5 } from "./home-over-1-5";
 import { predictHomeWin } from "./home-win";
 import { predictHomeWinsEitherHalf } from "./home-wins-either-half";
 import { predictOver1_5 } from "./over-1-5";
+import {predict1_2_goals_Away} from "./1-2-goals-away"
+import {predict1_2_goals_Home} from "./1-2-golas-home"
+import {predict2_3_goals_Away} from "./2-3-goals-away"
+import {predict2_3_goals_Home} from "./2-3-goals-home"
+import { predict2_4_goals} from "./2-4-goals"
+import {predict2_5_goals} from "./2-5-goals"
+import {predict3_6_goals} from "./3-6-goals"
+import { predictAwayOver1_5 } from "./away-over-1-5";
 
 export default{
     predictAwayCleanSheet,
@@ -31,7 +39,15 @@ export default{
     predictAwayOver0_5,
     predictMultiGoals0_3,
     predictHomeOrDraw,
-    predictAwayOrDraw
+    predictAwayOrDraw,
+    predict1_2_goals_Away,
+    predict2_3_goals_Away,
+    predict1_2_goals_Home,
+    predict2_4_goals,
+    predict2_5_goals,
+    predict2_3_goals_Home,
+    predict3_6_goals,
+    predictAwayOver1_5
 }
 
 // TODO see how i can export these as module

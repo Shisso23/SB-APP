@@ -403,7 +403,7 @@ const FixturesScreen: React.FC = () => {
         <span className=" text-lg sm:text-2xl font-bold text-center">
           Fixture Details
         </span>
-        <div className=" flex flex-row justify-between items-start bg-blue-400 w-full mt-5 rounded-lg px-3 listView overflow-x-scroll  ">
+        <div className=" flex flex-row justify-between items-start bg-cyan-500 w-full mt-5 rounded-lg px-3 listView overflow-x-scroll  ">
           <div className=" flex flex-grow flex-col mr-5 h-full">
             <div className="text-xs sm:text-base font-bold text-center my-3">
               Head to Head
@@ -438,8 +438,7 @@ const FixturesScreen: React.FC = () => {
           </div>
         </div>
         <button
-          style={{ backgroundColor: 'rgb(96 165 250)' }}
-          className=" flex bg-blue-400 rounded p-2 sm:p-4 items-center justify-center self-center text-black hover:bg-blue-200 my-5"
+          className=" flex bg-cyan-500 rounded p-2 sm:p-4 items-center justify-center self-center text-black hover:bg-blue-200 my-5"
           onClick={handleViewStandingsClick({
             homeTeamId: homeTeam.id,
             awayTeamId: awayTeam.id,
@@ -477,10 +476,10 @@ const FixturesScreen: React.FC = () => {
 
   const renderBetOptions = () => {
     return (
-      <div className="flex self-center items-center justify-between space-x-2 py-1 overflow-x-scroll betOptions  px-4 mb-5 flex-grow-0 ">
+      <div className="flex self-center items-center justify-between space-x-2 py-1 overflow-x-scroll h-full betOptions  px-4 mb-5 ">
         {betOptions.map((option) => (
           <div
-            className={`flex w-96 items-center border border-white justify-center p-2 whitespace-nowrap h-full cursor-pointer text-justify place-content-center bg-${
+            className={`flex w-96 items-center border border-white justify-center p-4  whitespace-nowrap h-full cursor-pointer text-justify place-content-center bg-${
               selectedOptions.some(
                 (option_: betOptionModel) => option_.id === option.id,
               )
