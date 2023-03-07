@@ -58,7 +58,7 @@ againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 130
       }
       return (
         isHomeOver0_5
-       && teamMinMaxInH2H({h2hFixtures, maxGoals: 2, teamId: lastFiveHomeTeamHomeFixtures[0].teams.home.id,occurencePercentage: 60}) && againstAwayTeamMinMax({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, maxGoals: 2, occurencePercentage: 50})
+       && teamMinMaxInH2H({h2hFixtures, maxGoals: 2, teamId: lastFiveHomeTeamHomeFixtures[0].teams.home.id,occurencePercentage: 80}) && againstAwayTeamMinMax({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, maxGoals: 2, occurencePercentage: 60})
       );
     });
     return {

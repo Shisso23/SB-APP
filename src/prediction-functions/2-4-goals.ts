@@ -70,10 +70,10 @@ againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 130
       }
       return (
       ( isHomeOver0_5
-       && fixtureTotalMinMax({fixtures: lastFiveHomeTeamHomeFixtures, maxGoals: 4, minGoals: 2, occurencePercentage: 60})) ||
+       && fixtureTotalMinMax({fixtures: lastFiveHomeTeamHomeFixtures, maxGoals: 4, minGoals: 2, occurencePercentage: 80})) ||
        isAwayOver0_5
-       && fixtureTotalMinMax({fixtures: lastFiveAwayTeamAwayFixtures, maxGoals: 4, minGoals: 2, occurencePercentage: 60})
-      ) && fixtureTotalMinMax({fixtures: h2hFixtures, maxGoals: 4, minGoals: 2, occurencePercentage: 60});
+       && fixtureTotalMinMax({fixtures: lastFiveAwayTeamAwayFixtures, maxGoals: 4, minGoals: 2, occurencePercentage: 80})
+      ) && fixtureTotalMinMax({fixtures: h2hFixtures, maxGoals: 4, minGoals: 2, occurencePercentage: 80});
     });
     return {
       fixtures: predictedFixtures,

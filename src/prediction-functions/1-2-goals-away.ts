@@ -59,7 +59,7 @@ export const predict1_2_goals_Away = ({
       }
       return (
         isAwayOver0_5
-       && teamMinMaxInH2H({h2hFixtures, maxGoals: 2, teamId: lastFiveAwayTeamAwayFixtures[0].teams.away.id,occurencePercentage: 60}) && againstHomeTeamMinMax({homeTeamFixtures: lastFiveHomeTeamHomeFixtures, maxGoals: 2, occurencePercentage: 50})
+       && teamMinMaxInH2H({h2hFixtures, maxGoals: 2, teamId: lastFiveAwayTeamAwayFixtures[0].teams.away.id,occurencePercentage: 80}) && againstHomeTeamMinMax({homeTeamFixtures: lastFiveHomeTeamHomeFixtures, maxGoals: 2, occurencePercentage: 60})
       );
     });
     return {
