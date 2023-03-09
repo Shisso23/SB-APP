@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-types */
 
-import React, { useCallback, useEffect, useState } from 'react'
+import React, {useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { CircularProgress } from '@mui/material'
 import moment from 'moment'
@@ -10,11 +10,11 @@ import 'react-datepicker/dist/react-datepicker.css'
 import './styles.css'
 
 import { FixturesFilterModel, FixturesModel } from '../../models/fixtures'
-import { LeagueDataLeagueModel } from '../../models/leagues'
+import { LeagueDataModel } from '../../models/leagues'
 import { getFilteredFixtures } from '../../services/fixtures/index'
 import { FixtureDataModel } from '../../models/fixtures/index'
 import { toMomentDate } from '../../helpers/dateTimeHelper'
-import { betOptions, seasonsBack } from '../../variables/variables'
+import { betOptions, numberOfSeasonsBack } from '../../variables/variables'
 import { betOptionModel } from '../../models/bet-option-model/index'
 import _, { Dictionary } from 'lodash'
 import { getStandingsByTeamId } from '../../services/standings'
@@ -33,7 +33,7 @@ Modal.setAppElement('#root')
 
 const FixturesScreen: React.FC = () => {
   type LocationState = {
-    selectedLeagues: LeagueDataLeagueModel[]
+    selectedLeagues: LeagueDataModel[]
     leaguesStandings: StandingsModel[]
   }
   const navigate = useNavigate()
@@ -225,13 +225,17 @@ const FixturesScreen: React.FC = () => {
   const getLeaguesSeasonsFixtures = async () => {
     setLoadingLeaguesFixtures(true)
     return Promise.all(
-      selectedLeagues?.map(async (league: LeagueDataLeagueModel, index) => {
-        const seasons = seasonsBack
+      selectedLeagues?.map(async (league: LeagueDataModel) => {
+        const seasons: number[] =[];
+        seasons[0]=league.seasons.find(season=> season.current===true).year
+        for(let i =1; i<numberOfSeasonsBack; i++){
+          seasons[i]=seasons[0]-i
+        }
         return Promise.all(
           seasons.map(async (season: number) => {
             const getLeagueFixturesResponse: FixturesModel = await (
               await getFilteredFixtures(
-                new FixturesFilterModel({ league: league.id, season }),
+                new FixturesFilterModel({ league: league.league.id, season }),
               )
             ).data
             return getLeagueFixturesResponse.response

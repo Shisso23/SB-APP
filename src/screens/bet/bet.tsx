@@ -92,7 +92,7 @@ const BetScreen: React.FC = () => {
           navigate('/fixtures', {
             state: {
               selectedLeagues: searchedLeagues.map(
-                (searchedLeague: LeagueDataModel) => searchedLeague.league,
+                (searchedLeague: LeagueDataModel) => searchedLeague,
               ),
               leaguesStandings: standings,
             },

@@ -55,7 +55,7 @@ export const predictAwayOver1_5 = ({
       }
       return (
        isAwayOver0_5 &&
-        awayTeamMinGoals({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, minGoals:2, occurencePercentage: 60}) && teamMinGoalsInH2H({h2hFixtures, minGoals: 2, teamId: lastFiveAwayTeamAwayFixtures[0].teams.away.id,occurencePercentage: 60})
+        awayTeamMinGoals({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, minGoals:2, occurencePercentage: 80}) && teamMinGoalsInH2H({h2hFixtures, minGoals: 2, teamId: lastFiveAwayTeamAwayFixtures[0].teams.away.id,occurencePercentage: 60})
       );
     });
     return {
