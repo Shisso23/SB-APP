@@ -12,7 +12,6 @@ import { CircularProgress, TextField } from '@mui/material'
 import Autocomplete from '@mui/material/Autocomplete'
 import { LeagueDataModel, LeaguesFilterModel } from '../../models/leagues/index'
 import { getStandingsByLeagueId } from '../../services/standings'
-import { seasonsBack } from '../../variables/variables'
 import { StandingsModel } from '../../models/standings-models'
 import { favLeaguesMock, MockLeaguesStandings } from '../../mock-data'
 
@@ -83,7 +82,7 @@ const BetScreen: React.FC = () => {
         searchedLeagues.map((searchedLeague: LeagueDataModel) => {
           return getStandingsByLeagueId({
             leagueId: searchedLeague.league.id,
-            season: seasonsBack[0],
+            season: searchedLeague.seasons.find(season=> season.current===true).year
           })
         }),
       )
