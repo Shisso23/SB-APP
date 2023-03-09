@@ -52,11 +52,13 @@ export const predict2_3_goals_Home = ({
        (homeTeamStanding.rank< awayTeamStanding.rank ) &&
 againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 130
 
-      const isHomeOver1_5 =  isHomeOver0_5 && homeTeamMinGoals({homeTeamFixtures: lastFiveHomeTeamHomeFixtures, minGoals:2, occurencePercentage: 60}) && teamMinGoalsInH2H({h2hFixtures, minGoals: 2, teamId: lastFiveHomeTeamHomeFixtures[0].teams.home.id,occurencePercentage: 60})
-  
       if (lastFiveHomeTeamHomeFixtures.length < 3 || lastFiveAwayTeamAwayFixtures.length<3 || h2hFixtures.length<3) {
         return false;
       }
+
+      const isHomeOver1_5 =  isHomeOver0_5 && homeTeamMinGoals({homeTeamFixtures: lastFiveHomeTeamHomeFixtures, minGoals:2, occurencePercentage: 60}) && teamMinGoalsInH2H({h2hFixtures, minGoals: 2, teamId: lastFiveHomeTeamHomeFixtures[0].teams.home.id,occurencePercentage: 60})
+  
+     
       return (
         isHomeOver1_5
        && teamMinMaxInH2H({h2hFixtures, maxGoals: 3, teamId: lastFiveHomeTeamHomeFixtures[0].teams.home.id,occurencePercentage: 80}) && againstAwayTeamMinMax({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, maxGoals: 3, occurencePercentage:  60})

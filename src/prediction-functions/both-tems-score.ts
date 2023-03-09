@@ -24,6 +24,12 @@ export const predictBothTeamsToScore = ({
         teamId: currentFixture.teams.away.id,
         allFixtures,
       });
+      if (
+        lastFiveHomeTeamHomeFixtures.length < 3 ||
+        lastFiveAwayTeamAwayFixtures.length < 3
+      ) {
+        return false;
+      }
       const homeTeamId =  lastFiveHomeTeamHomeFixtures[0].teams.home.id;
       const awayTeamId= lastFiveAwayTeamAwayFixtures[0].teams.away.id;
       const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
@@ -36,12 +42,7 @@ export const predictBothTeamsToScore = ({
         awayTeamId: currentFixture.teams.away.id,
         leagueId: currentFixture.league.id,
       });
-      if (
-        lastFiveHomeTeamHomeFixtures.length < 3 ||
-        lastFiveAwayTeamAwayFixtures.length < 3
-      ) {
-        return false;
-      }
+   
       return (awayTeamScroreInMostAwayFixtures({
           awayfixtures: lastFiveAwayTeamAwayFixtures,
           minGoals: 1,

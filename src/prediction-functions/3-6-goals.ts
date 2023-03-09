@@ -63,15 +63,15 @@ otherAwayTeamGoalsInHomeFixtures({
 awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
   (awayTeamStanding.rank< homeTeamStanding.rank ) &&
 againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 130
-
+if (lastFiveHomeTeamHomeFixtures.length < 3 || lastFiveAwayTeamAwayFixtures.length<3 || h2hFixtures.length<3) {
+  return false;
+}
 
       const isAwayOver1_5 = isAwayOver0_5 &&  awayTeamMinGoals({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, minGoals:2, occurencePercentage: 60}) && teamMinGoalsInH2H({h2hFixtures, minGoals: 2, teamId: lastFiveAwayTeamAwayFixtures[0].teams.away.id,occurencePercentage: 60})
 
       const isHomeOver1_5 =  isHomeOver0_5 && homeTeamMinGoals({homeTeamFixtures: lastFiveHomeTeamHomeFixtures, minGoals:2, occurencePercentage: 60}) && teamMinGoalsInH2H({h2hFixtures, minGoals: 2, teamId: lastFiveHomeTeamHomeFixtures[0].teams.home.id,occurencePercentage: 60})
   
-      if (lastFiveHomeTeamHomeFixtures.length < 3 || lastFiveAwayTeamAwayFixtures.length<3 || h2hFixtures.length<3) {
-        return false;
-      }
+      
       return (
       (
         isHomeOver1_5
