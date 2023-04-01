@@ -262,8 +262,8 @@ const FixturesScreen: React.FC = () => {
   const sortStandings = (fixtureTeamsStandings: StandingsResponseModel[]) => {
     return fixtureTeamsStandings.sort((standDingsTeam1, standingsTeam2) => {
       return (
-        standDingsTeam1.league.standings[0][0].rank -
-        standingsTeam2.league.standings[0][0].rank
+        standDingsTeam1.league.standings[0][0]?.rank -
+        standingsTeam2.league.standings[0][0]?.rank
       )
     })
   }
@@ -300,7 +300,7 @@ const FixturesScreen: React.FC = () => {
             className=" flex flex-row border border-solid justify-between w-full"
           >
             <span className=" w-16">
-              {teamStandings.league?.standings[0][0].rank}
+              {teamStandings.league?.standings[0][0]?.rank}
             </span>
             <span className=" w-40 truncate text-pink-700">
               {teamStandings.league?.standings[0][0].team.name}
