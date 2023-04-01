@@ -50,7 +50,7 @@ export const predict1_2_goals_Home = ({
         goals: 1,
       }) &&
       homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
-       (homeTeamStanding.rank< awayTeamStanding.rank ) &&
+       (homeTeamStanding?.rank< awayTeamStanding?.rank ) &&
 againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 130
   
       if (lastFiveHomeTeamHomeFixtures.length < 3 || lastFiveAwayTeamAwayFixtures.length<3 || h2hFixtures.length<3) {

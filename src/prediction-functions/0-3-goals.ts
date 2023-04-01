@@ -45,9 +45,9 @@ export const predictMultiGoals0_3 = ({
         return false;
       }
       return (
-        ( ( homeTeamStanding.all.goals.for/ homeTeamStanding.all.played ) <= 0.85 &&  (awayTeamStanding.all.goals.for/  awayTeamStanding.all.played )<=0.85)||
+        ( ( homeTeamStanding?.all.goals.for/ homeTeamStanding?.all.played ) <= 0.85 &&  (awayTeamStanding?.all.goals.for/  awayTeamStanding?.all.played )<=0.85)||
         againstHomeTeamGoalsPercentage({ homeTeamStanding }) < 85 && againstAwayTeamGoalsPercentage({ awayTeamStanding }) < 85
-        ) && (homeTeamStanding.rank> awayTeamStanding.rank );
+        ) && (homeTeamStanding?.rank> awayTeamStanding?.rank );
     });
     return {
       fixtures: predictedFixtures,

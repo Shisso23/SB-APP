@@ -50,7 +50,7 @@ export const predict2_5_goals = ({
         goals: 1,
       }) &&
       awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
-        (awayTeamStanding.rank< homeTeamStanding.rank ) &&
+        (awayTeamStanding?.rank< homeTeamStanding?.rank ) &&
       againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 130
 
       const isHomeOver0_5 =   HomeTeamScroreInMostHomeFixtures({
@@ -62,7 +62,7 @@ export const predict2_5_goals = ({
         goals: 1,
       }) &&
       homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
-       (homeTeamStanding.rank< awayTeamStanding.rank ) &&
+       (homeTeamStanding?.rank< awayTeamStanding?.rank ) &&
 againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 130
   
       if (lastFiveHomeTeamHomeFixtures.length < 3 || lastFiveAwayTeamAwayFixtures.length<3 || h2hFixtures.length<3) {

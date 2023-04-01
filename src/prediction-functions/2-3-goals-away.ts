@@ -43,7 +43,7 @@ export const predict2_3_goals_Away = ({
         goals: 1,
       }) &&
       awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
-        (awayTeamStanding.rank< homeTeamStanding.rank ) &&
+        (awayTeamStanding?.rank< homeTeamStanding?.rank ) &&
       againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 130
 
       const h2hFixtures = getH2HFixtures({
