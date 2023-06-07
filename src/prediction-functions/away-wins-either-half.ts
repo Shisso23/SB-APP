@@ -1,3 +1,4 @@
+import { betOptionsEnum } from "../enums/bet-options.enums";
 import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
@@ -73,6 +74,6 @@ export const predictAwayWinsEitherHalf = ({
   
     return {
       fixtures: predictedFixtures,
-      option: betOptions.find(option => option.id === 14) as betOptionModel,
+      option: betOptions.find(option => option.id === betOptionsEnum.AWAY_WINS_EITHER_HALF) as betOptionModel,
     }; //TODO can look into making that betoption id a enum
   };
