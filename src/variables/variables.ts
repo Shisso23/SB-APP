@@ -42,36 +42,36 @@ export const betOptions: betOptionModel[] = [
     }) => predictionFunctions.predictHomeOver1_5(params),
   },
   {name: 'over 1.5', id: 3, level: 1, shortName: 'Over 1.5', description: '2 goals or more in the match',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predictOver1_5(params)},
-  // {name: 'Over 2.5', id: 4, level: 2, shortName: 'Over 2.5', description: '3 goals or more in the match',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictOver2_5(params)},
-  // {
-  //   name: "Home Wins Either Half",
-  //   id: 5,
-  //   level: 1,
-  //   shortName: "H.W.E.H",
-  //   description: "Home team wins either half",
-  //   predict: (params: {
-  //     currentFixtures: FixtureDataModel[];
-  //     allFixtures: FixtureDataModel[];
-  //     leaguesStandings: StandingsModel[];
-  //   }) => predictionFunctions.predictHomeWinsEitherHalf(params),
-  // },
-  {name: 'Multi Goals (2-5) Goals', id: 6, level: 2, shortName: '2->5 G', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predict2_5_goals(params)},
-  {name: 'Multi Goals (3-6) Goals', id: 7, level: 3, shortName: '3->6 G', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predict3_6_goals(params)},
-  // {name: 'Both Halves Over 0.5', id: 8, level: 4, shortName: 'B.H.Over 0.5', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictBothHalVOver0_5(params)},
-  //  {name: 'Draw or GG', id: 9, level: 2, shortName: 'DD OR GG', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictDrawOrGoal(params)},
+  {name: 'Over 2.5', id: 4, level: 2, shortName: 'Over 2.5', description: '3 goals or more in the match',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predictOver2_5(params)(params)},
   {
-    name: "Draw",
-    id: 10,
-    level: 5,
-    shortName: "DRAW",
-    description: "Draw. No winner, No loser",
+    name: "Home Wins Either Half",
+    id: 5,
+    level: 1,
+    shortName: "H.W.E.H",
+    description: "Home team wins either half",
     predict: (params: {
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];
       leaguesStandings: StandingsModel[];
-    }) => predictionFunctions.predictDraw(params),
+    }) => predictionFunctions.predictHomeWinsEitherHalf(params),
   },
-  {name: 'Half-Time Draw', id: 11, level: 4, shortName: 'HT-DRAW', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predictHTDraw(params)},
+  // {name: 'Multi Goals (2-5) Goals', id: 6, level: 2, shortName: '2->5 G', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predict2_5_goals(params)},
+  {name: 'Multi Goals (3-6) Goals', id: 7, level: 3, shortName: '3->6 G', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predict3_6_goals(params)},
+  // {name: 'Both Halves Over 0.5', id: 8, level: 4, shortName: 'B.H.Over 0.5', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictBothHalVOver0_5(params)},
+  //  {name: 'Draw or GG', id: 9, level: 2, shortName: 'DD OR GG', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictDrawOrGoal(params)},
+  // {
+  //   name: "Draw",
+  //   id: 10,
+  //   level: 5,
+  //   shortName: "DRAW",
+  //   description: "Draw. No winner, No loser",
+  //   predict: (params: {
+  //     currentFixtures: FixtureDataModel[];
+  //     allFixtures: FixtureDataModel[];
+  //     leaguesStandings: StandingsModel[];
+  //   }) => predictionFunctions.predictDraw(params),
+  // },
+  // {name: 'Half-Time Draw', id: 11, level: 4, shortName: 'HT-DRAW', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predictHTDraw(params)},
   {
     name: "Away",
     id: 12,
@@ -96,30 +96,30 @@ export const betOptions: betOptionModel[] = [
       leaguesStandings: StandingsModel[];
     }) => predictionFunctions.predictAwayOver1_5(params),
   },
-  {
-    name: "Away wins either half",
-    id: 14,
-    level: 2,
-    shortName: "A.W.E.H",
-    description: "Away team wins either half",
-    predict: (params: {
-      currentFixtures: FixtureDataModel[];
-      allFixtures: FixtureDataModel[];
-      leaguesStandings: StandingsModel[];
-    }) => predictionFunctions.predictAwayWinsEitherHalf(params),
-  },
-  {
-    name: "Home over 0.5",
-    id: 15,
-    level: 0,
-    shortName: "H.Over 0.5",
-    description: "Home team scores at least once",
-    predict: (params: {
-      currentFixtures: FixtureDataModel[];
-      allFixtures: FixtureDataModel[];
-      leaguesStandings: StandingsModel[];
-    }) => predictionFunctions.predictHomeOver0_5(params),
-  },
+  // {
+  //   name: "Away wins either half",
+  //   id: 14,
+  //   level: 2,
+  //   shortName: "A.W.E.H",
+  //   description: "Away team wins either half",
+  //   predict: (params: {
+  //     currentFixtures: FixtureDataModel[];
+  //     allFixtures: FixtureDataModel[];
+  //     leaguesStandings: StandingsModel[];
+  //   }) => predictionFunctions.predictAwayWinsEitherHalf(params),
+  // },
+  // {
+  //   name: "Home over 0.5",
+  //   id: 15,
+  //   level: 0,
+  //   shortName: "H.Over 0.5",
+  //   description: "Home team scores at least once",
+  //   predict: (params: {
+  //     currentFixtures: FixtureDataModel[];
+  //     allFixtures: FixtureDataModel[];
+  //     leaguesStandings: StandingsModel[];
+  //   }) => predictionFunctions.predictHomeOver0_5(params),
+  // },
   {
     name: "Away over 0.5",
     id: 16,
@@ -257,7 +257,7 @@ export const betOptions: betOptionModel[] = [
   // },
 ];
 
-export const numberOfH2HMatchesBack = 4;
+export const numberOfH2HMatchesBack = 5;
 
 export const numberOTeamLastFixturesBack = 5;
 

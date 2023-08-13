@@ -67,16 +67,14 @@ if (lastFiveHomeTeamHomeFixtures.length < 3 || lastFiveAwayTeamAwayFixtures.leng
   return false;
 }
 
-      const isAwayOver1_5 = isAwayOver0_5 &&  awayTeamMinGoals({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, minGoals:2, occurencePercentage: 60}) && teamMinGoalsInH2H({h2hFixtures, minGoals: 2, teamId: lastFiveAwayTeamAwayFixtures[0].teams.away.id,occurencePercentage: 60})
+      const isOver2_5 = homeTeamGoalsPercentage({homeTeamStanding})>= 190 && awayTeamGoalsPercentage({awayTeamStanding})>=190
 
-      const isHomeOver1_5 =  isHomeOver0_5 && homeTeamMinGoals({homeTeamFixtures: lastFiveHomeTeamHomeFixtures, minGoals:2, occurencePercentage: 60}) && teamMinGoalsInH2H({h2hFixtures, minGoals: 2, teamId: lastFiveHomeTeamHomeFixtures[0].teams.home.id,occurencePercentage: 60})
   
-      
       return (
       (
-        isHomeOver1_5
+        isOver2_5
        && fixtureTotalMinMax({fixtures: lastFiveHomeTeamHomeFixtures, maxGoals: 6, minGoals: 3, occurencePercentage: 60})) ||
-       isAwayOver1_5
+       isOver2_5
        && fixtureTotalMinMax({fixtures: lastFiveAwayTeamAwayFixtures, maxGoals: 6, minGoals: 3, occurencePercentage: 60})
       ) && fixtureTotalMinMax({fixtures: h2hFixtures, maxGoals: 6, minGoals: 3, occurencePercentage: 60});
     });

@@ -40,10 +40,10 @@ export const predictOver1_5 = ({
       ) {
         return false;
       }
-      return (homeTeamGoalsPercentage({homeTeamStanding})>= 160 && awayTeamGoalsPercentage({awayTeamStanding})>=160);
+      return (homeTeamGoalsPercentage({homeTeamStanding})>= 190 && awayTeamGoalsPercentage({awayTeamStanding})>=190);
     });
     return {
       fixtures: predictedFixtures,
-      option: betOptions.find(option => option.id === betOptionsEnum.OVER_1_5) as betOptionModel,
+      option: betOptions.find(option => option.id === betOptionsEnum.OVER_2_5) as betOptionModel,
     };
   };
