@@ -55,5 +55,5 @@ export const predictHomeOver0_5 = ({
     return {
       fixtures: predictedFixtures,
       option: betOptions.find(option => option.id === betOptionsEnum.HOME_OVER_O_5) as betOptionModel,
-    }; // can look into making that betoption a enum
+    };
   };
