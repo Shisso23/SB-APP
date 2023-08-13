@@ -40,11 +40,11 @@ export const predictOver1_5 = ({
         return false;
       }
       return (
-       ( homeTeamGoalsPercentage({ homeTeamStanding }) >= 120 &&
-        awayTeamGoalsPercentage({ awayTeamStanding }) >= 120 &&
+       ( homeTeamGoalsPercentage({ homeTeamStanding }) >= 140 &&
+        awayTeamGoalsPercentage({ awayTeamStanding }) >= 140 &&
         (againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 170 &&
           againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 170)) || (homeTeamGoalsPercentage({homeTeamStanding})>=180 &&(homeTeamStanding?.rank < awayTeamStanding?.rank) && againstAwayTeamGoalsPercentage({awayTeamStanding})>=150)
-      );
+      ) || (homeTeamGoalsPercentage({homeTeamStanding})>= 160 && awayTeamGoalsPercentage({awayTeamStanding})>=160);
     });
     return {
       fixtures: predictedFixtures,
