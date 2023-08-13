@@ -69,7 +69,7 @@ export const predictAwayWin = ({
         homeTeamFailWinningInMostHomeFixtures({
           homefixtures: lastFiveHomeTeamHomeFixtures,
         }) 
-      ) ||  (awayTeamGoalsPercentage({awayTeamStanding})> homeTeamGoalsPercentage({homeTeamStanding}) && (againstAwayTeamGoalsPercentage({awayTeamStanding})- againstHomeTeamGoalsPercentage({homeTeamStanding}) <= -30));
+      ) ||  (awayTeamGoalsPercentage({awayTeamStanding})> homeTeamGoalsPercentage({homeTeamStanding}) && (againstAwayTeamGoalsPercentage({awayTeamStanding})- againstHomeTeamGoalsPercentage({homeTeamStanding}) <= -80));
     });
     return {
       fixtures: predictedFixtures,
