@@ -22,6 +22,7 @@ import { predict2_4_goals} from "./2-4-goals"
 import {predict2_5_goals} from "./2-5-goals"
 import {predict3_6_goals} from "./3-6-goals"
 import { predictAwayOver1_5 } from "./away-over-1-5";
+import { predictOver2_5 } from "./over-2-5";
 
 export default{
     predictAwayCleanSheet,
@@ -47,7 +48,8 @@ export default{
     predict2_5_goals,
     predict2_3_goals_Home,
     predict3_6_goals,
-    predictAwayOver1_5
+    predictAwayOver1_5,
+    predictOver2_5
 }
 
 // TODO see how i can export these as module

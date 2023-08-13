@@ -5,7 +5,7 @@ import { StandingsDataStandingModel, StandingsModel } from "../models/standings-
 import { betOptions } from "../variables/variables";
 import { getLastFiveTeamHomeFixtures, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, homeTeamGoalsPercentage, againstAwayTeamGoalsPercentage, getAwayTeamStanding, getHomeTeamStanding, getLastFiveTeamAwayFixtures } from "./shared-functions";
 
-export const predictOver1_5 = ({
+export const predictOver2_5 = ({
     currentFixtures,
     allFixtures,
     leaguesStandings,
