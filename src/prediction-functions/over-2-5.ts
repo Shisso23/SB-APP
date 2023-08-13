@@ -40,7 +40,7 @@ export const predictOver2_5 = ({
       ) {
         return false;
       }
-      return (homeTeamGoalsPercentage({homeTeamStanding})>= 190 && awayTeamGoalsPercentage({awayTeamStanding})>=190);
+      return (homeTeamGoalsPercentage({homeTeamStanding})>= 190 && awayTeamGoalsPercentage({awayTeamStanding})>=190) && homeTeamStanding.all.played>=2 && awayTeamStanding.all.played>=2;
     });
     return {
       fixtures: predictedFixtures,

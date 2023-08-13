@@ -67,7 +67,7 @@ if (lastFiveHomeTeamHomeFixtures.length < 3 || lastFiveAwayTeamAwayFixtures.leng
   return false;
 }
 
-      const isOver2_5 = homeTeamGoalsPercentage({homeTeamStanding})>= 190 && awayTeamGoalsPercentage({awayTeamStanding})>=190
+      const isOver2_5 = homeTeamGoalsPercentage({homeTeamStanding})>= 190 && awayTeamGoalsPercentage({awayTeamStanding})>=190 && homeTeamStanding.all.played>=2 && awayTeamStanding.all.played>=2
 
   
       return (
