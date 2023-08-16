@@ -34,34 +34,9 @@ export const predictHomeWin = ({
         leagueId: currentFixture.league.id,
       });
       if (lastFiveHomeTeamHomeFixtures.length >= 3) {
-        return (
-          ((homeTeamWinsMostMatches({
-            fixtures: lastFiveHomeTeamHomeFixtures,
-            homeTeamId: currentFixture.teams.home.id,
-          }) &&
-            otherHomeTeamGoalsInAwayFixtures({
-              awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
-              goals: 1,
-            }) &&
-            awayTeamFailWinningInMostAwayFixtures({
-              awayFixtures: lastFiveAwayTeamAwayFixtures,
-            }) &&
-            homeTeamGoalsPercentage({ homeTeamStanding }) >= 160 &&
-            againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 150) ||
-            (homeTeamGoalsPercentage({ homeTeamStanding }) >= 160 &&
-              awayTeamGoalsPercentage({ awayTeamStanding }) <= 80 &&
-              againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 150)) &&
-          HomeTeamScroreInMostHomeFixtures({
-            homefixtures: lastFiveHomeTeamHomeFixtures,
-            minGoals: 1,
-          }) &&
-          otherHomeTeamGoalsInAwayFixtures({
-            awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
-            goals: 1,
-          }) &&
-          homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
-          againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 130 &&
-          againstHomeTeamGoalsPercentage({ homeTeamStanding }) <= 120 && awayTeamFailWinningInMostAwayFixtures({awayFixtures: lastFiveAwayTeamAwayFixtures})
+        return ( homeTeamGoalsPercentage({ homeTeamStanding }) >= 160 &&
+        awayTeamGoalsPercentage({ awayTeamStanding }) <= 80 &&
+        againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 150
         ) || ((homeTeamGoalsPercentage({homeTeamStanding}) - awayTeamGoalsPercentage({awayTeamStanding})>=60) && (againstHomeTeamGoalsPercentage({homeTeamStanding})- againstAwayTeamGoalsPercentage({awayTeamStanding}) <= -40) && homeTeamStanding.all.played>=4 && awayTeamStanding.all.played>=4); 
       }
       return false;

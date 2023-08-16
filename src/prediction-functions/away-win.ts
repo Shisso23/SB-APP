@@ -38,38 +38,10 @@ export const predictAwayWin = ({
         return false;
       }
       //TODO filter the fixtures that passes the H wins either half test here and return it
-      return (
-        ((awayTeamWinsMostMatchesTimes({
-          fixtures: lastFiveAwayTeamAwayFixtures,
-          awayTeamId: currentFixture.teams.away.id,
-        }) &&
-          otherAwayTeamGoalsInHomeFixtures({
-            homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
-            goals: 1,
-          }) &&
-          homeTeamFailWinningInMostHomeFixtures({
-            homefixtures: lastFiveHomeTeamHomeFixtures,
-          }) &&
-          awayTeamGoalsPercentage({ awayTeamStanding }) >= 160 &&
-          againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 150) ||
-          (awayTeamGoalsPercentage({ awayTeamStanding }) >= 160 &&
+      return (awayTeamGoalsPercentage({ awayTeamStanding }) >= 160 &&
             homeTeamGoalsPercentage({ homeTeamStanding }) <= 80 &&
-            againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 150)) &&
-        awayTeamScroreInMostAwayFixtures({
-          awayfixtures: lastFiveAwayTeamAwayFixtures,
-          minGoals: 1,
-        }) &&
-        otherAwayTeamGoalsInHomeFixtures({
-          homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
-          goals: 1,
-        }) &&
-        awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
-        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 130 &&
-        againstAwayTeamGoalsPercentage({ awayTeamStanding }) <= 130 &&
-        homeTeamFailWinningInMostHomeFixtures({
-          homefixtures: lastFiveHomeTeamHomeFixtures,
-        }) 
-      ) ||  ((awayTeamGoalsPercentage({awayTeamStanding}) - homeTeamGoalsPercentage({homeTeamStanding})>= 60) && (againstAwayTeamGoalsPercentage({awayTeamStanding})- againstHomeTeamGoalsPercentage({homeTeamStanding}) <= -40) &&  homeTeamStanding.all.played>=4 && awayTeamStanding.all.played>=4);
+            againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 150) ||
+((awayTeamGoalsPercentage({awayTeamStanding}) - homeTeamGoalsPercentage({homeTeamStanding})>= 60) && (againstAwayTeamGoalsPercentage({awayTeamStanding})- againstHomeTeamGoalsPercentage({homeTeamStanding}) <= -40) &&  homeTeamStanding.all.played>=4 && awayTeamStanding.all.played>=4);
     });
     return {
       fixtures: predictedFixtures,
