@@ -34,14 +34,14 @@ export const predictAwayWin = ({
         leagueId: currentFixture.league.id,
       });
   
-      if (lastFiveAwayTeamAwayFixtures.length < 3) {
+      if (lastFiveAwayTeamAwayFixtures.length < 3 ||  (homeTeamStanding.all.played<3 && awayTeamStanding.all.played<3)) {
         return false;
       }
       //TODO filter the fixtures that passes the H wins either half test here and return it
       return (awayTeamGoalsPercentage({ awayTeamStanding }) >= 160 &&
             homeTeamGoalsPercentage({ homeTeamStanding }) <= 80 &&
             againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 150) ||
-((awayTeamGoalsPercentage({awayTeamStanding}) - homeTeamGoalsPercentage({homeTeamStanding})>= 60) && (againstAwayTeamGoalsPercentage({awayTeamStanding})- againstHomeTeamGoalsPercentage({homeTeamStanding}) <= -40) &&  homeTeamStanding.all.played>=3 && awayTeamStanding.all.played>=3);
+((awayTeamGoalsPercentage({awayTeamStanding}) - homeTeamGoalsPercentage({homeTeamStanding})>= 100) && (againstAwayTeamGoalsPercentage({awayTeamStanding})- againstHomeTeamGoalsPercentage({homeTeamStanding}) <= -40));
     });
     return {
       fixtures: predictedFixtures,
