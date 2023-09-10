@@ -108,18 +108,18 @@ export const betOptions: betOptionModel[] = [
   //     leaguesStandings: StandingsModel[];
   //   }) => predictionFunctions.predictAwayWinsEitherHalf(params),
   // },
-  // {
-  //   name: "Home over 0.5",
-  //   id: 15,
-  //   level: 0,
-  //   shortName: "H.Over 0.5",
-  //   description: "Home team scores at least once",
-  //   predict: (params: {
-  //     currentFixtures: FixtureDataModel[];
-  //     allFixtures: FixtureDataModel[];
-  //     leaguesStandings: StandingsModel[];
-  //   }) => predictionFunctions.predictHomeOver0_5(params),
-  // },
+  {
+    name: "Home over 0.5",
+    id: 15,
+    level: 0,
+    shortName: "H.Over 0.5",
+    description: "Home team scores at least once",
+    predict: (params: {
+      currentFixtures: FixtureDataModel[];
+      allFixtures: FixtureDataModel[];
+      leaguesStandings: StandingsModel[];
+    }) => predictionFunctions.predictHomeOver0_5(params),
+  },
   {
     name: "Away over 0.5",
     id: 16,
