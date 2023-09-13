@@ -1,3 +1,4 @@
+import { betOptionsEnum } from "../enums/bet-options.enums";
 import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures/index";
 import { StandingsModel } from "../models/standings-models/index";
@@ -255,6 +256,31 @@ export const betOptions: betOptionModel[] = [
   //     leaguesStandings: StandingsModel[];
   //   }) => predictAwayCleanSheet(params),
   // },
+
+  {
+    name: "Under 5.5",
+    id: betOptionsEnum.UNDER_5_5,
+    level: 1,
+    shortName: "Under 6 goals",
+    description: "Under 6 goals",
+    predict: (params: {
+      currentFixtures: FixtureDataModel[];
+      allFixtures: FixtureDataModel[];
+      leaguesStandings: StandingsModel[];
+    }) => predictionFunctions.predictUnder5_5(params),
+  },
+  {
+    name: "Over 0.5",
+    id: betOptionsEnum.OVER_0_5,
+    level: 1,
+    shortName: "Over 0.5",
+    description: "At least 1 goal in the match",
+    predict: (params: {
+      currentFixtures: FixtureDataModel[];
+      allFixtures: FixtureDataModel[];
+      leaguesStandings: StandingsModel[];
+    }) => predictionFunctions.predictOver0_5(params),
+  },
 ];
 
 export const numberOfH2HMatchesBack = 5;

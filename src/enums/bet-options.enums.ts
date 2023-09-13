@@ -28,5 +28,7 @@ export enum betOptionsEnum {
     HOME_OR_DRAW=26,
     AWAY_OR_DRAW=27,
     HOME_CLEAN_SHEET=28,
-    AWAY_CLEAN_SHEET=29
+    AWAY_CLEAN_SHEET=29,
+    OVER_0_5 = 30,
+    UNDER_5_5 = 31
   }
