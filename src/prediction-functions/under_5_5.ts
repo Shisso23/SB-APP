@@ -41,12 +41,12 @@ export const predictUnder5_5 = ({
         leagueId: currentFixture.league.id,
       });
   
-    //   if (
-    //     fixtureH2hFixtures.length< 1
-    //   ) {
-    //     return false;
-    //   }
-      return (homeTeamGoalsPercentage({homeTeamStanding})<= 130 && awayTeamGoalsPercentage({awayTeamStanding})<=130) && fixtureH2hFixtures.every(fixture=> fixture.goals.away + fixture.goals.home < 4);
+      if (
+        fixtureH2hFixtures.length< 3
+      ) {
+        return false;
+      }
+      return ((homeTeamGoalsPercentage({homeTeamStanding})<= 130 && awayTeamGoalsPercentage({awayTeamStanding})<=130) || (homeTeamStanding?.all.goals.against< homeTeamStanding.all.played && (awayTeamStanding?.all.goals.against< awayTeamStanding.all.played))) && fixtureH2hFixtures.every(fixture=> fixture.goals.away + fixture.goals.home < 4) ;
     });
     return {
       fixtures: predictedFixtures,
