@@ -47,7 +47,7 @@ export const predictUnder5_5 = ({
       ) {
         return false;
       }
-      return (homeTeamGoalsPercentage({homeTeamStanding})<= 120 && awayTeamGoalsPercentage({awayTeamStanding})<=120) && fixtureH2hFixtures.every(fixture=> fixture.goals.away + fixture.goals.home < 4);
+      return (homeTeamGoalsPercentage({homeTeamStanding})<= 130 && awayTeamGoalsPercentage({awayTeamStanding})<=130) && fixtureH2hFixtures.every(fixture=> fixture.goals.away + fixture.goals.home < 4);
     });
     return {
       fixtures: predictedFixtures,
