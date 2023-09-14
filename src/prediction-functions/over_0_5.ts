@@ -42,8 +42,7 @@ export const predictOver0_5 = ({
       });
   
       if (
-        lastFiveHomeTeamHomeFixtures.length < 3 ||
-        lastFiveAwayTeamAwayFixtures.length < 3
+        fixtureH2hFixtures.length< 3 
       ) {
         return false;
       }

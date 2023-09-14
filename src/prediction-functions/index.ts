@@ -25,6 +25,7 @@ import { predictAwayOver1_5 } from "./away-over-1-5";
 import { predictOver2_5 } from "./over-2-5";
 import {predictOver0_5} from "./over_0_5"
 import {predictUnder5_5} from "./under_5_5"
+import { predict1_6_goals } from "./1-6-goals";
 
 export default{
     predictAwayCleanSheet,
@@ -53,7 +54,8 @@ export default{
     predictAwayOver1_5,
     predictOver2_5,
     predictOver0_5,
-    predictUnder5_5
+    predictUnder5_5,
+    predict1_6_goals
 
 }
 

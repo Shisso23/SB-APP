@@ -281,6 +281,18 @@ export const betOptions: betOptionModel[] = [
       leaguesStandings: StandingsModel[];
     }) => predictionFunctions.predictOver0_5(params),
   },
+  {
+    name: "1_6_goals",
+    id: betOptionsEnum.TOTAL_1_6_GOALS,
+    level: 1,
+    shortName: "1_6_G",
+    description: "At least 1 goal and at most 6 goals",
+    predict: (params: {
+      currentFixtures: FixtureDataModel[];
+      allFixtures: FixtureDataModel[];
+      leaguesStandings: StandingsModel[];
+    }) => predictionFunctions.predict1_6_goals(params),
+  },
 ];
 
 export const numberOfH2HMatchesBack = 5;

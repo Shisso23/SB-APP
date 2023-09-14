@@ -5,7 +5,7 @@ import { StandingsDataStandingModel, StandingsModel } from "../models/standings-
 import { betOptions } from "../variables/variables";
 import { getLastFiveTeamHomeFixtures, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, homeTeamGoalsPercentage, againstAwayTeamGoalsPercentage, getAwayTeamStanding, getHomeTeamStanding, getLastFiveTeamAwayFixtures, getH2HFixtures } from "./shared-functions";
 
-export const predictUnder5_5 = ({
+export const predict1_6_goals = ({
     currentFixtures,
     allFixtures,
     leaguesStandings,
@@ -46,10 +46,10 @@ export const predictUnder5_5 = ({
       ) {
         return false;
       }
-      return (homeTeamGoalsPercentage({homeTeamStanding})<= 130 && awayTeamGoalsPercentage({awayTeamStanding})<=130) && fixtureH2hFixtures.every(fixture=> fixture.goals.away + fixture.goals.home < 4);
+      return (homeTeamGoalsPercentage({homeTeamStanding})>= 110 && awayTeamGoalsPercentage({awayTeamStanding})>=110) && fixtureH2hFixtures.every(fixture=> fixture.goals.away + fixture.goals.home > 1) &&  fixtureH2hFixtures.every(fixture=> fixture.goals.away + fixture.goals.home < 6);
     });
     return {
       fixtures: predictedFixtures,
-      option: betOptions.find(option => option.id === betOptionsEnum.UNDER_5_5) as betOptionModel,
+      option: betOptions.find(option => option.id === betOptionsEnum.TOTAL_1_6_GOALS) as betOptionModel,
     };
   };
