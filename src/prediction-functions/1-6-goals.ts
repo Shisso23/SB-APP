@@ -42,7 +42,7 @@ export const predict1_6_goals = ({
       });
   
       if (
-        fixtureH2hFixtures.length< 3 
+        fixtureH2hFixtures.length< 1
       ) {
         return false;
       }

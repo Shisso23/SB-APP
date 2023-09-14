@@ -42,7 +42,7 @@ export const predictUnder5_5 = ({
       });
   
       if (
-        fixtureH2hFixtures.length< 3 
+        fixtureH2hFixtures.length< 1
       ) {
         return false;
       }
