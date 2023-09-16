@@ -3,7 +3,7 @@ import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
 import { betOptions } from "../variables/variables";
-import { getLastFiveTeamHomeFixtures, awayTeamScroreInMostAwayFixtures, otherAwayTeamGoalsInHomeFixtures, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, getAwayTeamStanding, getHomeTeamStanding, getLastFiveTeamAwayFixtures } from "./shared-functions";
+import { getLastFiveTeamHomeFixtures, awayTeamScroreInMostAwayFixtures, otherAwayTeamGoalsInHomeFixtures, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, getAwayTeamStanding, getHomeTeamStanding, getLastFiveTeamAwayFixtures, getH2HFixtures } from "./shared-functions";
 
 
 export const predictAwayOver0_5 = ({
@@ -16,6 +16,11 @@ export const predictAwayOver0_5 = ({
     leaguesStandings: StandingsModel[];
   }) => {
     const predictedFixtures = currentFixtures.filter(currentFixture => {
+      const fixtureH2hFixtures = getH2HFixtures({
+        teamOneId: currentFixture.teams.home.id,
+        teamTwoId: currentFixture.teams.away.id,
+        allFixtures,
+      });
       const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
         teamId: currentFixture.teams.home.id,
         allFixtures,
@@ -34,7 +39,7 @@ export const predictAwayOver0_5 = ({
         awayTeamId: currentFixture.teams.away.id,
         leagueId: currentFixture.league.id,
       });
-      if (lastFiveAwayTeamAwayFixtures.length < 3) {
+      if (lastFiveAwayTeamAwayFixtures.length < 3 || fixtureH2hFixtures.length< 3) {
         return false;
       }
       return (
@@ -48,7 +53,7 @@ export const predictAwayOver0_5 = ({
         }) &&
         awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
           (awayTeamStanding?.rank< homeTeamStanding?.rank ) &&
-        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 130
+        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 130 && fixtureH2hFixtures.every(fixture=> fixture.goals.away + fixture.goals.home > 2)
       );
     });
     return {
