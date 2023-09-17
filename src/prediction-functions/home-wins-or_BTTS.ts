@@ -3,9 +3,9 @@ import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
 import { betOptions } from "../variables/variables";
-import { getLastFiveTeamHomeFixtures, againstAwayTeamGoalsPercentage, homeTeamGoalsPercentage, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, homeTeamWinsMostMatches, otherHomeTeamGoalsInAwayFixtures, awayTeamFailWinningInMostAwayFixtures, HomeTeamScroreInMostHomeFixtures, getAwayTeamStanding, getHomeTeamStanding, getLastFiveTeamAwayFixtures, getH2HFixtures } from "./shared-functions";
+import { getLastFiveTeamHomeFixtures, againstAwayTeamGoalsPercentage, homeTeamGoalsPercentage, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, homeTeamWinsMostMatches, otherHomeTeamGoalsInAwayFixtures, awayTeamFailWinningInMostAwayFixtures, HomeTeamScroreInMostHomeFixtures, getAwayTeamStanding, getHomeTeamStanding, getLastFiveTeamAwayFixtures, getH2HFixtures, homeTeamScroreInMostH2HFixtures } from "./shared-functions";
 
-export const predictHomeWin = ({
+export const predict_home_wins_or_BTTS  = ({
     currentFixtures,
     allFixtures,
     leaguesStandings,
@@ -42,12 +42,12 @@ export const predictHomeWin = ({
         return (( homeTeamGoalsPercentage({ homeTeamStanding }) >= 160 &&
         awayTeamGoalsPercentage({ awayTeamStanding }) <= 80 &&
         againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 150
-        ) || ((homeTeamGoalsPercentage({homeTeamStanding}) - awayTeamGoalsPercentage({awayTeamStanding})>=100) && (againstHomeTeamGoalsPercentage({homeTeamStanding})- againstAwayTeamGoalsPercentage({awayTeamStanding}) <= -40))) && homeTeamWinsMostMatches({fixtures: fixtureH2hFixtures, homeTeamId: homeTeamStanding.team.id}); 
+        ) || ((homeTeamGoalsPercentage({homeTeamStanding}) - awayTeamGoalsPercentage({awayTeamStanding})>=100) && (againstHomeTeamGoalsPercentage({homeTeamStanding})- againstAwayTeamGoalsPercentage({awayTeamStanding}) <= -40))) && homeTeamScroreInMostH2HFixtures({h2hFixtures: fixtureH2hFixtures, minGoals: 1, homeTeamId: homeTeamStanding.team.id}); 
       }
       return false;
     });
     return {
       fixtures: predictedFixtures,
-      option: betOptions.find(option => option.id === betOptionsEnum.HOME) as betOptionModel,
+      option: betOptions.find(option => option.id === betOptionsEnum.HOME_WINS_OR_BTTS) as betOptionModel,
     }; //TODO can look into making that betoption id a enum
   };

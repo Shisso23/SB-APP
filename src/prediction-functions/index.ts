@@ -26,6 +26,9 @@ import { predictOver2_5 } from "./over-2-5";
 import {predictOver0_5} from "./over_0_5"
 import {predictUnder5_5} from "./under_5_5"
 import { predict1_6_goals } from "./1-6-goals";
+import { predict2_6_goals } from "./2_6_golas";
+import { predict_home_wins_or_BTTS } from "./home-wins-or_BTTS";
+import { predict_away_wins_or_BTTS } from "./away-wins-or-BTTS";
 
 export default{
     predictAwayCleanSheet,
@@ -55,7 +58,10 @@ export default{
     predictOver2_5,
     predictOver0_5,
     predictUnder5_5,
-    predict1_6_goals
+    predict1_6_goals,
+    predict2_6_goals,
+    predict_home_wins_or_BTTS,
+    predict_away_wins_or_BTTS
 
 }
 

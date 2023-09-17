@@ -3,9 +3,9 @@ import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
 import { betOptions } from "../variables/variables";
-import { getLastFiveTeamHomeFixtures, againstAwayTeamGoalsPercentage, homeTeamGoalsPercentage, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, homeTeamWinsMostMatches, otherHomeTeamGoalsInAwayFixtures, awayTeamFailWinningInMostAwayFixtures, HomeTeamScroreInMostHomeFixtures, getAwayTeamStanding, getHomeTeamStanding, getLastFiveTeamAwayFixtures, getH2HFixtures } from "./shared-functions";
+import { getLastFiveTeamHomeFixtures, againstAwayTeamGoalsPercentage, homeTeamGoalsPercentage, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, homeTeamWinsMostMatches, otherHomeTeamGoalsInAwayFixtures, awayTeamFailWinningInMostAwayFixtures, HomeTeamScroreInMostHomeFixtures, getAwayTeamStanding, getHomeTeamStanding, getLastFiveTeamAwayFixtures, getH2HFixtures, homeTeamScroreInMostH2HFixtures, awayTeamWinsMostMatchesTimes, awayTeamScroreInMostH2HFixtures } from "./shared-functions";
 
-export const predictHomeWin = ({
+export const predict_away_wins_or_BTTS  = ({
     currentFixtures,
     allFixtures,
     leaguesStandings,
@@ -38,16 +38,16 @@ export const predictHomeWin = ({
         awayTeamId: currentFixture.teams.away.id,
         leagueId: currentFixture.league.id,
       });
-      if (lastFiveHomeTeamHomeFixtures.length >= 3 && (homeTeamStanding.all.played>=3 && awayTeamStanding.all.played>=3)) {
-        return (( homeTeamGoalsPercentage({ homeTeamStanding }) >= 160 &&
-        awayTeamGoalsPercentage({ awayTeamStanding }) <= 80 &&
-        againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 150
-        ) || ((homeTeamGoalsPercentage({homeTeamStanding}) - awayTeamGoalsPercentage({awayTeamStanding})>=100) && (againstHomeTeamGoalsPercentage({homeTeamStanding})- againstAwayTeamGoalsPercentage({awayTeamStanding}) <= -40))) && homeTeamWinsMostMatches({fixtures: fixtureH2hFixtures, homeTeamId: homeTeamStanding.team.id}); 
+      if (lastFiveAwayTeamAwayFixtures.length >= 3 && (awayTeamStanding.all.played>=3 && homeTeamStanding.all.played>=3)) {
+        return ((awayTeamGoalsPercentage({ awayTeamStanding }) >= 160 &&
+        homeTeamGoalsPercentage({ homeTeamStanding }) <= 80 &&
+        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 150) ||
+((awayTeamGoalsPercentage({awayTeamStanding}) - homeTeamGoalsPercentage({homeTeamStanding})>= 100) && (againstAwayTeamGoalsPercentage({awayTeamStanding})- againstHomeTeamGoalsPercentage({homeTeamStanding}) <= -40))) && awayTeamScroreInMostH2HFixtures({awayTeamId: awayTeamStanding.team.id, minGoals: 1, h2hFixtures: fixtureH2hFixtures}); 
       }
       return false;
     });
     return {
       fixtures: predictedFixtures,
-      option: betOptions.find(option => option.id === betOptionsEnum.HOME) as betOptionModel,
+      option: betOptions.find(option => option.id === betOptionsEnum.AWAY_WINS_OR_BTTS) as betOptionModel,
     }; //TODO can look into making that betoption id a enum
   };

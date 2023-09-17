@@ -293,6 +293,42 @@ export const betOptions: betOptionModel[] = [
       leaguesStandings: StandingsModel[];
     }) => predictionFunctions.predict1_6_goals(params),
   },
+  {
+    name: "Home wins or BTTS",
+    id: betOptionsEnum.HOME_WINS_OR_BTTS,
+    level: 3,
+    shortName: "Home wins or BTTS",
+    description: "Home wins or both teams score",
+    predict: (params: {
+      currentFixtures: FixtureDataModel[];
+      allFixtures: FixtureDataModel[];
+      leaguesStandings: StandingsModel[];
+    }) => predictionFunctions.predict_home_wins_or_BTTS(params),
+  },
+  {
+    name: "Away wins or BTTS",
+    id: betOptionsEnum.AWAY_WINS_OR_BTTS,
+    level: 3,
+    shortName: "Away wins or BTTS",
+    description: "Away wins or both teams score",
+    predict: (params: {
+      currentFixtures: FixtureDataModel[];
+      allFixtures: FixtureDataModel[];
+      leaguesStandings: StandingsModel[];
+    }) => predictionFunctions.predict_away_wins_or_BTTS(params),
+  },
+  {
+    name: "2_6 goals in the match",
+    id: betOptionsEnum.TOTAL_2_6_GOALS,
+    level: 2,
+    shortName: "2_6 goals in the match",
+    description: "2 to 6 goals in the match",
+    predict: (params: {
+      currentFixtures: FixtureDataModel[];
+      allFixtures: FixtureDataModel[];
+      leaguesStandings: StandingsModel[];
+    }) => predictionFunctions.predict2_6_goals(params),
+  },
 ];
 
 export const numberOfH2HMatchesBack = 5;

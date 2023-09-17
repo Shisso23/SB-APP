@@ -31,5 +31,8 @@ export enum betOptionsEnum {
     AWAY_CLEAN_SHEET=29,
     OVER_0_5 = 30,
     UNDER_5_5 = 31,
-    TOTAL_1_6_GOALS = 32
+    TOTAL_1_6_GOALS = 32,
+    HOME_WINS_OR_BTTS = 33,
+    AWAY_WINS_OR_BTTS = 34,
+    TOTAL_2_6_GOALS = 35,
   }

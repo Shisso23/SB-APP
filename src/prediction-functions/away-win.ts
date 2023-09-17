@@ -46,7 +46,7 @@ export const predictAwayWin = ({
       return ((awayTeamGoalsPercentage({ awayTeamStanding }) >= 160 &&
             homeTeamGoalsPercentage({ homeTeamStanding }) <= 80 &&
             againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 150) ||
-((awayTeamGoalsPercentage({awayTeamStanding}) - homeTeamGoalsPercentage({homeTeamStanding})>= 100) && (againstAwayTeamGoalsPercentage({awayTeamStanding})- againstHomeTeamGoalsPercentage({homeTeamStanding}) <= -40)) && awayTeamWinsMostMatchesTimes({awayTeamId: awayTeamStanding.team.id, fixtures: fixtureH2hFixtures}));
+((awayTeamGoalsPercentage({awayTeamStanding}) - homeTeamGoalsPercentage({homeTeamStanding})>= 100) && (againstAwayTeamGoalsPercentage({awayTeamStanding})- againstHomeTeamGoalsPercentage({homeTeamStanding}) <= -40))) && awayTeamWinsMostMatchesTimes({awayTeamId: awayTeamStanding.team.id, fixtures: fixtureH2hFixtures});
     });
     return {
       fixtures: predictedFixtures,
