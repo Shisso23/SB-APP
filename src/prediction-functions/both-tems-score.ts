@@ -57,7 +57,7 @@ export const predictBothTeamsToScore = ({
           minGoals: 1,
         }) &&  homeTeamGoalsPercentage({homeTeamStanding})>= 140
       ) || (homeTeamScroreInMostH2HFixtures({h2hFixtures, homeTeamId,minGoals: 1}) && awayTeamScroreInMostH2HFixtures({awayTeamId,h2hFixtures,minGoals: 1}) &&  homeTeamGoalsPercentage({homeTeamStanding})>=150 && awayTeamGoalsPercentage({awayTeamStanding})>=150)))
-      || (homeTeamGoalsPercentage({homeTeamStanding})>= 180 && awayTeamGoalsPercentage({awayTeamStanding})>=180 && againstAwayTeamGoalsPercentage({awayTeamStanding}) >=130 && againstHomeTeamGoalsPercentage({homeTeamStanding}) >=130)) && h2hFixtures.every(fixture=> fixture.goals.away + fixture.goals.home > 1); 
+      || (homeTeamGoalsPercentage({homeTeamStanding})>= 180 && awayTeamGoalsPercentage({awayTeamStanding})>=180 && againstAwayTeamGoalsPercentage({awayTeamStanding}) >=130 && againstHomeTeamGoalsPercentage({homeTeamStanding}) >=130)) && h2hFixtures.every(fixture=> fixture.goals.away + fixture.goals.home >=1); 
     });
     return {
       fixtures: predictedFixtures,
