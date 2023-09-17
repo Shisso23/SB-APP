@@ -46,7 +46,7 @@ export const predict1_6_goals = ({
       ) {
         return false;
       }
-      return (homeTeamGoalsPercentage({homeTeamStanding})>= 110 && awayTeamGoalsPercentage({awayTeamStanding})>=110) && fixtureH2hFixtures.every(fixture=> fixture.goals.away + fixture.goals.home > 1) &&  fixtureH2hFixtures.every(fixture=> fixture.goals.away + fixture.goals.home < 6);
+      return (homeTeamGoalsPercentage({homeTeamStanding})>= 110 && awayTeamGoalsPercentage({awayTeamStanding})>=110) && fixtureH2hFixtures.every(fixture=> fixture.goals.away + fixture.goals.home > 1) &&  fixtureH2hFixtures.every(fixture=> fixture.goals.away + fixture.goals.home <=5);
     });
     return {
       fixtures: predictedFixtures,
