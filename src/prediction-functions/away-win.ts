@@ -3,7 +3,7 @@ import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
 import { betOptions } from "../variables/variables";
-import { getLastFiveTeamHomeFixtures, againstAwayTeamGoalsPercentage, homeTeamGoalsPercentage, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, awayTeamWinsMostMatchesTimes, otherAwayTeamGoalsInHomeFixtures, homeTeamFailWinningInMostHomeFixtures, awayTeamScroreInMostAwayFixtures, getAwayTeamStanding, getHomeTeamStanding, getLastFiveTeamAwayFixtures } from "./shared-functions";
+import { getLastFiveTeamHomeFixtures, againstAwayTeamGoalsPercentage, homeTeamGoalsPercentage, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, awayTeamWinsMostMatchesTimes, otherAwayTeamGoalsInHomeFixtures, homeTeamFailWinningInMostHomeFixtures, awayTeamScroreInMostAwayFixtures, getAwayTeamStanding, getHomeTeamStanding, getLastFiveTeamAwayFixtures, getH2HFixtures } from "./shared-functions";
 
 export const predictAwayWin = ({
     currentFixtures,
@@ -23,6 +23,11 @@ export const predictAwayWin = ({
         teamId: currentFixture.teams.away.id,
         allFixtures,
       });
+      const fixtureH2hFixtures = getH2HFixtures({
+        teamOneId: currentFixture.teams.home.id,
+        teamTwoId: currentFixture.teams.away.id,
+        allFixtures,
+      });
       const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
         standings: leaguesStandings,
         awayTeamId: currentFixture.teams.away.id,
@@ -38,10 +43,10 @@ export const predictAwayWin = ({
         return false;
       }
       //TODO filter the fixtures that passes the H wins either half test here and return it
-      return (awayTeamGoalsPercentage({ awayTeamStanding }) >= 160 &&
+      return ((awayTeamGoalsPercentage({ awayTeamStanding }) >= 160 &&
             homeTeamGoalsPercentage({ homeTeamStanding }) <= 80 &&
             againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 150) ||
-((awayTeamGoalsPercentage({awayTeamStanding}) - homeTeamGoalsPercentage({homeTeamStanding})>= 100) && (againstAwayTeamGoalsPercentage({awayTeamStanding})- againstHomeTeamGoalsPercentage({homeTeamStanding}) <= -40));
+((awayTeamGoalsPercentage({awayTeamStanding}) - homeTeamGoalsPercentage({homeTeamStanding})>= 100) && (againstAwayTeamGoalsPercentage({awayTeamStanding})- againstHomeTeamGoalsPercentage({homeTeamStanding}) <= -40)) && awayTeamWinsMostMatchesTimes({awayTeamId: awayTeamStanding.team.id, fixtures: fixtureH2hFixtures}));
     });
     return {
       fixtures: predictedFixtures,

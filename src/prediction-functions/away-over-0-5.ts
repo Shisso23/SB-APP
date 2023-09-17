@@ -3,7 +3,7 @@ import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
 import { betOptions } from "../variables/variables";
-import { getLastFiveTeamHomeFixtures, awayTeamScroreInMostAwayFixtures, otherAwayTeamGoalsInHomeFixtures, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, getAwayTeamStanding, getHomeTeamStanding, getLastFiveTeamAwayFixtures, getH2HFixtures } from "./shared-functions";
+import { getLastFiveTeamHomeFixtures, awayTeamScroreInMostAwayFixtures, otherAwayTeamGoalsInHomeFixtures, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, getAwayTeamStanding, getHomeTeamStanding, getLastFiveTeamAwayFixtures, getH2HFixtures, awayTeamScroreInMostH2HFixtures } from "./shared-functions";
 
 
 export const predictAwayOver0_5 = ({
@@ -53,8 +53,8 @@ export const predictAwayOver0_5 = ({
         }) &&
         awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
           (awayTeamStanding?.rank< homeTeamStanding?.rank ) &&
-        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 130 && fixtureH2hFixtures.every(fixture=> fixture.goals.away + fixture.goals.home > 1)
-      );
+        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 130
+      ) && awayTeamScroreInMostH2HFixtures({h2hFixtures: fixtureH2hFixtures, awayTeamId: awayTeamStanding.team.id, minGoals: 1});
     });
     return {
       fixtures: predictedFixtures,
