@@ -52,7 +52,7 @@ export const predictBothTeamsToScore = ({
         leagueId: currentFixture.league.id,
       });
    
-      return (((Math.abs(homeTeamStanding?.rank - awayTeamStanding?.rank) <=5 && againstAwayTeamGoalsPercentage({awayTeamStanding}) >=130 && homeTeamStanding?.rank> awayTeamStanding?.rank ) && ((awayTeamScroreInMostAwayFixtures({
+      return (((Math.abs(homeTeamStanding?.rank - awayTeamStanding?.rank) <=6 && againstAwayTeamGoalsPercentage({awayTeamStanding}) >=130 && homeTeamStanding?.rank> awayTeamStanding?.rank ) && ((awayTeamScroreInMostAwayFixtures({
           awayfixtures: lastFiveAwayTeamAwayFixtures,
           minGoals: 1,
         }) &&  homeTeamGoalsPercentage({homeTeamStanding})>= 140
