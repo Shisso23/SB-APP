@@ -42,7 +42,7 @@ export const predictHomeWin = ({
         return (( homeTeamGoalsPercentage({ homeTeamStanding }) >= 160 &&
         awayTeamGoalsPercentage({ awayTeamStanding }) <= 80 &&
         againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 150
-        ) || ((homeTeamGoalsPercentage({homeTeamStanding}) - awayTeamGoalsPercentage({awayTeamStanding})>=100) && (againstHomeTeamGoalsPercentage({homeTeamStanding})- againstAwayTeamGoalsPercentage({awayTeamStanding}) <= -40))); 
+        ) || ((homeTeamGoalsPercentage({homeTeamStanding}) - awayTeamGoalsPercentage({awayTeamStanding})>=100) && (againstHomeTeamGoalsPercentage({homeTeamStanding})- againstAwayTeamGoalsPercentage({awayTeamStanding}) <= -40))) && Math.abs(homeTeamStanding.rank - awayTeamStanding.rank)>=5; 
       }
       return false;
     });
