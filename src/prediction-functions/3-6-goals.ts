@@ -3,7 +3,7 @@ import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
 import { betOptions } from "../variables/variables";
-import { getLastFiveTeamHomeFixtures, getLastFiveTeamAwayFixtures, getH2HFixtures, fixtureTotalMinMax, getAwayTeamStanding, getHomeTeamStanding, HomeTeamScroreInMostHomeFixtures, otherHomeTeamGoalsInAwayFixtures, homeTeamGoalsPercentage, againstAwayTeamGoalsPercentage, homeTeamMinGoals, teamMinGoalsInH2H, againstHomeTeamGoalsPercentage, awayTeamGoalsPercentage, otherAwayTeamGoalsInHomeFixtures, awayTeamScroreInMostAwayFixtures, awayTeamMinGoals } from "./shared-functions";
+import { getLastFiveTeamHomeFixtures, getLastFiveTeamAwayFixtures, getH2HFixtures, fixtureTotalMinMax, getAwayTeamStanding, getHomeTeamStanding, HomeTeamScroreInMostHomeFixtures, otherHomeTeamGoalsInAwayFixtures, homeTeamGoalsPercentage, againstAwayTeamGoalsPercentage, homeTeamMinGoals, teamMinGoalsInH2H, againstHomeTeamGoalsPercentage, awayTeamGoalsPercentage, otherAwayTeamGoalsInHomeFixtures, awayTeamScroreInMostAwayFixtures, awayTeamMinGoals, homeTeamScroreInMostH2HFixtures, awayTeamScroreInMostH2HFixtures } from "./shared-functions";
 
 
 export const predict3_6_goals = ({
@@ -76,7 +76,8 @@ if (lastFiveHomeTeamHomeFixtures.length < 3 || lastFiveAwayTeamAwayFixtures.leng
        && fixtureTotalMinMax({fixtures: lastFiveHomeTeamHomeFixtures, maxGoals: 6, minGoals: 3, occurencePercentage: 60})) ||
        isOver2_5
        && fixtureTotalMinMax({fixtures: lastFiveAwayTeamAwayFixtures, maxGoals: 6, minGoals: 3, occurencePercentage: 60})
-      ) && fixtureTotalMinMax({fixtures: h2hFixtures, maxGoals: 6, minGoals: 3, occurencePercentage: 60});
+      ) && fixtureTotalMinMax({fixtures: h2hFixtures, maxGoals: 6, minGoals: 3, occurencePercentage: 60}) && homeTeamScroreInMostH2HFixtures({h2hFixtures: h2hFixtures, homeTeamId: lastFiveHomeTeamHomeFixtures[0].teams.home.id, minGoals: 1})
+      && awayTeamScroreInMostH2HFixtures({h2hFixtures: h2hFixtures, awayTeamId: lastFiveAwayTeamAwayFixtures[0].teams.away.id, minGoals: 1});
     });
     return {
       fixtures: predictedFixtures,
