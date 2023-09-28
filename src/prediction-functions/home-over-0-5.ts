@@ -3,7 +3,7 @@ import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
 import { betOptions } from "../variables/variables";
-import { getLastFiveTeamHomeFixtures, HomeTeamScroreInMostHomeFixtures, otherHomeTeamGoalsInAwayFixtures, homeTeamGoalsPercentage, againstAwayTeamGoalsPercentage, getAwayTeamStanding, getHomeTeamStanding, getLastFiveTeamAwayFixtures, getH2HFixtures, homeTeamScroreInMostH2HFixtures } from "./shared-functions";
+import { getLastFiveTeamHomeFixtures, HomeTeamScroreInMostHomeFixtures, otherHomeTeamGoalsInAwayFixtures, homeTeamGoalsPercentage, againstAwayTeamGoalsPercentage, getAwayTeamStanding, getHomeTeamStanding, getLastFiveTeamAwayFixtures, getH2HFixtures, homeTeamScroreInMostH2HFixtures, hasNoNilNilInFixtures } from "./shared-functions";
 
 
 export const predictHomeOver0_5 = ({
@@ -58,7 +58,7 @@ export const predictHomeOver0_5 = ({
         homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
          (homeTeamStanding?.rank< awayTeamStanding?.rank ) &&
   againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 130 
-      )
+      ) && hasNoNilNilInFixtures({fixtures: fixtureH2hFixtures})  && hasNoNilNilInFixtures({fixtures: lastFiveHomeTeamHomeFixtures})
     });
     return {
       fixtures: predictedFixtures,

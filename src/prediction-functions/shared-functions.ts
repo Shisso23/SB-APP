@@ -453,6 +453,14 @@ export const getLastFiveTeamHomeFixtures = ({
     const goalsScored = awayTeamStanding?.all.goals.against;
     return (goalsScored / numberOfMatches) * 100;
   };
+
+
+  export const hasNoNilNilInFixtures  =({fixtures}:{fixtures: FixtureDataModel[]})=>{
+    if (fixtures.every(fixture=> fixture.goals.home+ fixture.goals.away>=1)){
+      return true
+    }
+    return false
+  }
   
   
   

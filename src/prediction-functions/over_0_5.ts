@@ -3,7 +3,7 @@ import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
 import { betOptions } from "../variables/variables";
-import { getLastFiveTeamHomeFixtures, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, homeTeamGoalsPercentage, againstAwayTeamGoalsPercentage, getAwayTeamStanding, getHomeTeamStanding, getLastFiveTeamAwayFixtures, getH2HFixtures } from "./shared-functions";
+import { getLastFiveTeamHomeFixtures, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, homeTeamGoalsPercentage, againstAwayTeamGoalsPercentage, getAwayTeamStanding, getHomeTeamStanding, getLastFiveTeamAwayFixtures, getH2HFixtures, hasNoNilNilInFixtures } from "./shared-functions";
 
 export const predictOver0_5 = ({
     currentFixtures,
@@ -46,7 +46,8 @@ export const predictOver0_5 = ({
       ) {
         return false;
       }
-      return (homeTeamGoalsPercentage({homeTeamStanding})>= 120 && awayTeamGoalsPercentage({awayTeamStanding})>=120) && fixtureH2hFixtures.every(fixture=> fixture.goals.away + fixture.goals.home >= 1);
+      return (homeTeamGoalsPercentage({homeTeamStanding})>= 120 && awayTeamGoalsPercentage({awayTeamStanding})>=120) && fixtureH2hFixtures.every(fixture=> fixture.goals.away + fixture.goals.home >= 1) 
+       && hasNoNilNilInFixtures({fixtures: lastFiveHomeTeamHomeFixtures})  && hasNoNilNilInFixtures({fixtures: lastFiveAwayTeamAwayFixtures});
     });
     return {
       fixtures: predictedFixtures,

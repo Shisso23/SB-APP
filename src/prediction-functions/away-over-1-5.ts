@@ -3,7 +3,7 @@ import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
 import { betOptions } from "../variables/variables";
-import {getLastFiveTeamAwayFixtures, awayTeamMinGoals, teamMinGoalsInH2H, getH2HFixtures, awayTeamScroreInMostAwayFixtures, otherAwayTeamGoalsInHomeFixtures, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, getHomeTeamStanding, getAwayTeamStanding, getLastFiveTeamHomeFixtures } from "./shared-functions";
+import {getLastFiveTeamAwayFixtures, awayTeamMinGoals, teamMinGoalsInH2H, getH2HFixtures, awayTeamScroreInMostAwayFixtures, otherAwayTeamGoalsInHomeFixtures, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, getHomeTeamStanding, getAwayTeamStanding, getLastFiveTeamHomeFixtures, hasNoNilNilInFixtures } from "./shared-functions";
 
 
 export const predictAwayOver1_5 = ({
@@ -55,7 +55,7 @@ export const predictAwayOver1_5 = ({
       }
       return (
        isAwayOver0_5 &&
-        awayTeamMinGoals({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, minGoals:2, occurencePercentage: 80}) && teamMinGoalsInH2H({h2hFixtures, minGoals: 2, teamId: lastFiveAwayTeamAwayFixtures[0].teams.away.id,occurencePercentage: 60})
+        awayTeamMinGoals({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, minGoals:2, occurencePercentage: 80}) && teamMinGoalsInH2H({h2hFixtures, minGoals: 2, teamId: lastFiveAwayTeamAwayFixtures[0].teams.away.id,occurencePercentage: 60})  && hasNoNilNilInFixtures({fixtures: h2hFixtures})  && hasNoNilNilInFixtures({fixtures: lastFiveAwayTeamAwayFixtures})
       );
     });
     return {
