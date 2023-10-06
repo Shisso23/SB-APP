@@ -39,22 +39,23 @@ export const predictAwayOver0_5 = ({
         awayTeamId: currentFixture.teams.away.id,
         leagueId: currentFixture.league.id,
       });
-      if (lastFiveAwayTeamAwayFixtures.length < 3 || fixtureH2hFixtures.length< 3) {
+      if (lastFiveAwayTeamAwayFixtures.length < 3) {
         return false;
       }
-      return (
-        awayTeamScroreInMostAwayFixtures({
-          awayfixtures: lastFiveAwayTeamAwayFixtures,
-          minGoals: 1,
-        }) &&
-        otherAwayTeamGoalsInHomeFixtures({
-          homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
-          goals: 1,
-        }) &&
-        awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
-          (awayTeamStanding?.rank< homeTeamStanding?.rank ) &&
-        againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 130
-      )  && hasNoNilNilInFixtures({fixtures: fixtureH2hFixtures}) && hasNoNilNilInFixtures({fixtures: lastFiveAwayTeamAwayFixtures})
+      // return (
+      //   awayTeamScroreInMostAwayFixtures({
+      //     awayfixtures: lastFiveAwayTeamAwayFixtures,
+      //     minGoals: 1,
+      //   }) &&
+      //   otherAwayTeamGoalsInHomeFixtures({
+      //     homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
+      //     goals: 1,
+      //   }) &&
+      //   awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
+      //     (awayTeamStanding?.rank< homeTeamStanding?.rank ) &&
+      //   againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 130
+      // )  && hasNoNilNilInFixtures({fixtures: fixtureH2hFixtures}) && hasNoNilNilInFixtures({fixtures: lastFiveAwayTeamAwayFixtures})
+      return  awayTeamGoalsPercentage({ awayTeamStanding }) >= 200
     });
     return {
       fixtures: predictedFixtures,

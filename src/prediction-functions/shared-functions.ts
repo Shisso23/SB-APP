@@ -235,7 +235,7 @@ export const getLastFiveTeamHomeFixtures = ({
         conditionPassedCount += 1;
       }
     });
-    if (conditionPassedCount / awayTeamFixtures.length >= 0.75) {
+    if (conditionPassedCount / awayTeamFixtures.length >8) {
       return true;
     } else {
       return false;
@@ -255,7 +255,7 @@ export const getLastFiveTeamHomeFixtures = ({
         conditionPassedCount += 1;
       }
     });
-    if (conditionPassedCount / homeTeamFixtures.length >= 0.75) {
+    if (conditionPassedCount / homeTeamFixtures.length > 0.8) {
       return true;
     } else {
       return false;
@@ -330,7 +330,7 @@ export const getLastFiveTeamHomeFixtures = ({
         conditionPassedCount += 1;
       }
     });
-    if (conditionPassedCount / fixtures.length >= 0.5) {
+    if (conditionPassedCount / fixtures.length >= 0.6) {
       return true;
     } else {
       return false;
@@ -358,7 +358,7 @@ export const getLastFiveTeamHomeFixtures = ({
         conditionPassedCount += 1;
       }
     });
-    if (conditionPassedCount / fixtures.length >= 0.5) {
+    if (conditionPassedCount / fixtures.length >= 0.6) {
       return true;
     } else {
       return false;

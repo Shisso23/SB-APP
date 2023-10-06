@@ -48,8 +48,9 @@ export const predictOver2_5 = ({
       ) {
         return false;
       }
-      return (homeTeamGoalsPercentage({homeTeamStanding})>= 190 && awayTeamGoalsPercentage({awayTeamStanding})>=190) && homeTeamStanding.all.played>=2 && awayTeamStanding.all.played>=2 && fixtureH2hFixtures.every(fixture=> fixture.goals.away + fixture.goals.home >= 2)
-      && hasNoNilNilInFixtures({fixtures: lastFiveHomeTeamHomeFixtures})  && hasNoNilNilInFixtures({fixtures: lastFiveAwayTeamAwayFixtures})   && hasNoNilNilInFixtures({fixtures: fixtureH2hFixtures});
+      // return (homeTeamGoalsPercentage({homeTeamStanding})>= 190 && awayTeamGoalsPercentage({awayTeamStanding})>=190) && homeTeamStanding.all.played>=2 && awayTeamStanding.all.played>=2 && fixtureH2hFixtures.every(fixture=> fixture.goals.away + fixture.goals.home >= 2)
+      // && hasNoNilNilInFixtures({fixtures: lastFiveHomeTeamHomeFixtures})  && hasNoNilNilInFixtures({fixtures: lastFiveAwayTeamAwayFixtures})   && hasNoNilNilInFixtures({fixtures: fixtureH2hFixtures});
+      return (homeTeamGoalsPercentage({homeTeamStanding})>= 180 && awayTeamGoalsPercentage({awayTeamStanding})>=230) 
     });
     return {
       fixtures: predictedFixtures,
