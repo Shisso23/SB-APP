@@ -264,7 +264,7 @@ export const getLastFiveHomeTeamHomeFixtures = ({
         conditionPassedCount += 1;
       }
     });
-    if (conditionPassedCount / awayTeamFixtures.length >8) {
+    if (conditionPassedCount / awayTeamFixtures.length >=0.8) {
       return true;
     } else {
       return false;
@@ -284,7 +284,7 @@ export const getLastFiveHomeTeamHomeFixtures = ({
         conditionPassedCount += 1;
       }
     });
-    if (conditionPassedCount / homeTeamFixtures.length > 0.8) {
+    if (conditionPassedCount / homeTeamFixtures.length >=0.8) {
       return true;
     } else {
       return false;
