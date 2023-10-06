@@ -3,7 +3,7 @@ import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
 import { betOptions } from "../variables/variables";
-import { getLastFiveTeamHomeFixtures, getLastFiveTeamAwayFixtures, getH2HFixtures, fixtureTotalMinMax, getAwayTeamStanding, getHomeTeamStanding, HomeTeamScroreInMostHomeFixtures, otherHomeTeamGoalsInAwayFixtures, homeTeamGoalsPercentage, againstAwayTeamGoalsPercentage, homeTeamMinGoals, teamMinGoalsInH2H, againstHomeTeamGoalsPercentage, awayTeamGoalsPercentage, otherAwayTeamGoalsInHomeFixtures, awayTeamScroreInMostAwayFixtures, awayTeamMinGoals, homeTeamScroreInMostH2HFixtures, awayTeamScroreInMostH2HFixtures, hasNoNilNilInFixtures } from "./shared-functions";
+import { getLastFiveHomeTeamHomeFixtures, getLastFiveAwayTeamAwayFixtures, getH2HFixtures, fixtureTotalMinMax, getAwayTeamStanding, getHomeTeamStanding, HomeTeamScroreInMostHomeFixtures, otherHomeTeamGoalsInAwayFixtures, homeTeamGoalsPercentage, againstAwayTeamGoalsPercentage, homeTeamMinGoals, teamMinGoalsInH2H, againstHomeTeamGoalsPercentage, awayTeamGoalsPercentage, otherAwayTeamGoalsInHomeFixtures, awayTeamScroreInMostAwayFixtures, awayTeamMinGoals, homeTeamScroreInMostH2HFixtures, awayTeamScroreInMostH2HFixtures, hasNoNilNilInFixtures } from "./shared-functions";
 
 
 export const predict3_6_goals = ({
@@ -16,11 +16,11 @@ export const predict3_6_goals = ({
     leaguesStandings: StandingsModel[];
   }) => {
     const predictedFixtures = currentFixtures.filter(currentFixture => {
-      const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
+      const lastFiveHomeTeamHomeFixtures = getLastFiveHomeTeamHomeFixtures({
         teamId: currentFixture.teams.home.id,
         allFixtures,
       });
-      const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
+      const lastFiveAwayTeamAwayFixtures = getLastFiveAwayTeamAwayFixtures({
         teamId: currentFixture.teams.away.id,
         allFixtures,
       });

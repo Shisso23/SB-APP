@@ -3,7 +3,7 @@ import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
 import { betOptions } from "../variables/variables";
-import { getLastFiveTeamHomeFixtures, awayTeamGoalsPercentage, homeTeamGoalsPercentage, getAwayTeamStanding, getHomeTeamStanding, getLastFiveTeamAwayFixtures, getH2HFixtures, homeTeamScroreInMostH2HFixtures, awayTeamScroreInMostH2HFixtures, hasNoNilNilInFixtures } from "./shared-functions";
+import { getLastFiveHomeTeamHomeFixtures, awayTeamGoalsPercentage, homeTeamGoalsPercentage, getAwayTeamStanding, getHomeTeamStanding, getLastFiveAwayTeamAwayFixtures, getH2HFixtures, homeTeamScroreInMostH2HFixtures, awayTeamScroreInMostH2HFixtures, hasNoNilNilInFixtures } from "./shared-functions";
 
 export const predict2_6_goals = ({
     currentFixtures,
@@ -22,11 +22,11 @@ export const predict2_6_goals = ({
         allFixtures,
       });
       
-      const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
+      const lastFiveHomeTeamHomeFixtures = getLastFiveHomeTeamHomeFixtures({
         teamId: currentFixture.teams.home.id,
         allFixtures,
       });
-      const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
+      const lastFiveAwayTeamAwayFixtures = getLastFiveAwayTeamAwayFixtures({
         teamId: currentFixture.teams.away.id,
         allFixtures,
       });

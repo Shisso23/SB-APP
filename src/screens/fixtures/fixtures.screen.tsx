@@ -25,8 +25,8 @@ import {
 import { goupedFixturesMock, mockFixtures } from '../../mock-data'
 import {
   getH2HFixtures,
-  getLastFiveTeamAwayFixtures,
-  getLastFiveTeamHomeFixtures,
+  getLastFiveAwayTeamAwayFixtures,
+  getLastFiveHomeTeamHomeFixtures,
 } from '../../prediction-functions/shared-functions'
 
 Modal.setAppElement('#root')
@@ -380,11 +380,11 @@ const FixturesScreen: React.FC = () => {
   const renderModalContent = () => {
     const homeTeam = selectedFixtureRow?.teams.home
     const awayTeam = selectedFixtureRow?.teams.away
-    const homeTeamPreviousHomeFixtures = getLastFiveTeamHomeFixtures({
+    const homeTeamPreviousHomeFixtures = getLastFiveHomeTeamHomeFixtures({
       teamId: homeTeam?.id,
       allFixtures,
     })
-    const awayTeamPreviousAwayFixtures = getLastFiveTeamAwayFixtures({
+    const awayTeamPreviousAwayFixtures = getLastFiveAwayTeamAwayFixtures({
       teamId: awayTeam?.id,
       allFixtures,
     })

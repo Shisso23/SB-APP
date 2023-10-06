@@ -2,7 +2,7 @@ import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
 import { numberOfH2HMatchesBack, numberOTeamLastFixturesBack } from "../variables/variables";
 
-export const getLastFiveTeamHomeFixtures = ({
+export const getLastFiveHomeTeamHomeFixtures = ({
     teamId,
     allFixtures,
   }: {
@@ -22,7 +22,27 @@ export const getLastFiveTeamHomeFixtures = ({
       });
   };
   
-  export const getLastFiveTeamAwayFixtures = ({
+  export const getLastFiveAwayTeamAwayFixtures = ({
+    teamId,
+    allFixtures,
+  }: {
+    teamId: number;
+    allFixtures: FixtureDataModel[];
+  }) => {
+    return allFixtures
+      .filter(fixture => {
+        return (
+          (fixture.teams.away.id === teamId) &&
+          fixture.fixture.status.short === 'FT'
+        );
+      })
+      .slice(0, numberOTeamLastFixturesBack)
+      .sort((fixtureA, fixtureB) => {
+        return fixtureB.fixture.timestamp - fixtureA.fixture.timestamp;
+      });
+  };
+
+  export const getLastFiveTeamFixtures = ({
     teamId,
     allFixtures,
   }: {
@@ -33,7 +53,7 @@ export const getLastFiveTeamHomeFixtures = ({
       .filter(fixture => {
         return (
           (fixture.teams.away.id === teamId ||
-            fixture.teams.away.id === teamId) &&
+            fixture.teams.home.id === teamId) &&
           fixture.fixture.status.short === 'FT'
         );
       })
@@ -125,6 +145,15 @@ export const getLastFiveTeamHomeFixtures = ({
       return false;
     }
   };
+
+  export const teamDidNotWinLastFixture=({allPastFiveFixtures, teamId}: {allPastFiveFixtures: FixtureDataModel[], teamId: number })=>{
+      if ((allPastFiveFixtures[0].teams.home.id=== teamId && allPastFiveFixtures[0].goals.home<= allPastFiveFixtures[0].goals.away)||
+      allPastFiveFixtures[0].teams.away.id=== teamId && allPastFiveFixtures[0].goals.away<= allPastFiveFixtures[0].goals.home
+      ){
+        return true
+      }
+      return false
+  }
   
   export const homeTeamFailScroringInMostHomeFixtures = ({
     homefixtures,
@@ -565,8 +594,8 @@ export const getLastFiveTeamHomeFixtures = ({
   
 
   export default {
-    getLastFiveTeamHomeFixtures,
-    getLastFiveTeamAwayFixtures,
+    getLastFiveHomeTeamHomeFixtures,
+    getLastFiveAwayTeamAwayFixtures,
     getH2HFixtures,
     HomeTeamScroreInMostHomeFixtures,
     awayTeamScroreInMostAwayFixtures,

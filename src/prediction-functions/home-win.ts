@@ -3,7 +3,7 @@ import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
 import { betOptions } from "../variables/variables";
-import { getLastFiveTeamHomeFixtures, againstAwayTeamGoalsPercentage, homeTeamGoalsPercentage, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, homeTeamWinsMostMatches, otherHomeTeamGoalsInAwayFixtures, awayTeamFailWinningInMostAwayFixtures, HomeTeamScroreInMostHomeFixtures, getAwayTeamStanding, getHomeTeamStanding, getLastFiveTeamAwayFixtures, getH2HFixtures } from "./shared-functions";
+import { getLastFiveHomeTeamHomeFixtures, againstAwayTeamGoalsPercentage, homeTeamGoalsPercentage, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, homeTeamWinsMostMatches, otherHomeTeamGoalsInAwayFixtures, awayTeamFailWinningInMostAwayFixtures, HomeTeamScroreInMostHomeFixtures, getAwayTeamStanding, getHomeTeamStanding, getLastFiveAwayTeamAwayFixtures, getH2HFixtures, teamDidNotWinLastFixture, getLastFiveTeamFixtures } from "./shared-functions";
 
 export const predictHomeWin = ({
     currentFixtures,
@@ -15,11 +15,11 @@ export const predictHomeWin = ({
     leaguesStandings: StandingsModel[];
   }) => {
     const predictedFixtures = currentFixtures.filter(currentFixture => {
-      const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
+      const lastFiveHomeTeamHomeFixtures = getLastFiveHomeTeamHomeFixtures({
         teamId: currentFixture.teams.home.id,
         allFixtures,
       });
-      const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
+      const lastFiveAwayTeamAwayFixtures = getLastFiveAwayTeamAwayFixtures({
         teamId: currentFixture.teams.away.id,
         allFixtures,
       });
@@ -38,8 +38,11 @@ export const predictHomeWin = ({
         awayTeamId: currentFixture.teams.away.id,
         leagueId: currentFixture.league.id,
       });
+
+      const lastHomeTeamMatches = getLastFiveTeamFixtures({allFixtures, teamId: currentFixture.teams.home.id})
+
       if (lastFiveHomeTeamHomeFixtures.length >= 3 && (homeTeamStanding.all.played>=3 )) {
-        return  homeTeamStanding.rank <5 && Math.abs(homeTeamStanding.rank - awayTeamStanding.rank)> 5 && homeTeamWinsMostMatches({fixtures: lastFiveHomeTeamHomeFixtures, homeTeamId: lastFiveHomeTeamHomeFixtures[0].teams.home.id}) && lastFiveHomeTeamHomeFixtures[0].goals.home <= lastFiveHomeTeamHomeFixtures[0].goals.away
+        return  homeTeamStanding.rank <5 && Math.abs(homeTeamStanding.rank - awayTeamStanding.rank)> 5 && homeTeamWinsMostMatches({fixtures: lastFiveHomeTeamHomeFixtures, homeTeamId: lastFiveHomeTeamHomeFixtures[0].teams.home.id})&& teamDidNotWinLastFixture({allPastFiveFixtures: lastHomeTeamMatches, teamId: currentFixture.teams.home.id})
         // return  (( homeTeamGoalsPercentage({ homeTeamStanding }) >= 160 &&
         // awayTeamGoalsPercentage({ awayTeamStanding }) <= 80 &&
         // againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 150

@@ -3,7 +3,7 @@ import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
 import { betOptions } from "../variables/variables";
-import {getLastFiveTeamAwayFixtures, awayTeamMinGoals, teamMinGoalsInH2H, getH2HFixtures, awayTeamScroreInMostAwayFixtures, otherAwayTeamGoalsInHomeFixtures, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, getHomeTeamStanding, getAwayTeamStanding, getLastFiveTeamHomeFixtures, hasNoNilNilInFixtures } from "./shared-functions";
+import {getLastFiveAwayTeamAwayFixtures, awayTeamMinGoals, teamMinGoalsInH2H, getH2HFixtures, awayTeamScroreInMostAwayFixtures, otherAwayTeamGoalsInHomeFixtures, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, getHomeTeamStanding, getAwayTeamStanding, getLastFiveHomeTeamHomeFixtures, hasNoNilNilInFixtures } from "./shared-functions";
 
 
 export const predictAwayOver1_5 = ({
@@ -16,11 +16,11 @@ export const predictAwayOver1_5 = ({
     leaguesStandings: StandingsModel[];
   }) => {
     const predictedFixtures = currentFixtures.filter(currentFixture => {
-      const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
+      const lastFiveAwayTeamAwayFixtures = getLastFiveAwayTeamAwayFixtures({
         teamId: currentFixture.teams.away.id,
         allFixtures,
       });
-      const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
+      const lastFiveHomeTeamHomeFixtures = getLastFiveHomeTeamHomeFixtures({
         teamId: currentFixture.teams.home.id,
         allFixtures,
       });

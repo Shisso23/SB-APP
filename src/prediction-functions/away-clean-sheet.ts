@@ -3,7 +3,7 @@ import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
 import { betOptions } from "../variables/variables";
-import { againstAwayTeamGoalsPercentage, homeTeamGoalsPercentage, homeTeamFailScroringInMostHomeFixtures, getLastFiveTeamHomeFixtures, getLastFiveTeamAwayFixtures, getAwayTeamStanding, getHomeTeamStanding } from "./shared-functions";
+import { againstAwayTeamGoalsPercentage, homeTeamGoalsPercentage, homeTeamFailScroringInMostHomeFixtures, getLastFiveHomeTeamHomeFixtures, getLastFiveAwayTeamAwayFixtures, getAwayTeamStanding, getHomeTeamStanding } from "./shared-functions";
 
 export const predictAwayCleanSheet = ({
     currentFixtures,
@@ -15,11 +15,11 @@ export const predictAwayCleanSheet = ({
     leaguesStandings: StandingsModel[];
   }) => {
     const predictedFixtures = currentFixtures.filter(currentFixture => {
-      const lastFiveAwayTeamAwayFixtures = getLastFiveTeamAwayFixtures({
+      const lastFiveAwayTeamAwayFixtures = getLastFiveAwayTeamAwayFixtures({
         teamId: currentFixture.teams.away.id,
         allFixtures,
       });
-      const lastFiveHomeTeamHomeFixtures = getLastFiveTeamHomeFixtures({
+      const lastFiveHomeTeamHomeFixtures = getLastFiveHomeTeamHomeFixtures({
         teamId: currentFixture.teams.home.id,
         allFixtures,
     });
