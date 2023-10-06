@@ -42,9 +42,10 @@ export const predictOver2_5 = ({
       });
   
       if (
-        lastFiveHomeTeamHomeFixtures.length < 3 ||
-        lastFiveAwayTeamAwayFixtures.length < 3||
-        fixtureH2hFixtures.length < 3
+        // lastFiveHomeTeamHomeFixtures.length < 3 ||
+        // lastFiveAwayTeamAwayFixtures.length < 3||
+        homeTeamStanding.all.played<3  || awayTeamStanding.all.played<3
+        // fixtureH2hFixtures.length < 3
       ) {
         return false;
       }
