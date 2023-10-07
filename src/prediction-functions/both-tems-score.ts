@@ -60,7 +60,8 @@ export const predictBothTeamsToScore = ({
       // || (homeTeamGoalsPercentage({homeTeamStanding})>= 180 && awayTeamGoalsPercentage({awayTeamStanding})>=180 && againstAwayTeamGoalsPercentage({awayTeamStanding}) >=130 && againstHomeTeamGoalsPercentage({homeTeamStanding}) >=130))
       //  && hasNoNilNilInFixtures({fixtures: h2hFixtures})  && hasNoNilNilInFixtures({fixtures: lastFiveHomeTeamHomeFixtures})  && hasNoNilNilInFixtures({fixtures: lastFiveAwayTeamAwayFixtures}); 
       if(lastFiveAwayTeamAwayFixtures.length<3 || lastFiveHomeTeamHomeFixtures.length<3 || homeTeamStanding.all.played<3 || awayTeamStanding.all.played< 3) return false
-      return (otherAwayTeamGoalsInHomeFixtures({goals: 1, homeTeamFixtures:lastFiveHomeTeamHomeFixtures}) && otherHomeTeamGoalsInAwayFixtures({awayTeamFixtures: lastFiveAwayTeamAwayFixtures,goals: 1}) )||(homeTeamGoalsPercentage({homeTeamStanding})>=200 && awayTeamGoalsPercentage({awayTeamStanding})>=200)
+      return (againstHomeTeamGoalsPercentage({homeTeamStanding})>=170 && againstAwayTeamGoalsPercentage({awayTeamStanding})>=170 && homeTeamGoalsPercentage({homeTeamStanding})>=110 && awayTeamGoalsPercentage({awayTeamStanding})>=110)||
+      (homeTeamGoalsPercentage({homeTeamStanding})>=200 && awayTeamGoalsPercentage({awayTeamStanding})>=200 && againstHomeTeamGoalsPercentage({homeTeamStanding})>=110 && againstAwayTeamGoalsPercentage({awayTeamStanding})>=110)
     });
     return {
       fixtures: predictedFixtures,
