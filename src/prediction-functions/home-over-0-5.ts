@@ -59,7 +59,7 @@ export const predictHomeOver0_5 = ({
   //        (homeTeamStanding?.rank< awayTeamStanding?.rank ) &&
   // againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 130 
   //     ) && hasNoNilNilInFixtures({fixtures: fixtureH2hFixtures})  && hasNoNilNilInFixtures({fixtures: lastFiveHomeTeamHomeFixtures})
-  return homeTeamGoalsPercentage({ homeTeamStanding }) >= 200
+  return homeTeamGoalsPercentage({ homeTeamStanding }) >= 200 && againstAwayTeamGoalsPercentage({awayTeamStanding})>=110
     });
     return {
       fixtures: predictedFixtures,
