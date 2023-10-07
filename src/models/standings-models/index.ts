@@ -42,7 +42,7 @@ export class StandingsDataLeagueModel {
 export class StandingsDataStandingModel {
     public rank: number;
     public team: standingDataStandingsTeamModel;
-    public points: string;
+    public points: number;
     public goalsDiff: number;
     public season: number;
     public group: string;
