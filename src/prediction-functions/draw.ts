@@ -40,15 +40,13 @@ export const predictDraw = ({
       });
   
       if (
-        fixtureH2hFixtures.length < 2 ||
         lastFiveAwayTeamAwayFixtures.length < 3 ||
         lastFiveHomeTeamHomeFixtures.length < 3
       ) {
         return false;
       }
       return (awayTeamStanding.rank <5 && Math.abs(awayTeamStanding.rank - homeTeamStanding.rank)> 5 && awayTeamWinsMostMatchesTimes({fixtures: lastFiveAwayTeamAwayFixtures, awayTeamId: lastFiveAwayTeamAwayFixtures[0].teams.away.id})) && 
-      lastFiveHomeTeamHomeFixtures.every(fixture=> fixture.goals.home>= fixture.goals.away) &&
-      (awayTeamStanding.points - homeTeamStanding.points)<=6
+      lastFiveHomeTeamHomeFixtures.every(fixture=> fixture.goals.home>= fixture.goals.away)
       
     });
     return {
