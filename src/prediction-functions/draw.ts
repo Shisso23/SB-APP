@@ -3,7 +3,7 @@ import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
 import { betOptions } from "../variables/variables";
-import { getLastFiveHomeTeamHomeFixtures, againstAwayTeamGoalsPercentage, homeTeamGoalsPercentage, awayTeamGoalsPercentage, getH2HFixtures, againstHomeTeamGoalsPercentage, getAwayTeamStanding, getHomeTeamStanding, getLastFiveAwayTeamAwayFixtures } from "./shared-functions";
+import { getLastFiveHomeTeamHomeFixtures, againstAwayTeamGoalsPercentage, homeTeamGoalsPercentage, awayTeamGoalsPercentage, getH2HFixtures, againstHomeTeamGoalsPercentage, getAwayTeamStanding, getHomeTeamStanding, getLastFiveAwayTeamAwayFixtures, awayTeamWinsMostMatchesTimes, homeTeamWinsMostMatches } from "./shared-functions";
 
 export const predictDraw = ({
     currentFixtures,
@@ -46,14 +46,10 @@ export const predictDraw = ({
       ) {
         return false;
       }
-      return (
-        ((homeTeamStanding?.all.draw / homeTeamStanding?.all.played >= 0.45 &&
-          awayTeamStanding?.all.draw / awayTeamStanding?.all.played >= 0.45 &&
-          homeTeamGoalsPercentage({ homeTeamStanding }) <= 120 &&
-          awayTeamGoalsPercentage({ awayTeamStanding }) <= 120) || (
-          homeTeamStanding?.all.draw > homeTeamStanding?.all.lose && awayTeamStanding?.all.draw > awayTeamStanding?.all.lose && againstHomeTeamGoalsPercentage({ homeTeamStanding }) < 95 && againstAwayTeamGoalsPercentage({ awayTeamStanding }) < 95
-        )) && (homeTeamStanding?.rank> awayTeamStanding?.rank )
-      );
+      return (awayTeamStanding.rank <5 && Math.abs(awayTeamStanding.rank - homeTeamStanding.rank)> 5 && awayTeamWinsMostMatchesTimes({fixtures: lastFiveAwayTeamAwayFixtures, awayTeamId: lastFiveAwayTeamAwayFixtures[0].teams.away.id})) && 
+      lastFiveHomeTeamHomeFixtures.every(fixture=> fixture.goals.home>= fixture.goals.away) &&
+      (awayTeamStanding.points - homeTeamStanding.points)<=6
+      
     });
     return {
       fixtures: predictedFixtures,
