@@ -27,6 +27,7 @@ import {
   getH2HFixtures,
   getLastFiveAwayTeamAwayFixtures,
   getLastFiveHomeTeamHomeFixtures,
+  getLastFiveTeamFixtures,
 } from '../../prediction-functions/shared-functions'
 
 Modal.setAppElement('#root')
@@ -380,11 +381,11 @@ const FixturesScreen: React.FC = () => {
   const renderModalContent = () => {
     const homeTeam = selectedFixtureRow?.teams.home
     const awayTeam = selectedFixtureRow?.teams.away
-    const homeTeamPreviousHomeFixtures = getLastFiveHomeTeamHomeFixtures({
+    const homeTeamPreviousFixtures = getLastFiveTeamFixtures({
       teamId: homeTeam?.id,
       allFixtures,
     })
-    const awayTeamPreviousAwayFixtures = getLastFiveAwayTeamAwayFixtures({
+    const awayTeamAwayFixtures = getLastFiveTeamFixtures({
       teamId: awayTeam?.id,
       allFixtures,
     })
@@ -421,10 +422,10 @@ const FixturesScreen: React.FC = () => {
 
           <div className=" flex flex-grow flex-col mr-5 h-full">
             <div className="text-xs sm:text-base font-bold text-center my-3">
-              Home team Previous Home Matches
+              Home team Previous Matches
             </div>
             <div className="flex flex-col rounded-lg items-center justify-center">
-              {homeTeamPreviousHomeFixtures.map((fixtureData) => {
+              {homeTeamPreviousFixtures.map((fixtureData) => {
                 return renderPreviousFixtures(fixtureData)
               })}
             </div>
@@ -432,10 +433,10 @@ const FixturesScreen: React.FC = () => {
 
           <div className=" flex flex-grow flex-col mr-5 h-full">
             <div className="text-xs sm:text-base font-bold text-center my-3">
-              Away team Previous Away Matches
+              Away team Previous Matches
             </div>
             <div className="flex flex-col rounded-lg items-center justify-center">
-              {awayTeamPreviousAwayFixtures.map((fixtureData) => {
+              {awayTeamAwayFixtures.map((fixtureData) => {
                 return renderPreviousFixtures(fixtureData)
               })}
             </div>
