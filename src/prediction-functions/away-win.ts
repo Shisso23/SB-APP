@@ -46,7 +46,6 @@ export const predictAwayWin = ({
       }
       //TODO filter the fixtures that passes the H wins either half test here and return it
       return  (awayTeamStanding.rank <5 && Math.abs(awayTeamStanding.rank - homeTeamStanding.rank)> 5 && awayTeamWinsMostMatchesTimes({fixtures: lastFiveAwayTeamAwayFixtures, awayTeamId: lastFiveAwayTeamAwayFixtures[0].teams.away.id})) && 
-      (lastFiveAwayTeamAwayFixtures[0].goals.away <= lastFiveAwayTeamAwayFixtures[0].goals.home ||teamDidNotWinLastFixture({allPastFiveFixtures: lastAwayTeamMatches, teamId: currentFixture.teams.away.id})) &&
       (awayTeamStanding.points - homeTeamStanding.points)>6
 //       return ((awayTeamGoalsPercentage({ awayTeamStanding }) >= 160 &&
 //             homeTeamGoalsPercentage({ homeTeamStanding }) <= 80 &&
