@@ -42,6 +42,8 @@ export const predictOver2_5 = ({
       });
   
       if (
+        !homeTeamStanding||
+        !awayTeamStanding||
         // lastFiveHomeTeamHomeFixtures.length < 3 ||
         // lastFiveAwayTeamAwayFixtures.length < 3||
         homeTeamStanding.all.played<3  || awayTeamStanding.all.played<3

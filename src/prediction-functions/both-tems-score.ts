@@ -31,26 +31,31 @@ export const predictBothTeamsToScore = ({
         allFixtures,
       });
 
+      const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
+        standings: leaguesStandings,
+        homeTeamId: currentFixture.teams.home.id,
+        leagueId: currentFixture.league.id,
+      });
+      
+      const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
+        standings: leaguesStandings,
+        awayTeamId: currentFixture.teams.away.id,
+        leagueId: currentFixture.league.id,
+      });
+
       if (
         lastFiveHomeTeamHomeFixtures.length < 3 ||
         lastFiveAwayTeamAwayFixtures.length < 3 ||
-        h2hFixtures.length <3
+        h2hFixtures.length <3||
+        !homeTeamStanding||
+        !awayTeamStanding
       ) {
         return false;
       }
       const homeTeamId =  lastFiveHomeTeamHomeFixtures[0].teams.home.id;
       const awayTeamId= lastFiveAwayTeamAwayFixtures[0].teams.away.id;
      
-      const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
-        standings: leaguesStandings,
-        homeTeamId: currentFixture.teams.home.id,
-        leagueId: currentFixture.league.id,
-      });
-      const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
-        standings: leaguesStandings,
-        awayTeamId: currentFixture.teams.away.id,
-        leagueId: currentFixture.league.id,
-      });
+   
    
       // return (((Math.abs(homeTeamStanding?.rank - awayTeamStanding?.rank) <=6 && againstAwayTeamGoalsPercentage({awayTeamStanding}) >=130 && homeTeamStanding?.rank> awayTeamStanding?.rank ) && ((awayTeamScroreInMostAwayFixtures({
       //     awayfixtures: lastFiveAwayTeamAwayFixtures,

@@ -43,7 +43,7 @@ export const predictHomeOver0_5 = ({
         leagueId: currentFixture.league.id,
       });
   
-      if (lastFiveHomeTeamHomeFixtures.length < 3) {
+      if (lastFiveHomeTeamHomeFixtures.length < 3 || !homeTeamStanding || !awayTeamStanding) {
         return false;
       }
   //     return (

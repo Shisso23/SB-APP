@@ -41,7 +41,9 @@ export const predictDraw = ({
   
       if (
         lastFiveAwayTeamAwayFixtures.length < 3 ||
-        lastFiveHomeTeamHomeFixtures.length < 3
+        lastFiveHomeTeamHomeFixtures.length < 3||
+        !homeTeamStanding||
+        !awayTeamStanding
       ) {
         return false;
       }

@@ -14,7 +14,7 @@ export const predictHomeWin = ({
     allFixtures: FixtureDataModel[];
     leaguesStandings: StandingsModel[];
   }) => {
-    const predictedFixtures = currentFixtures.filter(currentFixture => {
+    const predictedFixtures = currentFixtures?.filter(currentFixture => {
       const lastFiveHomeTeamHomeFixtures = getLastFiveHomeTeamHomeFixtures({
         teamId: currentFixture.teams.home.id,
         allFixtures,
@@ -41,7 +41,7 @@ export const predictHomeWin = ({
 
       const lastHomeTeamMatches = getLastFiveTeamFixtures({allFixtures, teamId: currentFixture.teams.home.id})
 
-      if (lastFiveHomeTeamHomeFixtures.length >= 3 && (homeTeamStanding.all.played>=3 && homeTeamStanding && awayTeamStanding )) {
+      if ( homeTeamStanding && awayTeamStanding && lastFiveHomeTeamHomeFixtures.length >= 3 && homeTeamStanding.all.played>=3) {
         return  (homeTeamStanding.rank <5 && Math.abs(homeTeamStanding.rank - awayTeamStanding.rank)> 7 && homeTeamWinsMostMatches({fixtures: lastFiveHomeTeamHomeFixtures, homeTeamId: lastFiveHomeTeamHomeFixtures[0].teams.home.id}) )&& 
        (homeTeamStanding.points - awayTeamStanding.points)>6
         // return  (( homeTeamGoalsPercentage({ homeTeamStanding }) >= 160 &&
