@@ -41,7 +41,7 @@ export const predictAwayWin = ({
 
       const lastAwayTeamMatches = getLastFiveTeamFixtures({allFixtures, teamId: currentFixture.teams.away.id})
   
-      if (lastFiveAwayTeamAwayFixtures.length < 3 &&  (awayTeamStanding.all.played<3)) {
+      if (lastFiveAwayTeamAwayFixtures.length < 3 &&  (awayTeamStanding.all.played<3|| !homeTeamStanding || !awayTeamStanding )) {
         return false;
       }
       //TODO filter the fixtures that passes the H wins either half test here and return it
