@@ -3,7 +3,7 @@ import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
 import { betOptions } from "../variables/variables";
-import { getLastFiveHomeTeamHomeFixtures, againstAwayTeamGoalsPercentage, homeTeamGoalsPercentage, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, awayTeamWinsMostMatchesTimes, otherAwayTeamGoalsInHomeFixtures, homeTeamFailWinningInMostHomeFixtures, awayTeamScroreInMostAwayFixtures, getAwayTeamStanding, getHomeTeamStanding, getLastFiveAwayTeamAwayFixtures, getH2HFixtures, getLastFiveTeamFixtures, teamDidNotWinLastFixture } from "./shared-functions";
+import { getLastFiveHomeTeamHomeFixtures, againstAwayTeamGoalsPercentage, homeTeamGoalsPercentage, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, awayTeamWinsMostMatchesTimes, otherAwayTeamGoalsInHomeFixtures, homeTeamFailWinningInMostHomeFixtures, awayTeamScroreInMostAwayFixtures, getAwayTeamStanding, getHomeTeamStanding, getLastFiveAwayTeamAwayFixtures, getH2HFixtures, getLastFiveTeamFixtures, teamDidNotWinLastFixture, homeTeamFailScroringInMostHomeFixtures } from "./shared-functions";
 
 export const predictAwayWin = ({
     currentFixtures,
@@ -46,7 +46,8 @@ export const predictAwayWin = ({
       }
       //TODO filter the fixtures that passes the H wins either half test here and return it
       return  (awayTeamStanding.rank <5 && Math.abs(awayTeamStanding.rank - homeTeamStanding.rank)> 7 && awayTeamWinsMostMatchesTimes({fixtures: lastFiveAwayTeamAwayFixtures, awayTeamId: lastFiveAwayTeamAwayFixtures[0].teams.away.id})) && 
-      (awayTeamStanding.points - homeTeamStanding.points)>6
+      (awayTeamStanding.points - homeTeamStanding.points)>6 &&
+      homeTeamFailScroringInMostHomeFixtures({homefixtures: lastFiveHomeTeamHomeFixtures}) && homeTeamGoalsPercentage({homeTeamStanding})<=130
 //       return ((awayTeamGoalsPercentage({ awayTeamStanding }) >= 160 &&
 //             homeTeamGoalsPercentage({ homeTeamStanding }) <= 80 &&
 //             againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 150) ||

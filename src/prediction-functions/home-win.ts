@@ -3,7 +3,7 @@ import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
 import { betOptions } from "../variables/variables";
-import { getLastFiveHomeTeamHomeFixtures, againstAwayTeamGoalsPercentage, homeTeamGoalsPercentage, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, homeTeamWinsMostMatches, otherHomeTeamGoalsInAwayFixtures, awayTeamFailWinningInMostAwayFixtures, HomeTeamScroreInMostHomeFixtures, getAwayTeamStanding, getHomeTeamStanding, getLastFiveAwayTeamAwayFixtures, getH2HFixtures, getLastFiveTeamFixtures, teamDidNotWinLastFixture } from "./shared-functions";
+import { getLastFiveHomeTeamHomeFixtures, againstAwayTeamGoalsPercentage, homeTeamGoalsPercentage, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, homeTeamWinsMostMatches, otherHomeTeamGoalsInAwayFixtures, awayTeamFailWinningInMostAwayFixtures, HomeTeamScroreInMostHomeFixtures, getAwayTeamStanding, getHomeTeamStanding, getLastFiveAwayTeamAwayFixtures, getH2HFixtures, getLastFiveTeamFixtures, teamDidNotWinLastFixture, awayTeamFailScroringInMostAwayFixtures } from "./shared-functions";
 
 export const predictHomeWin = ({
     currentFixtures,
@@ -43,11 +43,9 @@ export const predictHomeWin = ({
 
       if ( homeTeamStanding && awayTeamStanding && lastFiveHomeTeamHomeFixtures.length >= 3 && homeTeamStanding.all.played>=3) {
         return  (homeTeamStanding.rank <5 && Math.abs(homeTeamStanding.rank - awayTeamStanding.rank)> 7 && homeTeamWinsMostMatches({fixtures: lastFiveHomeTeamHomeFixtures, homeTeamId: lastFiveHomeTeamHomeFixtures[0].teams.home.id}) )&& 
-       (homeTeamStanding.points - awayTeamStanding.points)>6
-        // return  (( homeTeamGoalsPercentage({ homeTeamStanding }) >= 160 &&
-        // awayTeamGoalsPercentage({ awayTeamStanding }) <= 80 &&
-        // againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 150
-        // ) || ((homeTeamGoalsPercentage({homeTeamStanding}) - awayTeamGoalsPercentage({awayTeamStanding})>=100) && (againstHomeTeamGoalsPercentage({homeTeamStanding})- againstAwayTeamGoalsPercentage({awayTeamStanding}) <= -40))) && Math.abs(homeTeamStanding.rank - awayTeamStanding.rank)>=5; 
+       (homeTeamStanding.points - awayTeamStanding.points)>6 && 
+       awayTeamFailScroringInMostAwayFixtures({awayfixtures: lastFiveAwayTeamAwayFixtures}) && 
+       awayTeamGoalsPercentage({awayTeamStanding})<=130
       }
       return false;
     });
