@@ -344,9 +344,11 @@ export const getLastFiveHomeTeamHomeFixtures = ({
   export const homeTeamWinsMostMatches = ({
     fixtures,
     homeTeamId,
+    winPercentage = 60
   }: {
     fixtures: FixtureDataModel[];
     homeTeamId: number;
+    winPercentage?: number
   }) => {
     let conditionPassedCount = 0;
     fixtures.forEach(fixtureData => {
@@ -359,7 +361,7 @@ export const getLastFiveHomeTeamHomeFixtures = ({
         conditionPassedCount += 1;
       }
     });
-    if (conditionPassedCount / fixtures.length >= 0.6) {
+    if (conditionPassedCount / fixtures.length >= (winPercentage/100)) {
       return true;
     } else {
       return false;
@@ -372,9 +374,11 @@ export const getLastFiveHomeTeamHomeFixtures = ({
   export const awayTeamWinsMostMatchesTimes = ({
     fixtures,
     awayTeamId,
+    winPercentage = 60
   }: {
     fixtures: FixtureDataModel[];
     awayTeamId: number;
+    winPercentage?: number
   }) => {
     let conditionPassedCount = 0;
     fixtures.forEach(fixtureData => {
@@ -387,7 +391,7 @@ export const getLastFiveHomeTeamHomeFixtures = ({
         conditionPassedCount += 1;
       }
     });
-    if (conditionPassedCount / fixtures.length >= 0.6) {
+    if (conditionPassedCount / fixtures.length >= (winPercentage/100)) {
       return true;
     } else {
       return false;
@@ -591,6 +595,22 @@ export const getLastFiveHomeTeamHomeFixtures = ({
       return false
   }
   }
+
+  export const mostFixturesAreBTTS =({fixtures, bttsPercentage=80}: {fixtures: FixtureDataModel[], bttsPercentage: number})=>{
+  
+    let conditionPassedCount =0;
+    fixtures.forEach(fixtureData=> {
+      if(((fixtureData.goals.home> 0 && fixtureData.goals.away>0)) ){
+          conditionPassedCount+=1;
+      }
+    })
+    if(((conditionPassedCount/fixtures.length)*100)>=bttsPercentage){
+      return true;
+    }else{
+        return false
+    }
+
+  }
   
 
   export default {
@@ -619,5 +639,6 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     againstAwayTeamGoalsPercentage,
     awayTeamScroreInMostH2HFixtures,
     homeTeamScroreInMostH2HFixtures,
-    awayTeamGoalsPercentage
+    awayTeamGoalsPercentage,
+    mostFixturesAreBTTS
   }
