@@ -208,18 +208,18 @@ export const betOptions: betOptionModel[] = [
   //   }) => predictionFunctions.predict2_3_goals_Away(params),
   // },
   // {name: 'Multi Goals A. (1->3 ) Goals', id: 25, level: 0, shortName:'1->3 A. G', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictMultiGoals1_3Away(params)},
-  // {
-  //   name: "Home or Draw",
-  //   id: 26,
-  //   level: 1,
-  //   shortName: "Home or Dr.",
-  //   description: "Home team wins or draw",
-  //   predict: (params: {
-  //     currentFixtures: FixtureDataModel[];
-  //     allFixtures: FixtureDataModel[];
-  //     leaguesStandings: StandingsModel[];
-  //   }) => predictionFunctions.predictHomeOrDraw(params),
-  // },
+  {
+    name: "Home or Draw",
+    id: betOptionsEnum.HOME_OR_DRAW,
+    level: 1,
+    shortName: "Home or Dr.",
+    description: "Home team wins or draw",
+    predict: (params: {
+      currentFixtures: FixtureDataModel[];
+      allFixtures: FixtureDataModel[];
+      leaguesStandings: StandingsModel[];
+    }) => predictionFunctions.predictHomeOrDraw(params),
+  },
   // {
   //   name: "Away or Draw",
   //   id: 27,
