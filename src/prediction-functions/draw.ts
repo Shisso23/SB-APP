@@ -47,8 +47,9 @@ export const predictDraw = ({
       ) {
         return false;
       }
-      return (awayTeamStanding.rank < homeTeamStanding.rank && Math.abs(awayTeamStanding.rank - homeTeamStanding.rank)<=8  && Math.abs(againstAwayTeamGoalsPercentage({awayTeamStanding}) - homeTeamGoalsPercentage({homeTeamStanding}))<5) && 
-      (lastFiveHomeTeamHomeFixtures.every(fixture=> fixture.goals.home>= fixture.goals.away)) 
+      return (awayTeamStanding.rank < homeTeamStanding.rank && Math.abs(awayTeamStanding.rank - homeTeamStanding.rank)<=8  && Math.abs(againstAwayTeamGoalsPercentage({awayTeamStanding}) - homeTeamGoalsPercentage({homeTeamStanding}))<=5) && 
+      (lastFiveHomeTeamHomeFixtures.every(fixture=> fixture.goals.home>= fixture.goals.away)) ||
+      (Math.abs(againstAwayTeamGoalsPercentage({awayTeamStanding}) - againstHomeTeamGoalsPercentage({homeTeamStanding}))<10 && awayTeamStanding.rank < homeTeamStanding.rank )
       
     });
     return {
