@@ -3,7 +3,7 @@ import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
 import { betOptions } from "../variables/variables";
-import { getLastFiveHomeTeamHomeFixtures, awayTeamScroreInMostAwayFixtures, againstAwayTeamGoalsPercentage, getLastFiveAwayTeamAwayFixtures, getHomeTeamStanding, getAwayTeamStanding, homeTeamGoalsPercentage, homeTeamScroreInMostH2HFixtures, getH2HFixtures, awayTeamScroreInMostH2HFixtures, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, hasNoNilNilInFixtures, otherAwayTeamGoalsInHomeFixtures, otherHomeTeamGoalsInAwayFixtures, awayTeamWinsMostMatchesTimes, mostFixturesAreBTTS, getLastFiveTeamFixtures } from "./shared-functions";
+import { getLastFiveHomeTeamHomeFixtures, awayTeamScroreInMostAwayFixtures, againstAwayTeamGoalsPercentage, getLastFiveAwayTeamAwayFixtures, getHomeTeamStanding, getAwayTeamStanding, homeTeamGoalsPercentage, homeTeamScroreInMostH2HFixtures, getH2HFixtures, awayTeamScroreInMostH2HFixtures, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, hasNoNilNilInFixtures, otherAwayTeamGoalsInHomeFixtures, otherHomeTeamGoalsInAwayFixtures, awayTeamWinsMostMatchesTimes, mostFixturesAreBTTS, getLastFiveTeamFixtures, HomeTeamScroreInMostHomeFixtures } from "./shared-functions";
 
 
 export const predictBothTeamsToScore = ({
@@ -60,8 +60,8 @@ export const predictBothTeamsToScore = ({
    
       if(!homeTeamStanding || !awayTeamStanding ||lastFiveAwayTeamAwayFixtures.length < 3 ||  awayTeamStanding.all.played<3) return false
 
-      return (( (awayTeamStanding.rank <10 && Math.abs(awayTeamStanding.rank - homeTeamStanding.rank)>6 && awayTeamWinsMostMatchesTimes({fixtures: lastFiveAwayTeamAwayFixtures, awayTeamId: lastFiveAwayTeamAwayFixtures[0].teams.away.id, winPercentage: 60})) && 
-      (awayTeamStanding.points - homeTeamStanding.points)>6 && homeTeamGoalsPercentage({homeTeamStanding})>=150 && againstAwayTeamGoalsPercentage({awayTeamStanding})>=120)) ||
+      return ( Math.abs(awayTeamStanding.rank - homeTeamStanding.rank)>=5 && awayTeamGoalsPercentage({awayTeamStanding})>=180 && 
+        (awayTeamStanding.points - homeTeamStanding.points)>5 && homeTeamGoalsPercentage({homeTeamStanding})>=150 && againstAwayTeamGoalsPercentage({awayTeamStanding})>=130 && HomeTeamScroreInMostHomeFixtures({homefixtures: lastFiveHomeTeamHomeFixtures, minGoals: 1})) ||
       (mostFixturesAreBTTS({bttsPercentage: 80, fixtures: lastHomeTeamMatches}) && mostFixturesAreBTTS({bttsPercentage: 80, fixtures: lastAwayTeamMatches}) &&  (Math.abs(awayTeamStanding.rank - homeTeamStanding.rank)>1 &&  Math.abs(awayTeamStanding.rank - homeTeamStanding.rank)<=6)  )
 
     });
