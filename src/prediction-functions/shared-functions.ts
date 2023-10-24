@@ -154,6 +154,24 @@ export const getLastFiveHomeTeamHomeFixtures = ({
       }
       return false
   }
+
+  export const teamDidNotLoseLastFixture=({allPastFiveFixtures, teamId}: {allPastFiveFixtures: FixtureDataModel[], teamId: number })=>{
+    if ((allPastFiveFixtures[0].teams.home.id=== teamId && allPastFiveFixtures[0].goals.home>= allPastFiveFixtures[0].goals.away)||
+    allPastFiveFixtures[0].teams.away.id=== teamId && allPastFiveFixtures[0].goals.away>= allPastFiveFixtures[0].goals.home
+    ){
+      return true
+    }
+    return false
+}
+
+  export const teamWonLastFixture=({allPastFiveFixtures, teamId}: {allPastFiveFixtures: FixtureDataModel[], teamId: number })=>{
+    if ((allPastFiveFixtures[0].teams.home.id=== teamId && allPastFiveFixtures[0].goals.home> allPastFiveFixtures[0].goals.away)||
+    allPastFiveFixtures[0].teams.away.id=== teamId && allPastFiveFixtures[0].goals.away> allPastFiveFixtures[0].goals.home
+    ){
+      return true
+    }
+    return false
+}
   
   export const homeTeamFailScroringInMostHomeFixtures = ({
     homefixtures,
@@ -640,5 +658,7 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     awayTeamScroreInMostH2HFixtures,
     homeTeamScroreInMostH2HFixtures,
     awayTeamGoalsPercentage,
-    mostFixturesAreBTTS
+    mostFixturesAreBTTS,
+    teamWonLastFixture,
+    teamDidNotLoseLastFixture
   }

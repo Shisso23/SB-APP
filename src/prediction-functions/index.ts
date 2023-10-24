@@ -29,11 +29,13 @@ import { predict1_6_goals } from "./1-6-goals";
 import { predict2_6_goals } from "./2_6_golas";
 import { predict_home_wins_or_BTTS } from "./home-wins-or_BTTS";
 import { predict_away_wins_or_BTTS } from "./away-wins-or-BTTS";
+import { predictDrawOrBothTeamsScore } from "./draw-or-both-teams-score";
 
 export default{
     predictAwayCleanSheet,
     predictHomeCleanSheet,
     predictBothTeamsToScore,
+    predictDrawOrBothTeamsScore,
     predictHomeWin,
     predictHomeOver1_5,
     predictOver1_5,
