@@ -60,9 +60,10 @@ export const predictBothTeamsToScore = ({
    
       if(!homeTeamStanding || !awayTeamStanding ||lastFiveAwayTeamAwayFixtures.length < 3 ||  awayTeamStanding.all.played<3) return false
 
-      return (awayTeamStanding.rank < homeTeamStanding.rank && awayTeamGoalsPercentage({awayTeamStanding})>=180 && 
-        homeTeamGoalsPercentage({homeTeamStanding})>=150 && againstAwayTeamGoalsPercentage({awayTeamStanding})>=130) ||
-      (mostFixturesAreBTTS({bttsPercentage: 80, fixtures: lastHomeTeamMatches}) && mostFixturesAreBTTS({bttsPercentage: 80, fixtures: lastAwayTeamMatches}) && ((awayTeamStanding.rank < homeTeamStanding.rank) &&  Math.abs(awayTeamStanding.rank - homeTeamStanding.rank)<=6)  )
+      return (awayTeamStanding.rank < homeTeamStanding.rank && awayTeamGoalsPercentage({awayTeamStanding})>=180 && againstAwayTeamGoalsPercentage({awayTeamStanding})>=150 &&
+        homeTeamGoalsPercentage({homeTeamStanding})>=130 && againstHomeTeamGoalsPercentage({homeTeamStanding})>=180) ||
+
+        (againstHomeTeamGoalsPercentage({homeTeamStanding})>=160 && againstAwayTeamGoalsPercentage({awayTeamStanding})>=160 &&Math.abs(homeTeamGoalsPercentage({homeTeamStanding}) - awayTeamGoalsPercentage({awayTeamStanding}))<=30 )
 
     });
     return {

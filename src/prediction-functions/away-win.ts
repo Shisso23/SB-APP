@@ -3,7 +3,7 @@ import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
 import { betOptions } from "../variables/variables";
-import { getLastFiveHomeTeamHomeFixtures, againstAwayTeamGoalsPercentage, homeTeamGoalsPercentage, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, awayTeamWinsMostMatchesTimes, otherAwayTeamGoalsInHomeFixtures, homeTeamFailWinningInMostHomeFixtures, awayTeamScroreInMostAwayFixtures, getAwayTeamStanding, getHomeTeamStanding, getLastFiveAwayTeamAwayFixtures, getH2HFixtures, getLastFiveTeamFixtures, teamDidNotWinLastFixture, homeTeamFailScroringInMostHomeFixtures, teamWonLastFixture } from "./shared-functions";
+import { getLastFiveHomeTeamHomeFixtures, againstAwayTeamGoalsPercentage, homeTeamGoalsPercentage, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, awayTeamWinsMostMatchesTimes, otherAwayTeamGoalsInHomeFixtures, homeTeamFailWinningInMostHomeFixtures, awayTeamScroreInMostAwayFixtures, getAwayTeamStanding, getHomeTeamStanding, getLastFiveAwayTeamAwayFixtures, getH2HFixtures, getLastFiveTeamFixtures, teamDidNotWinLastFixture, homeTeamFailScroringInMostHomeFixtures, teamWonLastFixture, goodAwayTeamwinPercentage } from "./shared-functions";
 
 export const predictAwayWin = ({
     currentFixtures,
@@ -46,10 +46,7 @@ export const predictAwayWin = ({
         return false;
       }
       //TODO filter the fixtures that passes the H wins either half test here and return it
-      return  (awayTeamStanding.rank <9 && Math.abs(awayTeamStanding.rank - homeTeamStanding.rank)> 5 && awayTeamWinsMostMatchesTimes({fixtures: lastFiveAwayTeamAwayFixtures, awayTeamId: lastFiveAwayTeamAwayFixtures[0].teams.away.id})) && 
-      (awayTeamStanding.points - homeTeamStanding.points)>7 &&
-     (homeTeamFailWinningInMostHomeFixtures({homefixtures: lastFiveHomeTeamHomeFixtures}))&&
-      (teamWonLastFixture({allPastFiveFixtures: lastHomeTeamTeamMatches,teamId: currentFixture.teams.home.id})) && teamDidNotWinLastFixture({allPastFiveFixtures: lastAwayTeamMatches, teamId: currentFixture.teams.away.id}) 
+      return goodAwayTeamwinPercentage({awayStanding: awayTeamStanding, homeStanding: homeTeamStanding, lossPercentage: 75, winPercentage: 60})// away team wins atleast  winPercentage of their games and hometeam loses at least lossPercentage of games
     });
     return {
       fixtures: predictedFixtures,

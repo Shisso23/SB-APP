@@ -30,18 +30,18 @@ export const betOptions: betOptionModel[] = [
       leaguesStandings: StandingsModel[];
     }) => predictionFunctions.predictHomeWin(params),
   },
-  // {
-  //   name: "Home over 1.5",
-  //   id: 2,
-  //   level: 3,
-  //   shortName: "H.Over 1.5",
-  //   description: "Home team scores at least 2 goals",
-  //   predict: (params: {
-  //     currentFixtures: FixtureDataModel[];
-  //     allFixtures: FixtureDataModel[];
-  //     leaguesStandings: StandingsModel[];
-  //   }) => predictionFunctions.predictHomeOver1_5(params),
-  // },
+  {
+    name: "Home over 1.5",
+    id: 2,
+    level: 3,
+    shortName: "H.Over 1.5",
+    description: "Home team scores at least 2 goals",
+    predict: (params: {
+      currentFixtures: FixtureDataModel[];
+      allFixtures: FixtureDataModel[];
+      leaguesStandings: StandingsModel[];
+    }) => predictionFunctions.predictHomeOver1_5(params),
+  },
   // {name: 'over 1.5', id: 3, level: 1, shortName: 'Over 1.5', description: '2 goals or more in the match',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predictOver1_5(params)},
   {name: 'Over 2.5', id: 4, level: 2, shortName: 'Over 2.5', description: '3 goals or more in the match',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predictOver2_5(params)},
   // {
@@ -220,18 +220,18 @@ export const betOptions: betOptionModel[] = [
       leaguesStandings: StandingsModel[];
     }) => predictionFunctions.predictHomeOrDraw(params),
   },
-  // {
-  //   name: "Away or Draw",
-  //   id: 27,
-  //   level: 1,
-  //   shortName: "Away or Dr.",
-  //   description: "Away team wins or draw",
-  //   predict: (params: {
-  //     currentFixtures: FixtureDataModel[];
-  //     allFixtures: FixtureDataModel[];
-  //     leaguesStandings: StandingsModel[];
-  //   }) => predictionFunctions.predictAwayOrDraw(params),
-  // },
+  {
+    name: "Away or Draw",
+    id: 27,
+    level: 1,
+    shortName: "Away or Dr.",
+    description: "Away team wins or draw",
+    predict: (params: {
+      currentFixtures: FixtureDataModel[];
+      allFixtures: FixtureDataModel[];
+      leaguesStandings: StandingsModel[];
+    }) => predictionFunctions.predictAwayOrDraw(params),
+  },
   // {
   //   name: "Home Clean sheet",
   //   id: 28,

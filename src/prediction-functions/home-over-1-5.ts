@@ -54,10 +54,7 @@ againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 130
         return false;
       }
       return (
-       
-        isHomeOver0_5 &&
-        homeTeamMinGoals({homeTeamFixtures: lastFiveHomeTeamHomeFixtures, minGoals:2, occurencePercentage: 80}) && teamMinGoalsInH2H({h2hFixtures, minGoals: 2, teamId: lastFiveHomeTeamHomeFixtures[0].teams.home.id,occurencePercentage: 60}) 
-        && hasNoNilNilInFixtures({fixtures: h2hFixtures}) && hasNoNilNilInFixtures({fixtures: lastFiveHomeTeamHomeFixtures})
+       homeTeamGoalsPercentage({homeTeamStanding})>=180 && againstAwayTeamGoalsPercentage({awayTeamStanding})>=180 && Math.abs(homeTeamStanding.rank - awayTeamStanding.rank)>5
       );
     });
     return {

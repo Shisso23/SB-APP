@@ -3,7 +3,7 @@ import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
 import { betOptions } from "../variables/variables";
-import { getLastFiveHomeTeamHomeFixtures, againstAwayTeamGoalsPercentage, homeTeamGoalsPercentage, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, homeTeamFailWinningInMostHomeFixtures, awayTeamWinsMostMatchesTimes, otherAwayTeamGoalsInHomeFixtures, homeTeamFailScroringInMostHomeFixtures, getAwayTeamStanding, getHomeTeamStanding, getLastFiveAwayTeamAwayFixtures } from "./shared-functions";
+import { getLastFiveHomeTeamHomeFixtures, againstAwayTeamGoalsPercentage, homeTeamGoalsPercentage, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, homeTeamFailWinningInMostHomeFixtures, awayTeamWinsMostMatchesTimes, otherAwayTeamGoalsInHomeFixtures, homeTeamFailScroringInMostHomeFixtures, getAwayTeamStanding, getHomeTeamStanding, getLastFiveAwayTeamAwayFixtures, goodAwayTeamwinPercentage } from "./shared-functions";
 
 export const predictAwayOrDraw = ({
     currentFixtures,
@@ -33,43 +33,11 @@ export const predictAwayOrDraw = ({
         awayTeamId: currentFixture.teams.away.id,
         leagueId: currentFixture.league.id,
       });
-      if (
-        lastFiveHomeTeamHomeFixtures.length >= 3 &&
-        lastFiveAwayTeamAwayFixtures.length >= 3
-      ) {
-        return (
-          (((lastFiveAwayTeamAwayFixtures.every(
-            fixtureData => fixtureData.teams.away.winner !== false,
-          ) &&
-            againstAwayTeamGoalsPercentage({ awayTeamStanding }) <= 130 &&
-            homeTeamFailWinningInMostHomeFixtures({
-              homefixtures: lastFiveHomeTeamHomeFixtures,
-            }) &&
-            homeTeamGoalsPercentage({ homeTeamStanding }) <= 80) ||
-            (awayTeamWinsMostMatchesTimes({
-              fixtures: lastFiveAwayTeamAwayFixtures,
-              awayTeamId: currentFixture.teams.away.id,
-            }) &&
-              otherAwayTeamGoalsInHomeFixtures({
-                homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
-                goals: 1,
-              }) &&
-              homeTeamFailWinningInMostHomeFixtures({
-                homefixtures: lastFiveHomeTeamHomeFixtures,
-              }) &&
-              awayTeamGoalsPercentage({ awayTeamStanding }) >= 160 &&
-              againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 150) ||
-            (awayTeamGoalsPercentage({ awayTeamStanding }) >= 160 &&
-              homeTeamGoalsPercentage({ homeTeamStanding }) <= 80 &&
-              againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 150)) &&
-          againstAwayTeamGoalsPercentage({ awayTeamStanding }) <= 130&&
-          homeTeamFailWinningInMostHomeFixtures({
-            homefixtures: lastFiveHomeTeamHomeFixtures,
-          })) ||  againstAwayTeamGoalsPercentage({ awayTeamStanding }) <= 87 &&
-          homeTeamGoalsPercentage({ homeTeamStanding }) <= 90  && homeTeamFailScroringInMostHomeFixtures({homefixtures: lastFiveHomeTeamHomeFixtures}) && (homeTeamStanding?.rank> awayTeamStanding?.rank )  && (homeTeamStanding?.rank - awayTeamStanding?.rank >=3)
-        );
+      if (!homeTeamStanding || !awayTeamStanding ||lastFiveAwayTeamAwayFixtures.length < 3 ||  awayTeamStanding.all.played<3 ) {
+        return false;
       }
-      return false;
+      //TODO filter the fixtures that passes the H wins either half test here and return it
+      return goodAwayTeamwinPercentage({awayStanding: awayTeamStanding, homeStanding: homeTeamStanding, lossPercentage: 75, winPercentage: 45})// away team wins atleast  winPercentage of their games and hometeam loses at least lossPercentage of games
     });
     return {
       fixtures: predictedFixtures,

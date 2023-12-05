@@ -631,6 +631,15 @@ export const getLastFiveHomeTeamHomeFixtures = ({
   }
   
 
+
+  export const goodAwayTeamwinPercentage =({awayStanding, homeStanding, winPercentage, lossPercentage}: {homeStanding: StandingsDataStandingModel, awayStanding: StandingsDataStandingModel, winPercentage: number, lossPercentage: number})=>{
+  
+   if ((awayStanding.all.win/ awayStanding.all.played)*100 >=winPercentage && (homeStanding.all.lose/homeStanding.all.played*100)>= lossPercentage){
+    return true
+   }
+   return false
+  }
+
   export default {
     getLastFiveHomeTeamHomeFixtures,
     getLastFiveAwayTeamAwayFixtures,
@@ -660,5 +669,6 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     awayTeamGoalsPercentage,
     mostFixturesAreBTTS,
     teamWonLastFixture,
-    teamDidNotLoseLastFixture
+    teamDidNotLoseLastFixture,
+    goodAwayTeamwinPercentage
   }
