@@ -37,7 +37,7 @@ export const predictAwayOrDraw = ({
         return false;
       }
       //TODO filter the fixtures that passes the H wins either half test here and return it
-      return goodAwayTeamwinPercentage({awayStanding: awayTeamStanding, homeStanding: homeTeamStanding, lossPercentage: 75, winPercentage: 45})// away team wins atleast  winPercentage of their games and hometeam loses at least lossPercentage of games
+      return goodAwayTeamwinPercentage({awayStanding: awayTeamStanding, homeStanding: homeTeamStanding, lossPercentage: 70, winPercentage: 45})// away team wins atleast  winPercentage of their games and hometeam loses at least lossPercentage of games
     });
     return {
       fixtures: predictedFixtures,
