@@ -8,7 +8,7 @@ export const levels: number[] = [0, 1, 2, 3, 4, 5];
 export const betOptions: betOptionModel[] = [
   {
     name: "Both Teams to Score",
-    id: 0,
+    id: betOptionsEnum.BOTH_TEAMS_TO_SCORE,
     shortName: "GG",
     level: 3,
     description: "Both teams score at least 1 goal",
@@ -20,7 +20,7 @@ export const betOptions: betOptionModel[] = [
   },
   {
     name: "Home",
-    id: 1,
+    id: betOptionsEnum.HOME,
     level: 3,
     shortName: "Home",
     description: "Home team to win",
@@ -32,7 +32,7 @@ export const betOptions: betOptionModel[] = [
   },
   {
     name: "Home over 1.5",
-    id: 2,
+    id: betOptionsEnum.HOME_OVER_1_5,
     level: 3,
     shortName: "H.Over 1.5",
     description: "Home team scores at least 2 goals",
@@ -43,7 +43,7 @@ export const betOptions: betOptionModel[] = [
     }) => predictionFunctions.predictHomeOver1_5(params),
   },
   // {name: 'over 1.5', id: 3, level: 1, shortName: 'Over 1.5', description: '2 goals or more in the match',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predictOver1_5(params)},
-  {name: 'Over 2.5', id: 4, level: 2, shortName: 'Over 2.5', description: '3 goals or more in the match',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predictOver2_5(params)},
+  {name: 'Over 2.5', id: betOptionsEnum.OVER_2_5, level: 2, shortName: 'Over 2.5', description: '3 goals or more in the match',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predictOver2_5(params)},
   // {
   //   name: "Home Wins Either Half",
   //   id: 5,
@@ -75,7 +75,7 @@ export const betOptions: betOptionModel[] = [
   // {name: 'Half-Time Draw', id: 11, level: 4, shortName: 'HT-DRAW', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predictHTDraw(params)},
   {
     name: "Away",
-    id: 12,
+    id: betOptionsEnum.AWAY,
     level: 4,
     shortName: "Away",
     description: "Away team to win",
@@ -111,7 +111,7 @@ export const betOptions: betOptionModel[] = [
   // },
   {
     name: "Home over 0.5",
-    id: 15,
+    id: betOptionsEnum.HOME_OVER_O_5,
     level: 0,
     shortName: "H.Over 0.5",
     description: "Home team scores at least once",
@@ -123,7 +123,7 @@ export const betOptions: betOptionModel[] = [
   },
   {
     name: "Away over 0.5",
-    id: 16,
+    id: betOptionsEnum.AWAY_OVER_0_5,
     level: 2,
     shortName: "A.Over 0.5",
     description: "Away team scores at least once",

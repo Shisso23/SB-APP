@@ -39,7 +39,7 @@ export const predictAwayOver0_5 = ({
         awayTeamId: currentFixture.teams.away.id,
         leagueId: currentFixture.league.id,
       });
-      if (lastFiveAwayTeamAwayFixtures.length < 3 || homeTeamStanding || !awayTeamStanding) {
+      if (lastFiveAwayTeamAwayFixtures.length < 3 || !homeTeamStanding || !awayTeamStanding) {
         return false;
       }
       // return (
