@@ -3,7 +3,7 @@ import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
 import { betOptions } from "../variables/variables";
-import { getLastFiveHomeTeamHomeFixtures, awayTeamScroreInMostAwayFixtures, againstAwayTeamGoalsPercentage, getLastFiveAwayTeamAwayFixtures, getHomeTeamStanding, getAwayTeamStanding, homeTeamGoalsPercentage, homeTeamScroreInMostH2HFixtures, getH2HFixtures, awayTeamScroreInMostH2HFixtures, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, hasNoNilNilInFixtures, otherAwayTeamGoalsInHomeFixtures, otherHomeTeamGoalsInAwayFixtures, awayTeamWinsMostMatchesTimes, mostFixturesAreBTTS, getLastFiveTeamFixtures, HomeTeamScroreInMostHomeFixtures } from "./shared-functions";
+import { getLastFiveHomeTeamHomeFixtures, awayTeamScroreInMostAwayFixtures, againstAwayTeamGoalsPercentage, getLastFiveAwayTeamAwayFixtures, getHomeTeamStanding, getAwayTeamStanding, homeTeamGoalsPercentage, homeTeamScroreInMostH2HFixtures, getH2HFixtures, awayTeamScroreInMostH2HFixtures, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, hasNoNilNilInFixtures, otherAwayTeamGoalsInHomeFixtures, otherHomeTeamGoalsInAwayFixtures, awayTeamWinsMostMatchesTimes, mostFixturesAreBTTS, getLastFiveTeamFixtures, HomeTeamScroreInMostHomeFixtures, homeTeamMinGoals, awayTeamMinGoals } from "./shared-functions";
 
 
 export const predictBothTeamsToScore = ({
@@ -62,8 +62,9 @@ export const predictBothTeamsToScore = ({
 
       return (awayTeamStanding.rank < homeTeamStanding.rank && awayTeamGoalsPercentage({awayTeamStanding})>=180 && againstAwayTeamGoalsPercentage({awayTeamStanding})>=150 &&
         homeTeamGoalsPercentage({homeTeamStanding})>=130 && againstHomeTeamGoalsPercentage({homeTeamStanding})>=180) ||
-
-        (againstHomeTeamGoalsPercentage({homeTeamStanding})>=160 && againstAwayTeamGoalsPercentage({awayTeamStanding})>=160 &&Math.abs(homeTeamGoalsPercentage({homeTeamStanding}) - awayTeamGoalsPercentage({awayTeamStanding}))<=30 )
+        ((awayTeamGoalsPercentage({ awayTeamStanding }) >= 160 && againstHomeTeamGoalsPercentage({homeTeamStanding})>=150 &&
+        homeTeamGoalsPercentage({ homeTeamStanding }) >= 130 && againstAwayTeamGoalsPercentage({awayTeamStanding})>=180))||
+        (homeTeamMinGoals({homeTeamFixtures: lastFiveHomeTeamHomeFixtures, minGoals: 2, occurencePercentage: 80}) && awayTeamMinGoals({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, minGoals:1,occurencePercentage: 100}))
 
     });
     return {
