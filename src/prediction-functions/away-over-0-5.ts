@@ -42,20 +42,7 @@ export const predictAwayOver0_5 = ({
       if (lastFiveAwayTeamAwayFixtures.length < 3 || !homeTeamStanding || !awayTeamStanding) {
         return false;
       }
-      // return (
-      //   awayTeamScroreInMostAwayFixtures({
-      //     awayfixtures: lastFiveAwayTeamAwayFixtures,
-      //     minGoals: 1,
-      //   }) &&
-      //   otherAwayTeamGoalsInHomeFixtures({
-      //     homeTeamFixtures: lastFiveHomeTeamHomeFixtures,
-      //     goals: 1,
-      //   }) &&
-      //   awayTeamGoalsPercentage({ awayTeamStanding }) >= 150 &&
-      //     (awayTeamStanding?.rank< homeTeamStanding?.rank ) &&
-      //   againstHomeTeamGoalsPercentage({ homeTeamStanding }) >= 130
-      // )  && hasNoNilNilInFixtures({fixtures: fixtureH2hFixtures}) && hasNoNilNilInFixtures({fixtures: lastFiveAwayTeamAwayFixtures})
-      return  awayTeamGoalsPercentage({ awayTeamStanding }) >= 160 && againstHomeTeamGoalsPercentage({homeTeamStanding})>=150
+      return  againstHomeTeamGoalsPercentage({homeTeamStanding})>=200
     });
     return {
       fixtures: predictedFixtures,

@@ -121,18 +121,18 @@ export const betOptions: betOptionModel[] = [
       leaguesStandings: StandingsModel[];
     }) => predictionFunctions.predictHomeOver0_5(params),
   },
-  // {
-  //   name: "Away over 0.5",
-  //   id: betOptionsEnum.AWAY_OVER_0_5,
-  //   level: 2,
-  //   shortName: "A.Over 0.5",
-  //   description: "Away team scores at least once",
-  //   predict: (params: {
-  //     currentFixtures: FixtureDataModel[];
-  //     allFixtures: FixtureDataModel[];
-  //     leaguesStandings: StandingsModel[];
-  //   }) => predictionFunctions.predictAwayOver0_5(params),
-  // },
+  {
+    name: "Away over 0.5",
+    id: betOptionsEnum.AWAY_OVER_0_5,
+    level: 2,
+    shortName: "A.Over 0.5",
+    description: "Away team scores at least once",
+    predict: (params: {
+      currentFixtures: FixtureDataModel[];
+      allFixtures: FixtureDataModel[];
+      leaguesStandings: StandingsModel[];
+    }) => predictionFunctions.predictAwayOver0_5(params),
+  },
   //  {name: 'Multi Goals (2->4 ) Goals', id: 17, level: 3, shortName:'2->4 G', description: '2 to 4 goals in total score',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predict2_4_goals(params)},
   // {
   //   name: "Multi Goals (0->2 ) Goals",

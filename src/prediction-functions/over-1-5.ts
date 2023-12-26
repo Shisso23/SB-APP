@@ -48,7 +48,10 @@ export const predictOver1_5 = ({
         return false;
       }
       return homeTeamMinGoals({homeTeamFixtures: lastFiveHomeTeamHomeFixtures, minGoals: 1, occurencePercentage: 100}) && awayTeamMinGoals({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, minGoals:1,occurencePercentage: 80}) && 
-      againstAwayTeamGoalsPercentage({awayTeamStanding})>=130 && againstHomeTeamGoalsPercentage({homeTeamStanding})>=130
+      againstAwayTeamGoalsPercentage({awayTeamStanding})>=130 && againstHomeTeamGoalsPercentage({homeTeamStanding})>=130||
+      (
+       ( homeTeamGoalsPercentage({homeTeamStanding})>=150 && againstHomeTeamGoalsPercentage({homeTeamStanding})>=140) || (awayTeamGoalsPercentage({awayTeamStanding})>=150 && againstAwayTeamGoalsPercentage({awayTeamStanding})>=140)
+      )
 
     });
     return {
