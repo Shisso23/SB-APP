@@ -43,10 +43,9 @@ export const predictHomeWin = ({
       const lastAwayTeamMatches = getLastFiveTeamFixtures({allFixtures, teamId: currentFixture.teams.away.id})
 
       if ( homeTeamStanding && awayTeamStanding && lastFiveHomeTeamHomeFixtures.length >= 3 && homeTeamStanding.all.played>=3) {
-        return  ((homeTeamStanding.rank <=4 && Math.abs(homeTeamStanding.rank - awayTeamStanding.rank)> 6 && homeTeamWinsMostMatches({fixtures: lastFiveHomeTeamHomeFixtures, homeTeamId: lastFiveHomeTeamHomeFixtures[0].teams.home.id}) )&& 
-       (homeTeamStanding.points - awayTeamStanding.points)>6 && 
-      ( awayTeamFailWinningInMostAwayFixtures({awayFixtures: lastFiveAwayTeamAwayFixtures})) && 
-      teamDidNotLoseLastFixture({allPastFiveFixtures: lastAwayTeamMatches,teamId: currentFixture.teams.away.id }) ) || goodHomeTeamwinPercentage({awayStanding: awayTeamStanding, homeStanding: homeTeamStanding, lossPercentage: 70, winPercentage: 55})
+        return  ((homeTeamStanding.rank <=4 && Math.abs(homeTeamStanding.rank - awayTeamStanding.rank)> 5 && homeTeamWinsMostMatches({fixtures: lastFiveHomeTeamHomeFixtures, homeTeamId: lastFiveHomeTeamHomeFixtures[0].teams.home.id}) )&& 
+       (homeTeamStanding.points - awayTeamStanding.points)>5 && 
+      ( awayTeamFailWinningInMostAwayFixtures({awayFixtures: lastFiveAwayTeamAwayFixtures})) ) || goodHomeTeamwinPercentage({awayStanding: awayTeamStanding, homeStanding: homeTeamStanding, lossPercentage: 70, winPercentage: 70})
       }
       return false;
     });

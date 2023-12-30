@@ -39,23 +39,9 @@ export const predictHomeOver1_5 = ({
         homeTeamId: currentFixture.teams.home.id,
         leagueId: currentFixture.league.id,
       });
-      const isHomeOver0_5 =   HomeTeamScroreInMostHomeFixtures({
-        homefixtures: lastFiveHomeTeamHomeFixtures,
-        minGoals: 1,
-      }) &&
-      otherHomeTeamGoalsInAwayFixtures({
-        awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
-        goals: 1,
-      }) &&
-      homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
-       (homeTeamStanding?.rank< awayTeamStanding?.rank ) &&
-againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 130
-      if (lastFiveHomeTeamHomeFixtures.length < 3 || h2hFixtures.length) {
-        return false;
-      }
-      return (
-       homeTeamGoalsPercentage({homeTeamStanding})>=180 && againstAwayTeamGoalsPercentage({awayTeamStanding})>=180 && Math.abs(homeTeamStanding.rank - awayTeamStanding.rank)>5
-      );
+
+        return homeTeamGoalsPercentage({ homeTeamStanding }) >= 160 && againstAwayTeamGoalsPercentage({awayTeamStanding})>=160||
+        againstAwayTeamGoalsPercentage({awayTeamStanding})>=240
     });
     return {
       fixtures: predictedFixtures,

@@ -3,7 +3,7 @@ import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
 import { betOptions } from "../variables/variables";
-import { getLastFiveHomeTeamHomeFixtures, awayTeamFailWinningInMostAwayFixtures, homeTeamWinsMostMatches, getAwayTeamStanding, getHomeTeamStanding, getLastFiveAwayTeamAwayFixtures } from "./shared-functions";
+import { getLastFiveHomeTeamHomeFixtures, awayTeamFailWinningInMostAwayFixtures, homeTeamWinsMostMatches, getAwayTeamStanding, getHomeTeamStanding, getLastFiveAwayTeamAwayFixtures, goodHomeTeamwinPercentage } from "./shared-functions";
 
 export const predictHomeOrDraw = ({
     currentFixtures,
@@ -35,9 +35,9 @@ export const predictHomeOrDraw = ({
       });
      
       if ( homeTeamStanding && awayTeamStanding && lastFiveHomeTeamHomeFixtures.length >= 3 && homeTeamStanding.all.played>=3) {
-        return  (homeTeamStanding.rank <10 && Math.abs(homeTeamStanding.rank - awayTeamStanding.rank)> 5 && homeTeamWinsMostMatches({fixtures: lastFiveHomeTeamHomeFixtures, winPercentage: 60, homeTeamId: lastFiveHomeTeamHomeFixtures[0].teams.home.id}) )&& 
-       (homeTeamStanding.points - awayTeamStanding.points)>6 && 
-      ( awayTeamFailWinningInMostAwayFixtures({awayFixtures: lastFiveAwayTeamAwayFixtures}))
+        return  ((homeTeamStanding.rank <=6 && Math.abs(homeTeamStanding.rank - awayTeamStanding.rank)> 5 && homeTeamWinsMostMatches({fixtures: lastFiveHomeTeamHomeFixtures, homeTeamId: lastFiveHomeTeamHomeFixtures[0].teams.home.id}) )&& 
+        (homeTeamStanding.points - awayTeamStanding.points)>5 && 
+       ( awayTeamFailWinningInMostAwayFixtures({awayFixtures: lastFiveAwayTeamAwayFixtures})) ) || goodHomeTeamwinPercentage({awayStanding: awayTeamStanding, homeStanding: homeTeamStanding, lossPercentage: 50, winPercentage: 60})
       }
       return false;
 
@@ -45,5 +45,5 @@ export const predictHomeOrDraw = ({
     return {
       fixtures: predictedFixtures,
       option: betOptions.find(option => option.id === betOptionsEnum.HOME_OR_DRAW) as betOptionModel,
-    }; //TODO can look into making that betoption id a enum
+    }; //TODO can look into making that betoption id a enumß
   };
