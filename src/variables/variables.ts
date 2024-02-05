@@ -60,18 +60,18 @@ export const betOptions: betOptionModel[] = [
   // {name: 'Multi Goals (3-6) Goals', id: 7, level: 3, shortName: '3->6 G', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predict3_6_goals(params)},
   // {name: 'Both Halves Over 0.5', id: 8, level: 4, shortName: 'B.H.Over 0.5', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictBothHalVOver0_5(params)},
   //  {name: 'Draw or GG', id: betOptionsEnum.DRAW_OR_GG, level: 2, shortName: 'DD OR GG', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predictDrawOrBothTeamsScore(params)},
-  // {
-  //   name: "Draw",
-  //   id: betOptionsEnum.DRAW,
-  //   level: 5,
-  //   shortName: "DRAW",
-  //   description: "Draw. No winner, No loser",
-  //   predict: (params: {
-  //     currentFixtures: FixtureDataModel[];
-  //     allFixtures: FixtureDataModel[];
-  //     leaguesStandings: StandingsModel[];
-  //   }) => predictionFunctions.predictDraw(params),
-  // },
+  {
+    name: "Draw",
+    id: betOptionsEnum.DRAW,
+    level: 5,
+    shortName: "DRAW",
+    description: "Draw. No winner, No loser",
+    predict: (params: {
+      currentFixtures: FixtureDataModel[];
+      allFixtures: FixtureDataModel[];
+      leaguesStandings: StandingsModel[];
+    }) => predictionFunctions.predictDraw(params),
+  },
   // {name: 'Half-Time Draw', id: 11, level: 4, shortName: 'HT-DRAW', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predictHTDraw(params)},
   {
     name: "Away",

@@ -40,8 +40,11 @@ export const predictHomeOver1_5 = ({
         leagueId: currentFixture.league.id,
       });
 
-        return homeTeamGoalsPercentage({ homeTeamStanding }) >= 160 && againstAwayTeamGoalsPercentage({awayTeamStanding})>=160||
-        againstAwayTeamGoalsPercentage({awayTeamStanding})>=240
+      return (
+        ((homeTeamGoalsPercentage({homeTeamStanding}) >= 160 &&
+          againstAwayTeamGoalsPercentage({awayTeamStanding}) >= 180)) &&
+        Math.abs(homeTeamStanding.rank - awayTeamStanding.rank) >= 5
+      );
     });
     return {
       fixtures: predictedFixtures,

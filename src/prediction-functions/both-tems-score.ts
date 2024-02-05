@@ -61,12 +61,12 @@ export const predictBothTeamsToScore = ({
       if(!homeTeamStanding || !awayTeamStanding ||lastFiveAwayTeamAwayFixtures.length < 3 ||  awayTeamStanding.all.played<3) return false
 
       return (awayTeamStanding.rank < homeTeamStanding.rank && awayTeamGoalsPercentage({awayTeamStanding})>=180 && againstAwayTeamGoalsPercentage({awayTeamStanding})>=150 &&
-        homeTeamGoalsPercentage({homeTeamStanding})>=130 && againstHomeTeamGoalsPercentage({homeTeamStanding})>=180) ||
-        ((awayTeamGoalsPercentage({ awayTeamStanding }) >= 160 && againstHomeTeamGoalsPercentage({homeTeamStanding})>=150 &&
-        homeTeamGoalsPercentage({ homeTeamStanding }) >= 130 && againstAwayTeamGoalsPercentage({awayTeamStanding})>=180))||
-        (homeTeamMinGoals({homeTeamFixtures: lastFiveHomeTeamHomeFixtures, minGoals: 1, occurencePercentage: 100}) && awayTeamMinGoals({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, minGoals:1,occurencePercentage: 100}) &&
-        againstAwayTeamGoalsPercentage({awayTeamStanding})>=130 && againstHomeTeamGoalsPercentage({homeTeamStanding})>=130)||
-        homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 && awayTeamStanding.rank<5 && awayTeamStanding.rank- homeTeamStanding.rank>5
+      homeTeamGoalsPercentage({homeTeamStanding})>=130 && againstHomeTeamGoalsPercentage({homeTeamStanding})>=180) ||
+      ((awayTeamGoalsPercentage({ awayTeamStanding }) >= 160 && againstHomeTeamGoalsPercentage({homeTeamStanding})>=150 &&
+      homeTeamGoalsPercentage({ homeTeamStanding }) >= 130 && againstAwayTeamGoalsPercentage({awayTeamStanding})>=180))||
+      (homeTeamMinGoals({homeTeamFixtures: lastFiveHomeTeamHomeFixtures, minGoals: 1, occurencePercentage: 100}) && awayTeamMinGoals({awayTeamFixtures: lastFiveAwayTeamAwayFixtures, minGoals:1,occurencePercentage: 100}) &&
+      againstAwayTeamGoalsPercentage({awayTeamStanding})>=130 && againstHomeTeamGoalsPercentage({homeTeamStanding})>=130)||
+      homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 && awayTeamStanding.rank<5 && awayTeamStanding.rank- homeTeamStanding.rank>5
 
 
     });
