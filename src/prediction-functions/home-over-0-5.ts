@@ -62,8 +62,7 @@ export const predictHomeOver0_5 = ({
   return (
     ((homeTeamGoalsPercentage({homeTeamStanding}) >= 150 &&
       againstAwayTeamGoalsPercentage({awayTeamStanding}) >= 160) ||
-      againstAwayTeamGoalsPercentage({awayTeamStanding}) >= 200)||
-      homeTeamGoalsPercentage({homeTeamStanding}) >= 200
+      againstAwayTeamGoalsPercentage({awayTeamStanding}) >= 200) && hasNoNilNilInFixtures({fixtures: lastFiveHomeTeamHomeFixtures}) 
   );
     });
     return {

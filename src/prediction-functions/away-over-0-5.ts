@@ -42,7 +42,7 @@ export const predictAwayOver0_5 = ({
       if (lastFiveAwayTeamAwayFixtures.length < 3 || !homeTeamStanding || !awayTeamStanding) {
         return false;
       }
-      return  againstHomeTeamGoalsPercentage({homeTeamStanding})>=200
+      return  againstHomeTeamGoalsPercentage({homeTeamStanding})>=160 && awayTeamScroreInMostAwayFixtures({awayfixtures: lastFiveAwayTeamAwayFixtures,minGoals:1}) && awayTeamGoalsPercentage({awayTeamStanding})>=160 && hasNoNilNilInFixtures({fixtures: lastFiveHomeTeamHomeFixtures})
     });
     return {
       fixtures: predictedFixtures,
