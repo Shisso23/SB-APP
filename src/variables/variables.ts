@@ -257,18 +257,18 @@ export const betOptions: betOptionModel[] = [
   //   }) => predictAwayCleanSheet(params),
   // },
 
-  {
-    name: "Under 5.5",
-    id: betOptionsEnum.UNDER_5_5,
-    level: 1,
-    shortName: "Under 6 goals",
-    description: "Under 6 goals",
-    predict: (params: {
-      currentFixtures: FixtureDataModel[];
-      allFixtures: FixtureDataModel[];
-      leaguesStandings: StandingsModel[];
-    }) => predictionFunctions.predictUnder5_5(params),
-  },
+  // {
+  //   name: "Under 5.5",
+  //   id: betOptionsEnum.UNDER_5_5,
+  //   level: 1,
+  //   shortName: "Under 6 goals",
+  //   description: "Under 6 goals",
+  //   predict: (params: {
+  //     currentFixtures: FixtureDataModel[];
+  //     allFixtures: FixtureDataModel[];
+  //     leaguesStandings: StandingsModel[];
+  //   }) => predictionFunctions.predictUnder5_5(params),
+  // },
   // {
   //   name: "Over 0.5",
   //   id: betOptionsEnum.OVER_0_5,
