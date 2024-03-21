@@ -648,6 +648,136 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     return false
    }
 
+   export const getAllHomeTeamHomeFixtures = ({
+    teamId,
+    allFixtures,
+    currentSeason
+  }: {
+    teamId: number;
+    allFixtures: FixtureDataModel[];
+    currentSeason: number
+  }) => {
+    return allFixtures
+      .filter(fixture => {
+        return (
+          (fixture.teams.home.id === teamId) &&
+          fixture.fixture.status.short === 'FT'
+        );
+      }).filter(fixture=> fixture.league.season === currentSeason)
+      .sort((fixtureA, fixtureB) => {
+        return fixtureB.fixture.timestamp - fixtureA.fixture.timestamp;
+      });
+  };
+
+  export const getAllAwayTeamAwayFixtures = ({
+    teamId,
+    allFixtures,
+    currentSeason
+  }: {
+    teamId: number;
+    allFixtures: FixtureDataModel[];
+    currentSeason: number
+  }) => {
+    return allFixtures
+      .filter(fixture => {
+        return (
+          (fixture.teams.away.id === teamId) &&
+          fixture.fixture.status.short === 'FT'
+        );
+      }).filter(fixture=> fixture.league.season === currentSeason)
+      .sort((fixtureA, fixtureB) => {
+        return fixtureB.fixture.timestamp - fixtureA.fixture.timestamp;
+      });
+  };
+
+
+  export const averageGoalsScoredAtHome = ({
+    homeTeamHomeFixtures,
+  }: {
+    homeTeamHomeFixtures:  FixtureDataModel[];
+  })=>{
+    return homeTeamHomeFixtures.reduce((goalsAverage, fixture)=>{
+      return goalsAverage+ fixture.goals.home
+    }, 0)/homeTeamHomeFixtures.length
+  }
+
+  export const averageGoalsConcededAtHome =({
+    homeTeamHomeFixtures,
+  }: {
+    homeTeamHomeFixtures:  FixtureDataModel[];
+  })=>{
+    return homeTeamHomeFixtures.reduce((goalsAverage, fixture)=>{
+      return goalsAverage+ fixture.goals.away
+    }, 0)/homeTeamHomeFixtures.length
+  }
+
+  export const averageGoalsScoredAway =({
+    awayTeamAwayFixtures,
+  }: {
+    awayTeamAwayFixtures:  FixtureDataModel[];
+  })=>{
+    return awayTeamAwayFixtures.reduce((goalsAverage, fixture)=>{
+      return goalsAverage+ fixture.goals.away
+    }, 0)/awayTeamAwayFixtures.length
+  }
+
+  export const averageGoalsConcededAway =({
+    awayTeamAwayFixtures,
+  }: {
+    awayTeamAwayFixtures:  FixtureDataModel[];
+  })=>{
+    return awayTeamAwayFixtures.reduce((goalsAverage, fixture)=>{
+      return goalsAverage+ fixture.goals.home
+    }, 0)/awayTeamAwayFixtures.length
+  }
+
+  export const teamMin0 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
+   return (teamAAverageGoalsScored<=1.2 && teamBAverageGoalsConceded<0.8)
+  }
+
+  export const teamMax0 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
+    return (teamAAverageGoalsScored<=0.8 && teamBAverageGoalsConceded<0.8)
+   }
+
+  export const teamMax1 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
+    return (teamAAverageGoalsScored<=1.2 && teamBAverageGoalsConceded<0.8)
+   }
+
+  export const teamMin1 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
+    return (teamAAverageGoalsScored>=0.8 && teamBAverageGoalsConceded>= 1.8) ||
+    (teamAAverageGoalsScored >= 1.5 && teamBAverageGoalsConceded>= 1.5) ||
+    (teamAAverageGoalsScored >= 1.8 && teamBAverageGoalsConceded>= 1.2)||
+    (teamAAverageGoalsScored >= 2 && teamBAverageGoalsConceded>= 0.8)
+
+  }
+
+  export const teamMax2 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
+    return (teamAAverageGoalsScored< 1.5 && teamBAverageGoalsConceded<  1.1)
+  }
+
+  export const teamMin2 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
+    return (teamAAverageGoalsScored >= 1.5 && teamBAverageGoalsConceded>= 2.1) ||
+    (teamAAverageGoalsScored >= 1.8 && teamBAverageGoalsConceded>= 2)||
+    (teamAAverageGoalsScored >= 2 && teamBAverageGoalsConceded>= 1.7)
+  }
+
+  export const teamMax3 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
+    return (teamAAverageGoalsScored <1.7 && teamBAverageGoalsConceded<= 1.3)
+  }
+
+  export const teamMin3 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
+    return (teamAAverageGoalsScored >= 2.6 && teamBAverageGoalsConceded>= 2)
+  }
+
+  export const teamMax4 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
+    return (teamAAverageGoalsScored <2 && teamBAverageGoalsConceded<= 1.5)
+  }
+
+  export const teamMin4 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
+    return (teamAAverageGoalsScored >= 3.5 && teamBAverageGoalsConceded>= 1.5)
+  }
+
+
   export default {
     getLastFiveHomeTeamHomeFixtures,
     getLastFiveAwayTeamAwayFixtures,
@@ -679,5 +809,21 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     teamWonLastFixture,
     teamDidNotLoseLastFixture,
     goodAwayTeamwinPercentage,
-    goodHomeTeamwinPercentage
+    goodHomeTeamwinPercentage,
+    getAllHomeTeamHomeFixtures,
+    getAllAwayTeamAwayFixtures,
+    averageGoalsScoredAtHome,
+    averageGoalsConcededAtHome,
+    averageGoalsScoredAway,
+    averageGoalsConcededAway,
+    teamMax0,
+    teamMin0,
+    teamMax1,
+    teamMin1,
+    teamMax2,
+    teamMin2,
+    teamMax3,
+    teamMin3,
+    teamMax4,
+    teamMin4
   }

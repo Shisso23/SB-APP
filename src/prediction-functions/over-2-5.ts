@@ -3,7 +3,7 @@ import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
 import { betOptions } from "../variables/variables";
-import { getLastFiveHomeTeamHomeFixtures, awayTeamGoalsPercentage, homeTeamGoalsPercentage, getAwayTeamStanding, getHomeTeamStanding, getLastFiveAwayTeamAwayFixtures, getH2HFixtures, hasNoNilNilInFixtures, againstHomeTeamGoalsPercentage, againstAwayTeamGoalsPercentage, homeTeamMinGoals, awayTeamMinGoals } from "./shared-functions";
+import * as sharedFunctions from "./shared-functions";
 
 export const predictOver2_5 = ({
     currentFixtures,
@@ -16,44 +16,20 @@ export const predictOver2_5 = ({
   }) => {
     const predictedFixtures = currentFixtures.filter(currentFixture => {
 
-      const fixtureH2hFixtures = getH2HFixtures({
-        teamOneId: currentFixture.teams.home.id,
-        teamTwoId: currentFixture.teams.away.id,
-        allFixtures,
-      });
+      const allAwayTeamAwayFixtures = sharedFunctions.getAllAwayTeamAwayFixtures({allFixtures, currentSeason: currentFixture.league.season, teamId: currentFixture.teams.away.id})
       
-      const lastFiveHomeTeamHomeFixtures = getLastFiveHomeTeamHomeFixtures({
-        teamId: currentFixture.teams.home.id,
-        allFixtures,
-      });
-      const lastFiveAwayTeamAwayFixtures = getLastFiveAwayTeamAwayFixtures({
-        teamId: currentFixture.teams.away.id,
-        allFixtures,
-      });
-      const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
-        standings: leaguesStandings,
-        homeTeamId: currentFixture.teams.home.id,
-        leagueId: currentFixture.league.id,
-      });
-      const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
-        standings: leaguesStandings,
-        awayTeamId: currentFixture.teams.away.id,
-        leagueId: currentFixture.league.id,
-      });
+      const allHomeTeamHomeFixtures = sharedFunctions.getAllHomeTeamHomeFixtures({allFixtures, currentSeason: currentFixture.league.season, teamId: currentFixture.teams.home.id})
+      if(allAwayTeamAwayFixtures.length <0 || allHomeTeamHomeFixtures.length<5) return false
+      const homeTeamAverageGoalsScored = sharedFunctions.averageGoalsScoredAtHome({homeTeamHomeFixtures: allHomeTeamHomeFixtures})
+      const homeTeamAverageGoalsConceded = sharedFunctions.averageGoalsConcededAtHome({homeTeamHomeFixtures: allHomeTeamHomeFixtures})
+      const awayTeamAverageGoalsScored = sharedFunctions.averageGoalsScoredAway({awayTeamAwayFixtures: allAwayTeamAwayFixtures})
+      const awayTeamAverageGoalsConceded = sharedFunctions.averageGoalsConcededAway({awayTeamAwayFixtures: allAwayTeamAwayFixtures})
+
   
-      if (
-        !homeTeamStanding||
-        !awayTeamStanding||
-        // lastFiveHomeTeamHomeFixtures.length < 3 ||
-        // lastFiveAwayTeamAwayFixtures.length < 3||
-        homeTeamStanding.all.played<3  || awayTeamStanding.all.played<3
-        // fixtureH2hFixtures.length < 3
-      ) {
-        return false;
-      }
-      // return (homeTeamGoalsPercentage({homeTeamStanding})>= 190 && awayTeamGoalsPercentage({awayTeamStanding})>=190) && homeTeamStanding.all.played>=2 && awayTeamStanding.all.played>=2 && fixtureH2hFixtures.every(fixture=> fixture.goals.away + fixture.goals.home >= 2)
-      // && hasNoNilNilInFixtures({fixtures: lastFiveHomeTeamHomeFixtures})  && hasNoNilNilInFixtures({fixtures: lastFiveAwayTeamAwayFixtures})   && hasNoNilNilInFixtures({fixtures: fixtureH2hFixtures});
-      return ( homeTeamGoalsPercentage({homeTeamStanding})>=180 && againstHomeTeamGoalsPercentage({homeTeamStanding})>=140) || (awayTeamGoalsPercentage({awayTeamStanding})>=190 && againstAwayTeamGoalsPercentage({awayTeamStanding})>=150)
+      return (sharedFunctions.teamMin3({teamAAverageGoalsScored:homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded})) ||
+      (sharedFunctions.teamMin3({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded}));
+    
+
     });
     return {
       fixtures: predictedFixtures,
