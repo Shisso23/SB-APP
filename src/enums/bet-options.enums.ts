@@ -35,4 +35,7 @@ export enum betOptionsEnum {
     HOME_WINS_OR_BTTS = 33,
     AWAY_WINS_OR_BTTS = 34,
     TOTAL_2_6_GOALS = 35,
+    TOTAL_UNDER_2_5 = 36,
+    TOTAL_UNDER_3_5 = 37,
+    TOTAL_UNDER_4_5 =38
   }

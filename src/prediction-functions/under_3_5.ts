@@ -5,7 +5,7 @@ import { StandingsDataStandingModel, StandingsModel } from "../models/standings-
 import { betOptions } from "../variables/variables";
 import * as sharedFunctions from "./shared-functions";
 
-export const predictUnder5_5 = ({
+export const predictUnder3_5 = ({
     currentFixtures,
     allFixtures,
     leaguesStandings,
@@ -26,23 +26,17 @@ export const predictUnder5_5 = ({
       const awayTeamAverageGoalsConceded = sharedFunctions.averageGoalsConcededAway({awayTeamAwayFixtures: allAwayTeamAwayFixtures})
 
   
-      return ((sharedFunctions.teamMax4({teamAAverageGoalsScored:homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded})) &&
+      return ((sharedFunctions.teamMax3({teamAAverageGoalsScored:homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded})) &&
       (sharedFunctions.teamMax0({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded}))) ||
       ((sharedFunctions.teamMax0({teamAAverageGoalsScored:homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded})) &&
-      (sharedFunctions.teamMax4({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded}))) ||
-      ((sharedFunctions.teamMax1({teamAAverageGoalsScored:homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded})) &&
-      (sharedFunctions.teamMax4({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded}))) ||
-      ((sharedFunctions.teamMax4({teamAAverageGoalsScored:homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded})) &&
-      (sharedFunctions.teamMax1({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded})))||
-      ((sharedFunctions.teamMax3({teamAAverageGoalsScored:homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded})) &&
-      (sharedFunctions.teamMax2({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded}))) ||
+      (sharedFunctions.teamMax3({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded}))) ||
       ((sharedFunctions.teamMax2({teamAAverageGoalsScored:homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded})) &&
-      (sharedFunctions.teamMax3({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded})));
+      (sharedFunctions.teamMax1({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded}))) ||
+      ((sharedFunctions.teamMax1({teamAAverageGoalsScored:homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded})) &&
+      (sharedFunctions.teamMax2({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded})));
     });
     return {
       fixtures: predictedFixtures,
-      option: betOptions.find(option => option.id === betOptionsEnum.UNDER_5_5) as betOptionModel,
+      option: betOptions.find(option => option.id === betOptionsEnum.TOTAL_UNDER_3_5) as betOptionModel,
     };
   };
-
-  //5=>  1-4, 4-1, 2-3, 3-2

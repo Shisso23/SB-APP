@@ -257,18 +257,54 @@ export const betOptions: betOptionModel[] = [
     }) => predictionFunctions.predictAwayCleanSheet(params),
   },
 
-  // {
-  //   name: "Under 5.5",
-  //   id: betOptionsEnum.UNDER_5_5,
-  //   level: 1,
-  //   shortName: "Under 6 goals",
-  //   description: "Under 6 goals",
-  //   predict: (params: {
-  //     currentFixtures: FixtureDataModel[];
-  //     allFixtures: FixtureDataModel[];
-  //     leaguesStandings: StandingsModel[];
-  //   }) => predictionFunctions.predictUnder5_5(params),
-  // },
+  {
+    name: "Under 5.5",
+    id: betOptionsEnum.UNDER_5_5,
+    level: 1,
+    shortName: "Under 6 goals",
+    description: "Under 6 goals",
+    predict: (params: {
+      currentFixtures: FixtureDataModel[];
+      allFixtures: FixtureDataModel[];
+      leaguesStandings: StandingsModel[];
+    }) => predictionFunctions.predictUnder5_5(params),
+  },
+  {
+    name: "Under 4.5",
+    id: betOptionsEnum.TOTAL_UNDER_4_5,
+    level: 1,
+    shortName: "Under 5 goals",
+    description: "Under 5 goals",
+    predict: (params: {
+      currentFixtures: FixtureDataModel[];
+      allFixtures: FixtureDataModel[];
+      leaguesStandings: StandingsModel[];
+    }) => predictionFunctions.predictUnder4_5(params),
+  },
+  {
+    name: "Under 3.5",
+    id: betOptionsEnum.TOTAL_UNDER_3_5,
+    level: 1,
+    shortName: "Under 4 goals",
+    description: "Under 4 goals",
+    predict: (params: {
+      currentFixtures: FixtureDataModel[];
+      allFixtures: FixtureDataModel[];
+      leaguesStandings: StandingsModel[];
+    }) => predictionFunctions.predictUnder3_5(params),
+  },
+  {
+    name: "Under 2.5",
+    id: betOptionsEnum.TOTAL_UNDER_2_5,
+    level: 1,
+    shortName: "Under 3 goals",
+    description: "Under 3 goals",
+    predict: (params: {
+      currentFixtures: FixtureDataModel[];
+      allFixtures: FixtureDataModel[];
+      leaguesStandings: StandingsModel[];
+    }) => predictionFunctions.predictUnder2_5(params),
+  },
   {
     name: "Over 0.5",
     id: betOptionsEnum.OVER_0_5,
