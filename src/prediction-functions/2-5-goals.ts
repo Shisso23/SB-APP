@@ -29,7 +29,7 @@ export const predict2_5_goals = ({
       currentSeason: currentFixture.league.season,
       teamId: currentFixture.teams.home.id,
     });
-    if(allAwayTeamAwayFixtures.length <0 || allHomeTeamHomeFixtures.length<5) return false
+    if(allAwayTeamAwayFixtures.length <3 || allHomeTeamHomeFixtures.length<3) return false
     const homeTeamAverageGoalsScored = sharedFunctions.averageGoalsScoredAtHome(
       { homeTeamHomeFixtures: allHomeTeamHomeFixtures }
     );
