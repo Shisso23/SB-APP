@@ -476,10 +476,8 @@ const FixturesScreen: React.FC = () => {
             className=" flex font-bold self-center text-lg py-2 items-center justify-center text-center text-m border rounded-lg bg-yellow-500 w-40 
         sm:w-64 sm:mb-5 mb-2 "
           >
-            Predictions
+            Predictions: {groupedData &&Object.keys(groupedData).length}
           </div>
-          <div className=" flex font-bold self-center text-lg py-2 items-center justify-center text-center text-m border rounded-lg bg-yellow-500 w-20 
-        sm:w-64 sm:mb-5 mb-2  ">{groupedData &&Object.keys(groupedData).length}</div>
           <>
             {loadingLeaguesFixtures ? (
               <CircularProgress />
