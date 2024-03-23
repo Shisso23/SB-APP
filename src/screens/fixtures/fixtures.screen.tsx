@@ -461,10 +461,7 @@ const FixturesScreen: React.FC = () => {
     );
   };
 
-  return predictedFixtures &&
-    predictedFixtures.every((fixture) => fixture.fixtures.length === 0) ? (
-    <></>
-  ) : (
+  return (
     <div className=" screen-h self-start justify-between absolute w-screen pt-4 flex flex-col bg-gray-900">
       <div className=" h-16 w-full mb-5 bg-gray-900">{renderBetOptions()}</div>
       <div className=" flex flex-row overflow-hidden h-full bg-gray-900 pb-100  flex-1 ">
