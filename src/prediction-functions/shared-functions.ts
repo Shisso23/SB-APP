@@ -746,30 +746,26 @@ export const getLastFiveHomeTeamHomeFixtures = ({
    }
 
   export const teamMin1 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
-    return (teamAAverageGoalsScored>=0.8 && teamBAverageGoalsConceded>= 1.8) ||
-    (teamAAverageGoalsScored >= 1.5 && teamBAverageGoalsConceded>= 1.5) ||
-    (teamAAverageGoalsScored >= 1.8 && teamBAverageGoalsConceded>= 1.2)||
-    (teamAAverageGoalsScored >= 2 && teamBAverageGoalsConceded>= 0.8)
+    return (teamAAverageGoalsScored>=1 && teamBAverageGoalsConceded>= 1.9) ||
+    (teamAAverageGoalsScored >= 1.8 && teamBAverageGoalsConceded>= 1.5) ||
+    (teamAAverageGoalsScored >= 1.8 && teamBAverageGoalsConceded>= 1.4)||
+    (teamAAverageGoalsScored >= 2 && teamBAverageGoalsConceded>= 1)
 
   }
 
   export const teamMax2 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
-    return (teamAAverageGoalsScored<= 1.5 && teamBAverageGoalsConceded<  1.3) || 
-    (teamAAverageGoalsScored<= 1.2 && teamBAverageGoalsConceded<= 1.8) ||
-    (teamAAverageGoalsScored<= 2 && teamBAverageGoalsConceded<= 0.8) 
+    return (((teamAAverageGoalsScored+teamBAverageGoalsConceded)/2) + 1) <= 2
   }
 
   export const teamMin2 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
-    return (teamAAverageGoalsScored >= 1.5 && teamBAverageGoalsConceded>= 2.2) ||
-    (teamAAverageGoalsScored >= 1.8 && teamBAverageGoalsConceded>= 2)||
-    (teamAAverageGoalsScored >= 2 && teamBAverageGoalsConceded>= 1.8)||
+    return (teamAAverageGoalsScored >= 1.8 && teamBAverageGoalsConceded>= 2.2) ||
+    (teamAAverageGoalsScored >= 1.9 && teamBAverageGoalsConceded>= 2)||
+    (teamAAverageGoalsScored >= 2.1 && teamBAverageGoalsConceded>= 1.8)||
     (teamAAverageGoalsScored >= 2.4 && teamBAverageGoalsConceded>= 1.4)
   }
 
   export const teamMax3 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
-    return (teamAAverageGoalsScored<= 1.8 && teamBAverageGoalsConceded<=  1.4) || 
-    (teamAAverageGoalsScored<= 1.4 && teamBAverageGoalsConceded<= 1.8) ||
-    (teamAAverageGoalsScored<= 2.3 && teamBAverageGoalsConceded<= 1) 
+    return (((teamAAverageGoalsScored+teamBAverageGoalsConceded)/2) + 1) <= 3
   }
 
   export const teamMin3 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
@@ -779,9 +775,7 @@ export const getLastFiveHomeTeamHomeFixtures = ({
   }
 
   export const teamMax4 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
-    return (teamAAverageGoalsScored<= 2.2 && teamBAverageGoalsConceded<=  1.5) || 
-    (teamAAverageGoalsScored<= 1.8 && teamBAverageGoalsConceded<= 1.8) ||
-    (teamAAverageGoalsScored<= 2.7 && teamBAverageGoalsConceded<= 1.2) 
+    return (((teamAAverageGoalsScored+teamBAverageGoalsConceded)/2) + 1) <= 4
   }
 
   export const teamMin4 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
