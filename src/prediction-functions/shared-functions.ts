@@ -741,7 +741,7 @@ export const getLastFiveHomeTeamHomeFixtures = ({
 
   export const teamMax1 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
     return (teamAAverageGoalsScored<=1.2 && teamBAverageGoalsConceded<1.1) ||
-    (teamAAverageGoalsScored<=1.5 && teamBAverageGoalsConceded< 0.8)||
+    (teamAAverageGoalsScored<=1.5 && teamBAverageGoalsConceded<= 0.8)||
     (teamAAverageGoalsScored<=0.8 && teamBAverageGoalsConceded< 1.5)
    }
 
