@@ -238,7 +238,7 @@ const FixturesScreen: React.FC = () => {
           seasons.map(async (season: number) => {
             const getLeagueFixturesResponse: FixturesModel = await (
               await getFilteredFixtures(
-                new FixturesFilterModel({ league: league.league.id, season })
+                new FixturesFilterModel({ league: league?.league.id, season })
               )
             ).data;
             return getLeagueFixturesResponse.response;
@@ -265,9 +265,9 @@ const FixturesScreen: React.FC = () => {
   const getFixtureTeamsStandings = ({ homeTeamId, awayTeamId, leagueId }) => {
     const selectedLeagueStandings = leaguesStandings
       .find((standings) => {
-        return standings.response[0].league.id === leagueId;
+        return standings.response[0]?.league.id === leagueId;
       })
-      .response[0].league.standings[0].filter(
+      .response[0]?.league.standings[0].filter(
         (standing) =>
           standing.team.id === homeTeamId || standing.team.id === awayTeamId
       );
@@ -511,7 +511,7 @@ const FixturesScreen: React.FC = () => {
                             onClick={handleFixtureRowClick(currentFixture)}
                           >
                             <div className=" text-left mb-2 sm:w-2/6 sm:ml-2 flex-row-reverse text-sm">
-                              {`${currentFixture.league.name} (${currentFixture.league.country})`}
+                              {`${currentFixture?.league.name} (${currentFixture?.league.country})`}
                               <div>
                                 {`${toMomentDate(
                                   currentFixture.fixture.date
