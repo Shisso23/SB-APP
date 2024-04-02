@@ -696,19 +696,27 @@ export const getLastFiveHomeTeamHomeFixtures = ({
   }: {
     homeTeamHomeFixtures:  FixtureDataModel[];
   })=>{
-    return homeTeamHomeFixtures.reduce((goalsAverage, fixture)=>{
+    const lastFiveHomeTeamHomeFixtures = getLastFiveHomeTeamHomeFixtures({
+      teamId: homeTeamHomeFixtures[0].teams.home.id,
+      allFixtures: homeTeamHomeFixtures
+    });
+    return lastFiveHomeTeamHomeFixtures.reduce((goalsAverage, fixture)=>{
       return goalsAverage+ fixture.goals.home
-    }, 0)/homeTeamHomeFixtures.length
+    }, 0)/lastFiveHomeTeamHomeFixtures.length
   }
 
   export const averageGoalsConcededAtHome =({
     homeTeamHomeFixtures,
   }: {
     homeTeamHomeFixtures:  FixtureDataModel[];
-  })=>{
-    return homeTeamHomeFixtures.reduce((goalsAverage, fixture)=>{
+  })=>{ const lastFiveHomeTeamHomeFixtures = getLastFiveHomeTeamHomeFixtures({
+    teamId: homeTeamHomeFixtures[0].teams.home.id,
+    allFixtures: homeTeamHomeFixtures
+  });
+
+    return lastFiveHomeTeamHomeFixtures.reduce((goalsAverage, fixture)=>{
       return goalsAverage+ fixture.goals.away
-    }, 0)/homeTeamHomeFixtures.length
+    }, 0)/lastFiveHomeTeamHomeFixtures.length
   }
  
   export const averageGoalsScoredAway =({
@@ -716,9 +724,13 @@ export const getLastFiveHomeTeamHomeFixtures = ({
   }: {
     awayTeamAwayFixtures:  FixtureDataModel[];
   })=>{
-    return awayTeamAwayFixtures.reduce((goalsAverage, fixture)=>{
+    const lastFiveAwayTeamAwayFixtures = getLastFiveAwayTeamAwayFixtures({
+      teamId: awayTeamAwayFixtures[0].teams.away.id,
+      allFixtures: awayTeamAwayFixtures,
+    });
+    return lastFiveAwayTeamAwayFixtures.reduce((goalsAverage, fixture)=>{
       return goalsAverage+ fixture.goals.away
-    }, 0)/awayTeamAwayFixtures.length
+    }, 0)/lastFiveAwayTeamAwayFixtures.length
   }
 
   export const averageGoalsConcededAway =({
@@ -726,9 +738,13 @@ export const getLastFiveHomeTeamHomeFixtures = ({
   }: {
     awayTeamAwayFixtures:  FixtureDataModel[];
   })=>{
-    return awayTeamAwayFixtures.reduce((goalsAverage, fixture)=>{
+    const lastFiveAwayTeamAwayFixtures = getLastFiveAwayTeamAwayFixtures({
+      teamId: awayTeamAwayFixtures[0].teams.away.id,
+      allFixtures: awayTeamAwayFixtures,
+    });
+    return lastFiveAwayTeamAwayFixtures.reduce((goalsAverage, fixture)=>{
       return goalsAverage+ fixture.goals.home
-    }, 0)/awayTeamAwayFixtures.length
+    }, 0)/lastFiveAwayTeamAwayFixtures.length
   }
 
   export const teamMin0 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
