@@ -29,9 +29,21 @@ export const predictHomeWin = ({
       currentSeason: currentFixture.league.season,
       teamId: currentFixture.teams.home.id,
     });
+    const awayTeamStanding: StandingsDataStandingModel = sharedFunctions.getAwayTeamStanding({
+      standings: leaguesStandings,
+      awayTeamId: currentFixture.teams.away.id,
+      leagueId: currentFixture.league.id,
+    });
+    const homeTeamStanding: StandingsDataStandingModel = sharedFunctions.getHomeTeamStanding({
+      standings: leaguesStandings,
+      homeTeamId: currentFixture.teams.home.id,
+      leagueId: currentFixture.league.id,
+    });
     if (
       allAwayTeamAwayFixtures.length < 3 ||
       allHomeTeamHomeFixtures.length < 3
+      || !awayTeamStanding||
+      !homeTeamStanding
     )
       return false;
     const homeTeamAverageGoalsScored = sharedFunctions.averageGoalsScoredAtHome(
@@ -50,7 +62,7 @@ export const predictHomeWin = ({
       });
 
     return (
-      (sharedFunctions.teamMin1({
+      (sharedFunctions.teamMin2({
         teamAAverageGoalsScored: homeTeamAverageGoalsScored,
         teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
       }) &&
@@ -58,7 +70,7 @@ export const predictHomeWin = ({
           teamAAverageGoalsScored: awayTeamAverageGoalsScored,
           teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
         })) ||
-      (sharedFunctions.teamMin2({
+      (sharedFunctions.teamMin3({
         teamAAverageGoalsScored: homeTeamAverageGoalsScored,
         teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
       }) &&
@@ -66,23 +78,15 @@ export const predictHomeWin = ({
           teamAAverageGoalsScored: awayTeamAverageGoalsScored,
           teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
         })) ||
-      (sharedFunctions.teamMin3({
+      (sharedFunctions.teamMin4({
         teamAAverageGoalsScored: homeTeamAverageGoalsScored,
         teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
       }) &&
         sharedFunctions.teamMax2({
           teamAAverageGoalsScored: awayTeamAverageGoalsScored,
           teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
-        })) ||
-      (sharedFunctions.teamMin4({
-        teamAAverageGoalsScored: homeTeamAverageGoalsScored,
-        teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
-      }) &&
-        sharedFunctions.teamMax3({
-          teamAAverageGoalsScored: awayTeamAverageGoalsScored,
-          teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
         }))
-    );
+    ) || ((sharedFunctions.teamMax0({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded}) || (sharedFunctions.teamMax1({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded}))) && (homeTeamStanding.rank < awayTeamStanding.rank) && (Math.abs(homeTeamStanding.rank - awayTeamStanding.rank)>= 5));
   });
   return {
     fixtures: predictedFixtures,

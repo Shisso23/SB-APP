@@ -232,30 +232,30 @@ export const betOptions: betOptionModel[] = [
       leaguesStandings: StandingsModel[];
     }) => predictionFunctions.predictAwayOrDraw(params),
   },
-  {
-    name: "Home Clean sheet",
-    id: betOptionsEnum.HOME_CLEAN_SHEET,
-    level: 3,
-    shortName: "Cleansheet home",
-    description: "Home team will not concede a goal",
-    predict: (params: {
-      currentFixtures: FixtureDataModel[];
-      allFixtures: FixtureDataModel[];
-      leaguesStandings: StandingsModel[];
-    }) => predictionFunctions.predictHomeCleanSheet(params),
-  },
-  {
-    name: "Away Clean sheet",
-    id: betOptionsEnum.AWAY_CLEAN_SHEET,
-    level: 3,
-    shortName: "Cleansheet away",
-    description: "Away team will not concede a goal",
-    predict: (params: {
-      currentFixtures: FixtureDataModel[];
-      allFixtures: FixtureDataModel[];
-      leaguesStandings: StandingsModel[];
-    }) => predictionFunctions.predictAwayCleanSheet(params),
-  },
+  // {
+  //   name: "Home Clean sheet",
+  //   id: betOptionsEnum.HOME_CLEAN_SHEET,
+  //   level: 3,
+  //   shortName: "Cleansheet home",
+  //   description: "Home team will not concede a goal",
+  //   predict: (params: {
+  //     currentFixtures: FixtureDataModel[];
+  //     allFixtures: FixtureDataModel[];
+  //     leaguesStandings: StandingsModel[];
+  //   }) => predictionFunctions.predictHomeCleanSheet(params),
+  // },
+  // {
+  //   name: "Away Clean sheet",
+  //   id: betOptionsEnum.AWAY_CLEAN_SHEET,
+  //   level: 3,
+  //   shortName: "Cleansheet away",
+  //   description: "Away team will not concede a goal",
+  //   predict: (params: {
+  //     currentFixtures: FixtureDataModel[];
+  //     allFixtures: FixtureDataModel[];
+  //     leaguesStandings: StandingsModel[];
+  //   }) => predictionFunctions.predictAwayCleanSheet(params),
+  // },
 
   // {
   //   name: "Under 5.5",
@@ -293,18 +293,18 @@ export const betOptions: betOptionModel[] = [
   //     leaguesStandings: StandingsModel[];
   //   }) => predictionFunctions.predictUnder3_5(params),
   // },
-  {
-    name: "Under 2.5",
-    id: betOptionsEnum.TOTAL_UNDER_2_5,
-    level: 1,
-    shortName: "Under 3 goals",
-    description: "Under 3 goals",
-    predict: (params: {
-      currentFixtures: FixtureDataModel[];
-      allFixtures: FixtureDataModel[];
-      leaguesStandings: StandingsModel[];
-    }) => predictionFunctions.predictUnder2_5(params),
-  },
+  // {
+  //   name: "Under 2.5",
+  //   id: betOptionsEnum.TOTAL_UNDER_2_5,
+  //   level: 1,
+  //   shortName: "Under 3 goals",
+  //   description: "Under 3 goals",
+  //   predict: (params: {
+  //     currentFixtures: FixtureDataModel[];
+  //     allFixtures: FixtureDataModel[];
+  //     leaguesStandings: StandingsModel[];
+  //   }) => predictionFunctions.predictUnder2_5(params),
+  // },
   // {
   //   name: "Over 0.5",
   //   id: betOptionsEnum.OVER_0_5,
