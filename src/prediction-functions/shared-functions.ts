@@ -730,7 +730,7 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     });
     return lastFiveAwayTeamAwayFixtures.reduce((goalsAverage, fixture)=>{
       return goalsAverage+ fixture.goals.away
-    }, 0)/lastFiveAwayTeamAwayFixtures.length
+    }, 0)/10
   }
 
   export const averageGoalsConcededAway =({
@@ -744,7 +744,7 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     });
     return lastFiveAwayTeamAwayFixtures.reduce((goalsAverage, fixture)=>{
       return goalsAverage+ fixture.goals.home
-    }, 0)/lastFiveAwayTeamAwayFixtures.length
+    }, 0)/10
   }
 
   export const teamMin0 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
