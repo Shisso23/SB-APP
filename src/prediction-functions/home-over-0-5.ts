@@ -17,9 +17,19 @@ export const predictHomeOver0_5 = ({
   }) => {
     const predictedFixtures = currentFixtures.filter(currentFixture => {
       const allAwayTeamAwayFixtures = sharedFunctions.getAllAwayTeamAwayFixtures({allFixtures, currentSeason: currentFixture.league.season, teamId: currentFixture.teams.away.id})
-      
+      const head2HeadMatches = sharedFunctions.getH2HFixtures({allFixtures,teamOneId: currentFixture.teams.home.id,teamTwoId:currentFixture.teams.away.id  })
+      const awayTeamStanding: StandingsDataStandingModel = sharedFunctions.getAwayTeamStanding({
+        standings: leaguesStandings,
+        awayTeamId: currentFixture.teams.away.id,
+        leagueId: currentFixture.league.id,
+      });
+      const homeTeamStanding: StandingsDataStandingModel = sharedFunctions.getHomeTeamStanding({
+        standings: leaguesStandings,
+        homeTeamId: currentFixture.teams.home.id,
+        leagueId: currentFixture.league.id,
+      });
       const allHomeTeamHomeFixtures = sharedFunctions.getAllHomeTeamHomeFixtures({allFixtures, currentSeason: currentFixture.league.season, teamId: currentFixture.teams.home.id})
-      if(allAwayTeamAwayFixtures.length <3 || allHomeTeamHomeFixtures.length<3) return false
+      if(allAwayTeamAwayFixtures.length <3 || allHomeTeamHomeFixtures.length<3 || head2HeadMatches.length === 0) return false
       const homeTeamAverageGoalsScored = sharedFunctions.averageGoalsScoredAtHome({homeTeamHomeFixtures: allHomeTeamHomeFixtures})
       const homeTeamAverageGoalsConceded = sharedFunctions.averageGoalsConcededAtHome({homeTeamHomeFixtures: allHomeTeamHomeFixtures})
       const awayTeamAverageGoalsScored = sharedFunctions.averageGoalsScoredAway({awayTeamAwayFixtures: allAwayTeamAwayFixtures})
@@ -27,8 +37,8 @@ export const predictHomeOver0_5 = ({
 
   
       return( 
-        (sharedFunctions.teamMin1({teamAAverageGoalsScored:homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded}))
-      )
+        (sharedFunctions.teamMin1({teamAAverageGoalsScored:homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded})) && (sharedFunctions.homeTeamScroreInMostH2HFixtures({h2hFixtures:head2HeadMatches, homeTeamId: currentFixture.teams.home.id,minGoals: 1})))
+      
     });
     return {
       fixtures: predictedFixtures,

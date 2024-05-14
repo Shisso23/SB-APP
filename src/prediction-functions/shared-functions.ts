@@ -523,7 +523,7 @@ export const getLastFiveHomeTeamHomeFixtures = ({
             conditionPassedCount+=1;
         }
   })
-  if(((conditionPassedCount/h2hFixtures.length))>= 0.6){
+  if(((conditionPassedCount/h2hFixtures.length))>= 0.8){
       return true;
   }else{
       return false
@@ -537,7 +537,8 @@ export const getLastFiveHomeTeamHomeFixtures = ({
           conditionPassedCount+=1;
       }
   })
-  if(((conditionPassedCount/h2hFixtures.length))>=0.6){
+  
+  if(((conditionPassedCount/h2hFixtures.length))>=0.8){
       return true;
   }else{
       return false

@@ -61,7 +61,7 @@ export const predictAwayWin = ({
         awayTeamAwayFixtures: allAwayTeamAwayFixtures,
       });
 
-    return (
+    return ((
       (sharedFunctions.teamMin2({
         teamAAverageGoalsScored: awayTeamAverageGoalsScored,
         teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
@@ -85,7 +85,7 @@ export const predictAwayWin = ({
           sharedFunctions.teamMax2({
             teamAAverageGoalsScored: homeTeamAverageGoalsScored,
             teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
-          }))) || ((sharedFunctions.teamMax0({teamAAverageGoalsScored: homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded})) && (awayTeamStanding.rank < homeTeamStanding.rank) && (Math.abs(awayTeamStanding.rank - homeTeamStanding.rank)>= 5));
+          }))) || ((sharedFunctions.teamMax0({teamAAverageGoalsScored: homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded})))) && ((awayTeamStanding.rank < 5) && (Math.abs(awayTeamStanding.rank - homeTeamStanding.rank)>= 7));
 
   });
   return {
