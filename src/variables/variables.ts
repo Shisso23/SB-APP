@@ -220,18 +220,18 @@ export const betOptions: betOptionModel[] = [
       leaguesStandings: StandingsModel[];
     }) => predictionFunctions.predictHomeOrDraw(params),
   },
-  {
-    name: "Away or Draw",
-    id: betOptionsEnum.AWAY_OR_DRAW,
-    level: 1,
-    shortName: "Away or Dr.",
-    description: "Away team wins or draw",
-    predict: (params: {
-      currentFixtures: FixtureDataModel[];
-      allFixtures: FixtureDataModel[];
-      leaguesStandings: StandingsModel[];
-    }) => predictionFunctions.predictAwayOrDraw(params),
-  },
+  // {
+  //   name: "Away or Draw",
+  //   id: betOptionsEnum.AWAY_OR_DRAW,
+  //   level: 1,
+  //   shortName: "Away or Dr.",
+  //   description: "Away team wins or draw",
+  //   predict: (params: {
+  //     currentFixtures: FixtureDataModel[];
+  //     allFixtures: FixtureDataModel[];
+  //     leaguesStandings: StandingsModel[];
+  //   }) => predictionFunctions.predictAwayOrDraw(params),
+  // },
   // {
   //   name: "Home Clean sheet",
   //   id: betOptionsEnum.HOME_CLEAN_SHEET,
