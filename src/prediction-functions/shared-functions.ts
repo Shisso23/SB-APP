@@ -537,7 +537,7 @@ export const getLastFiveHomeTeamHomeFixtures = ({
           conditionPassedCount+=1;
       }
   })
-  
+
   if(((conditionPassedCount/h2hFixtures.length))>=0.8){
       return true;
   }else{
@@ -698,7 +698,7 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     homeTeamHomeFixtures:  FixtureDataModel[];
   })=>{
     const lastFiveHomeTeamHomeFixtures = getLastFiveHomeTeamHomeFixtures({
-      teamId: homeTeamHomeFixtures[0].teams.home.id,
+      teamId: homeTeamHomeFixtures[0]?.teams.home.id,
       allFixtures: homeTeamHomeFixtures
     });
     return lastFiveHomeTeamHomeFixtures.reduce((goalsAverage, fixture)=>{
