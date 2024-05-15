@@ -749,7 +749,7 @@ export const getLastFiveHomeTeamHomeFixtures = ({
   }
 
   export const teamMin0 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
-   return (teamAAverageGoalsScored<=1 && teamBAverageGoalsConceded<0.8)
+   return (teamAAverageGoalsScored< 0.9 && teamBAverageGoalsConceded<0.8)
   }
 
   export const teamMax0 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
@@ -757,15 +757,13 @@ export const getLastFiveHomeTeamHomeFixtures = ({
    }
 
   export const teamMax1 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
-    return (teamAAverageGoalsScored<=1.2 && teamBAverageGoalsConceded<1.1) ||
-    (teamAAverageGoalsScored<=1.5 && teamBAverageGoalsConceded<= 0.8)||
+    return (teamAAverageGoalsScored<=0.9 && teamBAverageGoalsConceded<1) ||
     (teamAAverageGoalsScored<=0.8 && teamBAverageGoalsConceded< 1.5)
    }
 
   export const teamMin1 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
     return (teamAAverageGoalsScored>=1 && teamBAverageGoalsConceded>= 1.9) ||
     (teamAAverageGoalsScored >= 1.8 && teamBAverageGoalsConceded>= 1.5) ||
-    (teamAAverageGoalsScored >= 1.8 && teamBAverageGoalsConceded>= 1.4)||
     (teamAAverageGoalsScored >= 2 && teamBAverageGoalsConceded>= 1)
     || (teamAAverageGoalsScored >= 1.5 && teamBAverageGoalsConceded>= 1.8)
 
@@ -776,11 +774,10 @@ export const getLastFiveHomeTeamHomeFixtures = ({
   }
 
   export const teamMin2 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
-    return (teamAAverageGoalsScored >= 1.8 && teamBAverageGoalsConceded>= 2.2) ||
-    (teamAAverageGoalsScored >= 1.9 && teamBAverageGoalsConceded>= 2)||
-    (teamAAverageGoalsScored >= 2.1 && teamBAverageGoalsConceded>= 1.8)||
-    (teamAAverageGoalsScored >= 2.4 && teamBAverageGoalsConceded>= 1.4)
-    || (teamAAverageGoalsScored >= 1.8 && teamBAverageGoalsConceded>= 2.2)
+    return (teamAAverageGoalsScored >= 1.8 && teamBAverageGoalsConceded>= 2.4) ||
+    (teamAAverageGoalsScored >= 2 && teamBAverageGoalsConceded>= 2)||
+    (teamAAverageGoalsScored >= 2.4 && teamBAverageGoalsConceded>= 1.8)||
+    (teamAAverageGoalsScored >= 2.6 && teamBAverageGoalsConceded>= 1.4)
   }
 
   export const teamMax3 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
