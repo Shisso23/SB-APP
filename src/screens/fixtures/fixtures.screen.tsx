@@ -196,8 +196,10 @@ const FixturesScreen: React.FC = () => {
   };
 
   const filterFutureFixtures = (fixtures: FixtureDataModel[]) => {
+    console.log({fixtures})
     return fixtures.filter((fixtureData) => {
-      return toMomentDate(fixtureData.fixture.date).isSameOrAfter(
+      console.log({fixtureData})
+      return fixtureData && toMomentDate(fixtureData.fixture.date).isSameOrAfter(
         new Date(moment().subtract(1, "days").format("YYYY-MM-DD"))
       );
     });
@@ -216,8 +218,8 @@ const FixturesScreen: React.FC = () => {
   const filterFixtresBetweenDates = (from: Date, to: Date) => {
     const fixtures = futureFixtures.filter((fixtureData) => {
       return (
-        toMomentDate(fixtureData.fixture.date).isSameOrAfter(moment(from)) &&
-        toMomentDate(fixtureData.fixture.date).isSameOrBefore(moment(to))
+        toMomentDate(fixtureData?.fixture.date).isSameOrAfter(moment(from)) &&
+        toMomentDate(fixtureData?.fixture.date).isSameOrBefore(moment(to))
       );
     });
     return fixtures;

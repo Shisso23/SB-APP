@@ -2,7 +2,7 @@ import moment from "moment";
 
 
 export const toMomentDate = (dateString: string)=>{
-    const date: Date = new Date(dateString.toString());
+    const date: Date = new Date(dateString);
     return moment(date);
 }
 
