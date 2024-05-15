@@ -43,7 +43,7 @@ export const betOptions: betOptionModel[] = [
     }) => predictionFunctions.predictHomeOver1_5(params),
   },
   // {name: 'over 1.5', id: betOptionsEnum.OVER_1_5, level: 1, shortName: 'Over 1.5', description: '2 goals or more in the match',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predictOver1_5(params)},
-  // {name: 'Over 2.5', id: betOptionsEnum.OVER_2_5, level: 2, shortName: 'Over 2.5', description: '3 goals or more in the match',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predictOver2_5(params)},
+  {name: 'Over 2.5', id: betOptionsEnum.OVER_2_5, level: 2, shortName: 'Over 2.5', description: '3 goals or more in the match',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predictOver2_5(params)},
   // {
   //   name: "Home Wins Either Half",
   //   id: 5,
@@ -56,7 +56,7 @@ export const betOptions: betOptionModel[] = [
   //     leaguesStandings: StandingsModel[];
   //   }) => predictionFunctions.predictHomeWinsEitherHalf(params),
   // },
-  // {name: 'Multi Goals (2-5) Goals', id: betOptionsEnum.TOTAL_2_5_GOALS, level: 2, shortName: '2->5 G', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predict2_5_goals(params)},
+  {name: 'Multi Goals (2-5) Goals', id: betOptionsEnum.TOTAL_2_5_GOALS, level: 2, shortName: '2->5 G', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predict2_5_goals(params)},
   // {name: 'Multi Goals (3-6) Goals', id: betOptionsEnum.TOTAL_3_6_GOALS, level: 3, shortName: '3->6 G', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predict3_6_goals(params)},
   // {name: 'Both Halves Over 0.5', id: 8, level: 4, shortName: 'B.H.Over 0.5', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictBothHalVOver0_5(params)},
   //  {name: 'Draw or GG', id: betOptionsEnum.DRAW_OR_GG, level: 2, shortName: 'DD OR GG', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predictDrawOrBothTeamsScore(params)},
@@ -232,30 +232,30 @@ export const betOptions: betOptionModel[] = [
   //     leaguesStandings: StandingsModel[];
   //   }) => predictionFunctions.predictAwayOrDraw(params),
   // },
-  // {
-  //   name: "Home Clean sheet",
-  //   id: betOptionsEnum.HOME_CLEAN_SHEET,
-  //   level: 3,
-  //   shortName: "Cleansheet home",
-  //   description: "Home team will not concede a goal",
-  //   predict: (params: {
-  //     currentFixtures: FixtureDataModel[];
-  //     allFixtures: FixtureDataModel[];
-  //     leaguesStandings: StandingsModel[];
-  //   }) => predictionFunctions.predictHomeCleanSheet(params),
-  // },
-  // {
-  //   name: "Away Clean sheet",
-  //   id: betOptionsEnum.AWAY_CLEAN_SHEET,
-  //   level: 3,
-  //   shortName: "Cleansheet away",
-  //   description: "Away team will not concede a goal",
-  //   predict: (params: {
-  //     currentFixtures: FixtureDataModel[];
-  //     allFixtures: FixtureDataModel[];
-  //     leaguesStandings: StandingsModel[];
-  //   }) => predictionFunctions.predictAwayCleanSheet(params),
-  // },
+  {
+    name: "Home Clean sheet",
+    id: betOptionsEnum.HOME_CLEAN_SHEET,
+    level: 3,
+    shortName: "Cleansheet home",
+    description: "Home team will not concede a goal",
+    predict: (params: {
+      currentFixtures: FixtureDataModel[];
+      allFixtures: FixtureDataModel[];
+      leaguesStandings: StandingsModel[];
+    }) => predictionFunctions.predictHomeCleanSheet(params),
+  },
+  {
+    name: "Away Clean sheet",
+    id: betOptionsEnum.AWAY_CLEAN_SHEET,
+    level: 3,
+    shortName: "Cleansheet away",
+    description: "Away team will not concede a goal",
+    predict: (params: {
+      currentFixtures: FixtureDataModel[];
+      allFixtures: FixtureDataModel[];
+      leaguesStandings: StandingsModel[];
+    }) => predictionFunctions.predictAwayCleanSheet(params),
+  },
 
   // {
   //   name: "Under 5.5",
