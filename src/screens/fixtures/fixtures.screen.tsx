@@ -550,7 +550,7 @@ const FixturesScreen: React.FC = () => {
                             </div>
                           </div>
                           <div className="flex flex-row space-x-2 flex-wrap mb-2  p-2 mx-1">
-                            {groupedData[currentFixture?.fixture.id].map(
+                            {groupedData[currentFixture?.fixture.id]?.map(
                               (option) => (
                                 <div
                                   key={option.id}
