@@ -731,7 +731,7 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     });
     return lastFiveAwayTeamAwayFixtures.reduce((goalsAverage, fixture)=>{
       return goalsAverage+ fixture.goals.away
-    }, 0)/10
+    }, 0)/lastFiveAwayTeamAwayFixtures.length
   }
 
   export const averageGoalsConcededAway =({
@@ -745,7 +745,7 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     });
     return lastFiveAwayTeamAwayFixtures.reduce((goalsAverage, fixture)=>{
       return goalsAverage+ fixture.goals.home
-    }, 0)/10
+    }, 0)/lastFiveAwayTeamAwayFixtures.length
   }
 
   export const teamMin0 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
@@ -788,10 +788,10 @@ export const getLastFiveHomeTeamHomeFixtures = ({
   }
 
   export const teamMin3 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
-    // return (teamAAverageGoalsScored >= 2.5 && teamBAverageGoalsConceded>= 2) ||
-    // (teamAAverageGoalsScored >= 2 && teamBAverageGoalsConceded>= 2.5)||
-    // (teamAAverageGoalsScored >= 1.8 && teamBAverageGoalsConceded>= 3)
-    return (teamAAverageGoalsScored >= 3.2 && teamBAverageGoalsConceded>= 2)
+    return (teamAAverageGoalsScored >= 2.5 && teamBAverageGoalsConceded>= 2) ||
+    (teamAAverageGoalsScored >= 2 && teamBAverageGoalsConceded>= 2.5)||
+    (teamAAverageGoalsScored >= 1.8 && teamBAverageGoalsConceded>= 3)
+    || (teamAAverageGoalsScored >= 3.2 && teamBAverageGoalsConceded>= 2)
   }
 
   export const teamMax4 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
@@ -799,10 +799,10 @@ export const getLastFiveHomeTeamHomeFixtures = ({
   }
 
   export const teamMin4 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
-    // return (teamAAverageGoalsScored >= 2.8 && teamBAverageGoalsConceded>= 3.2) ||
-    // (teamAAverageGoalsScored >= 2.5 && teamBAverageGoalsConceded>= 3.6)||
-    // (teamAAverageGoalsScored >= 3.5 && teamBAverageGoalsConceded>= 2.8)
-    return (teamAAverageGoalsScored >= 4 && teamBAverageGoalsConceded>= 2.5)
+    return (teamAAverageGoalsScored >= 2.8 && teamBAverageGoalsConceded>= 3.2) ||
+    (teamAAverageGoalsScored >= 2.5 && teamBAverageGoalsConceded>= 3.6)||
+    (teamAAverageGoalsScored >= 3.5 && teamBAverageGoalsConceded>= 2.8)
+    || (teamAAverageGoalsScored >= 4 && teamBAverageGoalsConceded>= 2.5)
   }
 
 
