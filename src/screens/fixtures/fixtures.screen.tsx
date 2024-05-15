@@ -514,41 +514,41 @@ const FixturesScreen: React.FC = () => {
                               {`${currentFixture?.league.name} (${currentFixture?.league.country})`}
                               <div>
                                 {`${toMomentDate(
-                                  currentFixture.fixture.date
+                                  currentFixture?.fixture.date
                                 ).format("DD-MMMM-YYYY HH:mm")}`}
                               </div>
                             </div>
                             <div className=" flex flex-row sm:w-4/6 self-center justify-between flex-grow overflow-x-hidden">
                               <div className=" flex flex-row w-1/2 pl-1">
                                 <img
-                                  src={`${currentFixture.teams.home.logo}`}
+                                  src={`${currentFixture?.teams.home.logo}`}
                                   alt="country flag"
                                   width={17}
                                   height={17}
                                   className=" mr-1 mt-1"
                                 />
                                 <div className=" text-xs font-semibold truncate  pr-3 text-black w-2/3 ">
-                                  {currentFixture.teams.home.name}
+                                  {currentFixture?.teams.home.name}
                                 </div>
                               </div>
                               <div className=" flex justify-start w-1/2 pl-1 overflow-x-hidden">
                                 <div className=" flex flex-row float-left w-full ">
                                   <img
-                                    src={`${currentFixture.teams.away.logo}`}
+                                    src={`${currentFixture?.teams.away.logo}`}
                                     alt="country flag"
                                     width={17}
                                     height={17}
                                     className=" mr-1 mt-1"
                                   />
                                   <div className="  text-sm truncate font-semibold text-black">
-                                    {currentFixture.teams.away.name}
+                                    {currentFixture?.teams.away.name}
                                   </div>
                                 </div>
                               </div>
                             </div>
                           </div>
                           <div className="flex flex-row space-x-2 flex-wrap mb-2  p-2 mx-1">
-                            {groupedData[currentFixture.fixture.id].map(
+                            {groupedData[currentFixture?.fixture.id].map(
                               (option) => (
                                 <div
                                   key={option.id}
