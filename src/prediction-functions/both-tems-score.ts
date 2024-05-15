@@ -25,12 +25,15 @@ export const predictBothTeamsToScore = ({
       const homeTeamAverageGoalsConceded = sharedFunctions.averageGoalsConcededAtHome({homeTeamHomeFixtures: allHomeTeamHomeFixtures})
       const awayTeamAverageGoalsScored = sharedFunctions.averageGoalsScoredAway({awayTeamAwayFixtures: allAwayTeamAwayFixtures})
       const awayTeamAverageGoalsConceded = sharedFunctions.averageGoalsConcededAway({awayTeamAwayFixtures: allAwayTeamAwayFixtures})
-
+      const lastFiveHomeTeamHomeFixtures = sharedFunctions.getLastFiveHomeTeamHomeFixtures({allFixtures, teamId: currentFixture.teams.home.id})
+      const lastFiveAwayTeamAwayFixtures = sharedFunctions.getLastFiveAwayTeamAwayFixtures({allFixtures, teamId: currentFixture.teams.away.id})
   
-      return (sharedFunctions.teamMin1({teamAAverageGoalsScored:homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded})) &&
+      return ((sharedFunctions.teamMin1({teamAAverageGoalsScored:homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded})) &&
       (sharedFunctions.teamMin1({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded})) && (
         (sharedFunctions.homeTeamScroreInMostH2HFixtures({h2hFixtures:head2HeadMatches, homeTeamId: currentFixture.teams.home.id,minGoals: 1})) &&
-        (sharedFunctions.awayTeamScroreInMostH2HFixtures({h2hFixtures:head2HeadMatches, awayTeamId: currentFixture.teams.away.id,minGoals: 1}))
+        (sharedFunctions.awayTeamScroreInMostH2HFixtures({h2hFixtures:head2HeadMatches, awayTeamId: currentFixture.teams.away.id,minGoals: 1}))) ||
+        ((sharedFunctions.teamMin1({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded})) && (sharedFunctions.HomeTeamScroreInMostHomeFixtures({homefixtures:lastFiveHomeTeamHomeFixtures, minGoals:1 })) ||
+      ( ((sharedFunctions.teamMin1({teamAAverageGoalsScored:homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded})) && (sharedFunctions.awayTeamScroreInMostAwayFixtures({awayfixtures:lastFiveAwayTeamAwayFixtures, minGoals:2 })))))
       );
     })
     return {
