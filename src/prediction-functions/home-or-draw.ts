@@ -41,7 +41,7 @@ export const predictHomeOrDraw = ({
   
       return( 
         (sharedFunctions.teamMax0({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded})) && (homeTeamStanding.rank < awayTeamStanding.rank) && (Math.abs(homeTeamStanding.rank - awayTeamStanding.rank)>= 3) &&
-        head2HeadMatches.every(match => match.goals.home >= match.goals.away)
+        head2HeadMatches.every(match =>( match.goals.home >= match.goals.away && match.teams.home.id === currentFixture.teams.home.id) || (match.goals.away>= match.goals.home && match.teams.away.id === currentFixture.teams.home.id))
       )
 
     });

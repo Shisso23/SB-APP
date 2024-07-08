@@ -23,6 +23,7 @@ export const predictAwayOrDraw = ({
         teamId: currentFixture.teams.away.id,
         allFixtures,
       });
+      const head2HeadMatches = sharedFunctions.getH2HFixtures({allFixtures,teamOneId: currentFixture.teams.home.id,teamTwoId:currentFixture.teams.away.id  })
       const awayTeamStanding: StandingsDataStandingModel = sharedFunctions.getAwayTeamStanding({
         standings: leaguesStandings,
         awayTeamId: currentFixture.teams.away.id,
@@ -42,10 +43,11 @@ export const predictAwayOrDraw = ({
       const awayTeamAverageGoalsConceded = sharedFunctions.averageGoalsConcededAway({awayTeamAwayFixtures: allAwayTeamAwayFixtures})
      
       if(allAwayTeamAwayFixtures.length <3 || allHomeTeamHomeFixtures.length<3   || !awayTeamStanding||
-        !homeTeamStanding) return false
+        !homeTeamStanding || head2HeadMatches.length === 0) return false
       //TODO filter the fixtures that passes the H wins either half test here and return it
       return( 
-        (sharedFunctions.teamMax0({teamAAverageGoalsScored:homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded})) && (awayTeamStanding.rank < homeTeamStanding.rank) && (Math.abs(awayTeamStanding.rank - homeTeamStanding.rank)>= 3)
+        (sharedFunctions.teamMax0({teamAAverageGoalsScored:homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded})) && (awayTeamStanding.rank < homeTeamStanding.rank) && (Math.abs(awayTeamStanding.rank - homeTeamStanding.rank)>= 3) &&
+        head2HeadMatches.every(match =>( match.goals.home >= match.goals.away && match.teams.home.id === currentFixture.teams.away.id) || (match.goals.away>= match.goals.home && match.teams.away.id === currentFixture.teams.away.id))
       )
     });
     return {

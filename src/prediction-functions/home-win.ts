@@ -88,7 +88,7 @@ export const predictHomeWin = ({
           teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
         }))
     ) || (sharedFunctions.teamMax0({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded}))) &&(
-       (Math.abs(homeTeamStanding.rank - awayTeamStanding.rank)>= 6) &&  head2HeadMatches.every(match=> match.goals.home> match.goals.away)
+       (Math.abs(homeTeamStanding.rank - awayTeamStanding.rank)>= 6) &&  sharedFunctions.homeTeamWinsMostMatches({fixtures: head2HeadMatches, homeTeamId: currentFixture.teams.home.id,winPercentage: 100})
     )
   });
   return {

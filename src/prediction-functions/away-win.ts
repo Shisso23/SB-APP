@@ -87,12 +87,12 @@ export const predictAwayWin = ({
           sharedFunctions.teamMax2({
             teamAAverageGoalsScored: homeTeamAverageGoalsScored,
             teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
-          }))) || ((sharedFunctions.teamMax0({teamAAverageGoalsScored: homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded})))) && ( (Math.abs(awayTeamStanding.rank - homeTeamStanding.rank)>= 7) && head2HeadMatches.every(match=> match.goals.away> match.goals.home));
+          }))) || ((sharedFunctions.teamMax0({teamAAverageGoalsScored: homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded})))) && ( (Math.abs(awayTeamStanding.rank - homeTeamStanding.rank)>= 7) && sharedFunctions.awayTeamWinsMostMatchesTimes({awayTeamId: currentFixture.teams.away.id, fixtures: head2HeadMatches, winPercentage: 100}));
 
   });
   return {
     fixtures: predictedFixtures,
-    option: betOptions.find(
+  option: betOptions.find(
       (option) => option.id === betOptionsEnum.AWAY
     ) as betOptionModel,
   }; //TODO can look into making that betoption id a enum
