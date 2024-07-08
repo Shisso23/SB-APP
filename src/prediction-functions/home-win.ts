@@ -23,7 +23,7 @@ export const predictHomeWin = ({
       currentSeason: currentFixture.league.season,
       teamId: currentFixture.teams.away.id,
     });
-
+    const head2HeadMatches = sharedFunctions.getH2HFixtures({allFixtures,teamOneId: currentFixture.teams.home.id,teamTwoId:currentFixture.teams.away.id  })
     const allHomeTeamHomeFixtures = sharedFunctions.getAllHomeTeamHomeFixtures({
       allFixtures,
       currentSeason: currentFixture.league.season,
@@ -43,6 +43,7 @@ export const predictHomeWin = ({
       allAwayTeamAwayFixtures.length < 3 ||
       allHomeTeamHomeFixtures.length < 3
       || !awayTeamStanding||
+      head2HeadMatches.length === 0|| 
       !homeTeamStanding
     )
       return false;
@@ -87,7 +88,7 @@ export const predictHomeWin = ({
           teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
         }))
     ) || (sharedFunctions.teamMax0({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded}))) &&(
-      (homeTeamStanding.rank <5) && (Math.abs(homeTeamStanding.rank - awayTeamStanding.rank)>= 6)
+       (Math.abs(homeTeamStanding.rank - awayTeamStanding.rank)>= 6) &&  head2HeadMatches.every(match=> match.goals.home> match.goals.away)
     )
   });
   return {

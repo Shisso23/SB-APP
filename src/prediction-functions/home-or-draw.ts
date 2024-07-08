@@ -25,6 +25,7 @@ export const predictHomeOrDraw = ({
         homeTeamId: currentFixture.teams.home.id,
         leagueId: currentFixture.league.id,
       });
+      const head2HeadMatches = sharedFunctions.getH2HFixtures({allFixtures,teamOneId: currentFixture.teams.home.id,teamTwoId:currentFixture.teams.away.id  })
      
       const allAwayTeamAwayFixtures = sharedFunctions.getAllAwayTeamAwayFixtures({allFixtures, currentSeason: currentFixture.league.season, teamId: currentFixture.teams.away.id})
       
@@ -39,7 +40,8 @@ export const predictHomeOrDraw = ({
 
   
       return( 
-        (sharedFunctions.teamMax0({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded})) && (homeTeamStanding.rank < awayTeamStanding.rank) && (Math.abs(homeTeamStanding.rank - awayTeamStanding.rank)>= 3)
+        (sharedFunctions.teamMax0({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded})) && (homeTeamStanding.rank < awayTeamStanding.rank) && (Math.abs(homeTeamStanding.rank - awayTeamStanding.rank)>= 3) &&
+        head2HeadMatches.every(match => match.goals.home >= match.goals.away)
       )
 
     });
