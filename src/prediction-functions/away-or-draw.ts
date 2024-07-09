@@ -46,7 +46,32 @@ export const predictAwayOrDraw = ({
         !homeTeamStanding || head2HeadMatches.length === 0) return false
       //TODO filter the fixtures that passes the H wins either half test here and return it
       return( 
-        (sharedFunctions.teamMax0({teamAAverageGoalsScored:homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded})) && (awayTeamStanding.rank < homeTeamStanding.rank) && (Math.abs(awayTeamStanding.rank - homeTeamStanding.rank)>= 3) &&
+        (
+          (sharedFunctions.teamMin2({
+            teamAAverageGoalsScored: awayTeamAverageGoalsScored,
+            teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
+          }) &&
+            sharedFunctions.teamMax0({
+              teamAAverageGoalsScored: homeTeamAverageGoalsScored,
+              teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
+            })) ||
+          (sharedFunctions.teamMin3({
+            teamAAverageGoalsScored: awayTeamAverageGoalsScored,
+            teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
+          }) &&
+            (sharedFunctions.teamMax1({
+              teamAAverageGoalsScored: homeTeamAverageGoalsScored,
+              teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
+            }))) ||
+          (sharedFunctions.teamMin4({
+            teamAAverageGoalsScored: awayTeamAverageGoalsScored,
+            teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
+          }) &&
+              sharedFunctions.teamMax2({
+                teamAAverageGoalsScored: homeTeamAverageGoalsScored,
+                teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
+              }))) && 
+              (awayTeamStanding.rank < homeTeamStanding.rank) && (Math.abs(awayTeamStanding.rank - homeTeamStanding.rank)>=5) &&
         head2HeadMatches.every(match =>( match.goals.home >= match.goals.away && match.teams.home.id === currentFixture.teams.away.id) || (match.goals.away>= match.goals.home && match.teams.away.id === currentFixture.teams.away.id))
       )
     });
