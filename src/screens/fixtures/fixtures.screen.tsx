@@ -196,9 +196,7 @@ const FixturesScreen: React.FC = () => {
   };
 
   const filterFutureFixtures = (fixtures: FixtureDataModel[]) => {
-    console.log({fixtures})
     return fixtures.filter((fixtureData) => {
-      console.log({fixtureData})
       return fixtureData && toMomentDate(fixtureData.fixture.date).isSameOrAfter(
         new Date(moment().subtract(1, "days").format("YYYY-MM-DD"))
       );
