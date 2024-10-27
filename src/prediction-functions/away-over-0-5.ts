@@ -34,7 +34,7 @@ export const predictAwayOver0_5 = ({
       return( 
         (sharedFunctions.teamMin1({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded})) &&
         (sharedFunctions.awayTeamScroreInMostH2HFixtures({h2hFixtures:head2HeadMatches, awayTeamId: currentFixture.teams.away.id,minGoals: 1}))
-      ) && sharedFunctions.againstHomeTeamGoalsPercentage({homeTeamStanding: homeTeamStanding})>=120
+      ) && sharedFunctions.againstHomeTeamGoalsPercentage({homeTeamStanding: homeTeamStanding})>=120 && sharedFunctions.awayTeamScroreInMostAwayFixtures({awayfixtures: allAwayTeamAwayFixtures, minGoals: 1})
     });
     return {
       fixtures: predictedFixtures,

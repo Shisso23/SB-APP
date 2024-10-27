@@ -27,7 +27,7 @@ export const predictAwayOver1_5 = ({
 
   
       return( 
-        (sharedFunctions.teamMin2({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded}))
+        (sharedFunctions.teamMin2({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded}))&& sharedFunctions.awayTeamScroreInMostAwayFixtures({awayfixtures: allAwayTeamAwayFixtures, minGoals: 1})
       )
     });
     return {
