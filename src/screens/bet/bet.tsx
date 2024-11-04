@@ -27,7 +27,6 @@ const BetScreen: React.FC = () => {
   const [windowHeight, setWindowHeight] = useState(window.innerHeight)
   const [leaguesFilters, setLeaguesFilters] = useState<LeaguesFilterModel>({
     current: true,
-    type: 'league',
   })
   const dispatch: any = useDispatch()
   const [searchedLeagues, setSearchedLeagues] = useState<
