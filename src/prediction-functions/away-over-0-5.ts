@@ -21,6 +21,11 @@ export const predictAwayOver0_5 = ({
         homeTeamId: currentFixture.teams.home.id,
         leagueId: currentFixture.league.id,
       });
+      const awayTeamStanding: StandingsDataStandingModel = sharedFunctions.getAwayTeamStanding({
+        standings: leaguesStandings,
+        awayTeamId: currentFixture.teams.away.id,
+        leagueId: currentFixture.league.id,
+      });
       const allAwayTeamAwayFixtures = sharedFunctions.getAllAwayTeamAwayFixtures({allFixtures, currentSeason: currentFixture.league.season, teamId: currentFixture.teams.away.id})
       const head2HeadMatches = sharedFunctions.getH2HFixtures({allFixtures,teamOneId: currentFixture.teams.home.id,teamTwoId:currentFixture.teams.away.id  })
       const allHomeTeamHomeFixtures = sharedFunctions.getAllHomeTeamHomeFixtures({allFixtures, currentSeason: currentFixture.league.season, teamId: currentFixture.teams.home.id})
@@ -31,10 +36,11 @@ export const predictAwayOver0_5 = ({
       const awayTeamAverageGoalsConceded = sharedFunctions.averageGoalsConcededAway({awayTeamAwayFixtures: allAwayTeamAwayFixtures})
 
   
-      return( 
+      return(( 
         (sharedFunctions.teamMin1({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded})) &&
         (sharedFunctions.awayTeamScroreInMostH2HFixtures({h2hFixtures:head2HeadMatches, awayTeamId: currentFixture.teams.away.id,minGoals: 1}))
-      ) && sharedFunctions.againstHomeTeamGoalsPercentage({homeTeamStanding: homeTeamStanding})>=120 && sharedFunctions.awayTeamScroreInMostAwayFixtures({awayfixtures: allAwayTeamAwayFixtures, minGoals: 1})
+      ) && sharedFunctions.againstHomeTeamGoalsPercentage({homeTeamStanding: homeTeamStanding})>=120 && sharedFunctions.awayTeamScroreInMostAwayFixtures({awayfixtures: allAwayTeamAwayFixtures, minGoals: 1})) &&
+      (awayTeamStanding.rank< homeTeamStanding.rank )&& (homeTeamStanding.rank - awayTeamStanding.rank >=5)
     });
     return {
       fixtures: predictedFixtures,
