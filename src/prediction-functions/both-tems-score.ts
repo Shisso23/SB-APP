@@ -37,7 +37,7 @@ export const predictBothTeamsToScore = ({
       const lastFiveHomeTeamHomeFixtures = sharedFunctions.getLastFiveHomeTeamHomeFixtures({allFixtures, teamId: currentFixture.teams.home.id})
       const lastFiveAwayTeamAwayFixtures = sharedFunctions.getLastFiveAwayTeamAwayFixtures({allFixtures, teamId: currentFixture.teams.away.id})
   
-      return ((awayTeamStanding.rank< homeTeamStanding.rank )&& (homeTeamStanding.rank - awayTeamStanding.rank >=7) && (sharedFunctions.teamMin1({teamAAverageGoalsScored: homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded}) && sharedFunctions.teamMin1({teamAAverageGoalsScored: awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded}))) 
+      return ((awayTeamStanding.rank< homeTeamStanding.rank )&& (homeTeamStanding.rank - awayTeamStanding.rank >=5) && (sharedFunctions.teamMin1({teamAAverageGoalsScored: homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded}) && sharedFunctions.teamMin1({teamAAverageGoalsScored: awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded}))) 
       
     })
     return {
