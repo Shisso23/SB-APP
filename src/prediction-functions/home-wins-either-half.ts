@@ -3,7 +3,7 @@ import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
 import { betOptions } from "../variables/variables";
-import { getLastFiveHomeTeamHomeFixtures, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, homeTeamGoalsPercentage, againstAwayTeamGoalsPercentage, awayTeamFailWinningInMostAwayFixtures, HomeTeamScroreInMostHomeFixtures, otherHomeTeamGoalsInAwayFixtures, homeTeamWinsMostMatches, getAwayTeamStanding, getHomeTeamStanding, getLastFiveAwayTeamAwayFixtures } from "./shared-functions";
+import { getLastFiveHomeTeamHomeFixtures, awayTeamGoalsPercentage, againstHomeTeamGoalsPercentage, homeTeamGoalsPercentage, againstAwayTeamGoalsPercentage, awayTeamFailWinningInMostAwayFixtures, HomeTeamScroreInMostHomeFixtures, homeTeamWinsMostMatches, getAwayTeamStanding, getHomeTeamStanding, getLastFiveAwayTeamAwayFixtures } from "./shared-functions";
 
 export const predictHomeWinsEitherHalf = ({
     currentFixtures,
@@ -41,10 +41,6 @@ export const predictHomeWinsEitherHalf = ({
             fixtures: lastFiveHomeTeamHomeFixtures,
             homeTeamId: currentFixture.teams.home.id,
           }) &&
-            otherHomeTeamGoalsInAwayFixtures({
-              awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
-              goals: 1,
-            }) &&
             awayTeamFailWinningInMostAwayFixtures({
               awayFixtures: lastFiveAwayTeamAwayFixtures,
             }) &&
@@ -56,10 +52,6 @@ export const predictHomeWinsEitherHalf = ({
           HomeTeamScroreInMostHomeFixtures({
             homefixtures: lastFiveHomeTeamHomeFixtures,
             minGoals: 1,
-          }) &&
-          otherHomeTeamGoalsInAwayFixtures({
-            awayTeamFixtures: lastFiveAwayTeamAwayFixtures,
-            goals: 1,
           }) &&
           homeTeamGoalsPercentage({ homeTeamStanding }) >= 150 &&
           againstAwayTeamGoalsPercentage({ awayTeamStanding }) >= 130 &&
