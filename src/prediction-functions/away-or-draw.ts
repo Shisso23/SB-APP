@@ -71,7 +71,7 @@ export const predictAwayOrDraw = ({
                 teamAAverageGoalsScored: homeTeamAverageGoalsScored,
                 teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
               }))) && 
-              (awayTeamStanding.rank < homeTeamStanding.rank) && (Math.abs(awayTeamStanding.rank - homeTeamStanding.rank)>=5) &&
+              (awayTeamStanding?.rank < homeTeamStanding?.rank) && (Math.abs(awayTeamStanding?.rank - homeTeamStanding?.rank)>=5) &&
         head2HeadMatches.every(match =>( match.goals.home >= match.goals.away && match.teams.home.id === currentFixture.teams.away.id) || (match.goals.away>= match.goals.home && match.teams.away.id === currentFixture.teams.away.id))
       )
     });

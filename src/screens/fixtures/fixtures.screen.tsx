@@ -282,7 +282,7 @@ const FixturesScreen: React.FC = () => {
             key={""}
             className=" flex flex-row border border-solid justify-between w-full"
           >
-            <span className=" w-16">{teamStanding.rank}</span>
+            <span className=" w-16">{teamStanding?.rank}</span>
             <span className=" w-40 truncate text-pink-700">
               {teamStanding.team.name}
             </span>
