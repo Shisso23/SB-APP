@@ -23,27 +23,33 @@ export const predictHomeWin = ({
       currentSeason: currentFixture.league.season,
       teamId: currentFixture.teams.away.id,
     });
-    const head2HeadMatches = sharedFunctions.getH2HFixtures({allFixtures,teamOneId: currentFixture.teams.home.id,teamTwoId:currentFixture.teams.away.id  })
+    const head2HeadMatches = sharedFunctions.getH2HFixtures({
+      allFixtures,
+      teamOneId: currentFixture.teams.home.id,
+      teamTwoId: currentFixture.teams.away.id,
+    });
     const allHomeTeamHomeFixtures = sharedFunctions.getAllHomeTeamHomeFixtures({
       allFixtures,
       currentSeason: currentFixture.league.season,
       teamId: currentFixture.teams.home.id,
     });
-    const awayTeamStanding: StandingsDataStandingModel = sharedFunctions.getAwayTeamStanding({
-      standings: leaguesStandings,
-      awayTeamId: currentFixture.teams.away.id,
-      leagueId: currentFixture.league.id,
-    });
-    const homeTeamStanding: StandingsDataStandingModel = sharedFunctions.getHomeTeamStanding({
-      standings: leaguesStandings,
-      homeTeamId: currentFixture.teams.home.id,
-      leagueId: currentFixture.league.id,
-    });
+    const awayTeamStanding: StandingsDataStandingModel =
+      sharedFunctions.getAwayTeamStanding({
+        standings: leaguesStandings,
+        awayTeamId: currentFixture.teams.away.id,
+        leagueId: currentFixture.league.id,
+      });
+    const homeTeamStanding: StandingsDataStandingModel =
+      sharedFunctions.getHomeTeamStanding({
+        standings: leaguesStandings,
+        homeTeamId: currentFixture.teams.home.id,
+        leagueId: currentFixture.league.id,
+      });
     if (
       allAwayTeamAwayFixtures.length < 3 ||
-      allHomeTeamHomeFixtures.length < 3
-      || !awayTeamStanding||
-      head2HeadMatches.length === 0|| 
+      allHomeTeamHomeFixtures.length < 3 ||
+      !awayTeamStanding ||
+      head2HeadMatches.length === 0 ||
       !homeTeamStanding
     )
       return false;
@@ -62,8 +68,8 @@ export const predictHomeWin = ({
         awayTeamAwayFixtures: allAwayTeamAwayFixtures,
       });
 
-    return ((
-      (sharedFunctions.teamMin2({
+    return (
+      ((sharedFunctions.teamMin2({
         teamAAverageGoalsScored: homeTeamAverageGoalsScored,
         teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
       }) &&
@@ -71,25 +77,33 @@ export const predictHomeWin = ({
           teamAAverageGoalsScored: awayTeamAverageGoalsScored,
           teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
         })) ||
-      (sharedFunctions.teamMin3({
-        teamAAverageGoalsScored: homeTeamAverageGoalsScored,
-        teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
-      }) &&
-        sharedFunctions.teamMax1({
+        (sharedFunctions.teamMin3({
+          teamAAverageGoalsScored: homeTeamAverageGoalsScored,
+          teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
+        }) &&
+          sharedFunctions.teamMax1({
+            teamAAverageGoalsScored: awayTeamAverageGoalsScored,
+            teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
+          })) ||
+        (sharedFunctions.teamMin4({
+          teamAAverageGoalsScored: homeTeamAverageGoalsScored,
+          teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
+        }) &&
+          sharedFunctions.teamMax2({
+            teamAAverageGoalsScored: awayTeamAverageGoalsScored,
+            teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
+          })) ||
+        sharedFunctions.teamMax0({
           teamAAverageGoalsScored: awayTeamAverageGoalsScored,
           teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
-        })) ||
-      (sharedFunctions.teamMin4({
-        teamAAverageGoalsScored: homeTeamAverageGoalsScored,
-        teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
-      }) &&
-        sharedFunctions.teamMax2({
-          teamAAverageGoalsScored: awayTeamAverageGoalsScored,
-          teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
-        }))
-    ) || (sharedFunctions.teamMax0({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded}))) &&(
-       (Math.abs(homeTeamStanding?.rank - awayTeamStanding?.rank)>= 6) &&  sharedFunctions.homeTeamWinsMostMatches({fixtures: head2HeadMatches, homeTeamId: currentFixture.teams.home.id,winPercentage: 100})
-    )
+        })) &&
+      Math.abs(homeTeamStanding?.rank - awayTeamStanding?.rank) >= 6 &&
+      sharedFunctions.homeTeamWinsMostMatches({
+        fixtures: head2HeadMatches,
+        homeTeamId: currentFixture.teams.home.id,
+        winPercentage: 100,
+      })
+    );
   });
   return {
     fixtures: predictedFixtures,

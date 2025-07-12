@@ -29,21 +29,27 @@ export const predictAwayWin = ({
       currentSeason: currentFixture.league.season,
       teamId: currentFixture.teams.home.id,
     });
-    const awayTeamStanding: StandingsDataStandingModel = sharedFunctions.getAwayTeamStanding({
-      standings: leaguesStandings,
-      awayTeamId: currentFixture.teams.away.id,
-      leagueId: currentFixture.league.id,
+    const awayTeamStanding: StandingsDataStandingModel =
+      sharedFunctions.getAwayTeamStanding({
+        standings: leaguesStandings,
+        awayTeamId: currentFixture.teams.away.id,
+        leagueId: currentFixture.league.id,
+      });
+    const homeTeamStanding: StandingsDataStandingModel =
+      sharedFunctions.getHomeTeamStanding({
+        standings: leaguesStandings,
+        homeTeamId: currentFixture.teams.home.id,
+        leagueId: currentFixture.league.id,
+      });
+    const head2HeadMatches = sharedFunctions.getH2HFixtures({
+      allFixtures,
+      teamOneId: currentFixture.teams.home.id,
+      teamTwoId: currentFixture.teams.away.id,
     });
-    const homeTeamStanding: StandingsDataStandingModel = sharedFunctions.getHomeTeamStanding({
-      standings: leaguesStandings,
-      homeTeamId: currentFixture.teams.home.id,
-      leagueId: currentFixture.league.id,
-    });
-    const head2HeadMatches = sharedFunctions.getH2HFixtures({allFixtures,teamOneId: currentFixture.teams.home.id,teamTwoId:currentFixture.teams.away.id  })
     if (
       allAwayTeamAwayFixtures.length < 3 ||
-      allHomeTeamHomeFixtures.length < 3
-      || !awayTeamStanding||
+      allHomeTeamHomeFixtures.length < 3 ||
+      !awayTeamStanding ||
       !homeTeamStanding ||
       head2HeadMatches.length === 0
     )
@@ -63,8 +69,8 @@ export const predictAwayWin = ({
         awayTeamAwayFixtures: allAwayTeamAwayFixtures,
       });
 
-    return ((
-      (sharedFunctions.teamMin2({
+    return (
+      ((sharedFunctions.teamMin2({
         teamAAverageGoalsScored: awayTeamAverageGoalsScored,
         teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
       }) &&
@@ -72,27 +78,37 @@ export const predictAwayWin = ({
           teamAAverageGoalsScored: homeTeamAverageGoalsScored,
           teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
         })) ||
-      (sharedFunctions.teamMin3({
-        teamAAverageGoalsScored: awayTeamAverageGoalsScored,
-        teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
-      }) &&
-        (sharedFunctions.teamMax1({
-          teamAAverageGoalsScored: homeTeamAverageGoalsScored,
-          teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
-        }))) ||
-      (sharedFunctions.teamMin4({
-        teamAAverageGoalsScored: awayTeamAverageGoalsScored,
-        teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
-      }) &&
+        (sharedFunctions.teamMin3({
+          teamAAverageGoalsScored: awayTeamAverageGoalsScored,
+          teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
+        }) &&
+          sharedFunctions.teamMax1({
+            teamAAverageGoalsScored: homeTeamAverageGoalsScored,
+            teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
+          })) ||
+        (sharedFunctions.teamMin4({
+          teamAAverageGoalsScored: awayTeamAverageGoalsScored,
+          teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
+        }) &&
           sharedFunctions.teamMax2({
             teamAAverageGoalsScored: homeTeamAverageGoalsScored,
             teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
-          }))) || ((sharedFunctions.teamMax0({teamAAverageGoalsScored: homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded})))) && ( (Math.abs(awayTeamStanding?.rank - homeTeamStanding?.rank)>= 7) && sharedFunctions.awayTeamWinsMostMatchesTimes({awayTeamId: currentFixture.teams.away.id, fixtures: head2HeadMatches, winPercentage: 100}));
-
+          })) ||
+        sharedFunctions.teamMax0({
+          teamAAverageGoalsScored: homeTeamAverageGoalsScored,
+          teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
+        })) &&
+      Math.abs(awayTeamStanding?.rank - homeTeamStanding?.rank) >= 7 &&
+      sharedFunctions.awayTeamWinsMostMatchesTimes({
+        awayTeamId: currentFixture.teams.away.id,
+        fixtures: head2HeadMatches,
+        winPercentage: 100,
+      })
+    );
   });
   return {
     fixtures: predictedFixtures,
-  option: betOptions.find(
+    option: betOptions.find(
       (option) => option.id === betOptionsEnum.AWAY
     ) as betOptionModel,
   }; //TODO can look into making that betoption id a enum

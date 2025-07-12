@@ -29,7 +29,11 @@ export const predict2_5_goals = ({
       currentSeason: currentFixture.league.season,
       teamId: currentFixture.teams.home.id,
     });
-    if(allAwayTeamAwayFixtures.length <3 || allHomeTeamHomeFixtures.length<3) return false
+    if (
+      allAwayTeamAwayFixtures.length < 3 ||
+      allHomeTeamHomeFixtures.length < 3
+    )
+      return false;
     const homeTeamAverageGoalsScored = sharedFunctions.averageGoalsScoredAtHome(
       { homeTeamHomeFixtures: allHomeTeamHomeFixtures }
     );
@@ -46,33 +50,70 @@ export const predict2_5_goals = ({
       });
 
     return (
-      ((sharedFunctions.teamMin2({
+      (sharedFunctions.teamMin2({
         teamAAverageGoalsScored: awayTeamAverageGoalsScored,
         teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
       }) ||
         sharedFunctions.teamMin2({
           teamAAverageGoalsScored: homeTeamAverageGoalsScored,
           teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
-        })) || (sharedFunctions.teamMin1({
+        }) ||
+        (sharedFunctions.teamMin1({
           teamAAverageGoalsScored: awayTeamAverageGoalsScored,
           teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
         }) &&
           sharedFunctions.teamMin1({
             teamAAverageGoalsScored: homeTeamAverageGoalsScored,
             teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
-          })) ) &&
-          (((sharedFunctions.teamMax4({teamAAverageGoalsScored:homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded})) &&
-          (sharedFunctions.teamMax0({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded}))) ||
-          ((sharedFunctions.teamMax0({teamAAverageGoalsScored:homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded})) &&
-          (sharedFunctions.teamMax4({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded}))) ||
-          ((sharedFunctions.teamMax1({teamAAverageGoalsScored:homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded})) &&
-          (sharedFunctions.teamMax4({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded}))) ||
-          ((sharedFunctions.teamMax4({teamAAverageGoalsScored:homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded})) &&
-          (sharedFunctions.teamMax1({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded})))||
-          ((sharedFunctions.teamMax3({teamAAverageGoalsScored:homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded})) &&
-          (sharedFunctions.teamMax2({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded}))) ||
-          ((sharedFunctions.teamMax2({teamAAverageGoalsScored:homeTeamAverageGoalsScored, teamBAverageGoalsConceded: awayTeamAverageGoalsConceded})) &&
-          (sharedFunctions.teamMax3({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded}))))
+          }))) &&
+      ((sharedFunctions.teamMax4({
+        teamAAverageGoalsScored: homeTeamAverageGoalsScored,
+        teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
+      }) &&
+        sharedFunctions.teamMax0({
+          teamAAverageGoalsScored: awayTeamAverageGoalsScored,
+          teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
+        })) ||
+        (sharedFunctions.teamMax0({
+          teamAAverageGoalsScored: homeTeamAverageGoalsScored,
+          teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
+        }) &&
+          sharedFunctions.teamMax4({
+            teamAAverageGoalsScored: awayTeamAverageGoalsScored,
+            teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
+          })) ||
+        (sharedFunctions.teamMax1({
+          teamAAverageGoalsScored: homeTeamAverageGoalsScored,
+          teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
+        }) &&
+          sharedFunctions.teamMax4({
+            teamAAverageGoalsScored: awayTeamAverageGoalsScored,
+            teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
+          })) ||
+        (sharedFunctions.teamMax4({
+          teamAAverageGoalsScored: homeTeamAverageGoalsScored,
+          teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
+        }) &&
+          sharedFunctions.teamMax1({
+            teamAAverageGoalsScored: awayTeamAverageGoalsScored,
+            teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
+          })) ||
+        (sharedFunctions.teamMax3({
+          teamAAverageGoalsScored: homeTeamAverageGoalsScored,
+          teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
+        }) &&
+          sharedFunctions.teamMax2({
+            teamAAverageGoalsScored: awayTeamAverageGoalsScored,
+            teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
+          })) ||
+        (sharedFunctions.teamMax2({
+          teamAAverageGoalsScored: homeTeamAverageGoalsScored,
+          teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
+        }) &&
+          sharedFunctions.teamMax3({
+            teamAAverageGoalsScored: awayTeamAverageGoalsScored,
+            teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
+          })))
     );
   });
   return {
