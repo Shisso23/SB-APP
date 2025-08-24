@@ -225,8 +225,8 @@ const FixtureRowCompact: React.FC<{ fixture: FixtureDataModel }> = ({ fixture })
       <div className="text-[11px] text-slate-300">
         {toMomentDate(fixture.fixture.date).format('DD MMM, HH:mm')}
       </div>
-      <div className="text-[11px] text-slate-300">
-        {fixture.score.fulltime.home} -{fixture.score.fulltime.away}
+      <div className="flex w-1/2 items-center gap-2 text-slate-300">
+        {fixture.score.fulltime.home} - {fixture.score.fulltime.away}
       </div>
       <div className="flex w-1/2 items-center justify-end gap-2">
         <span className="truncate text-xs text-slate-100">{fixture.teams.away.name}</span>
