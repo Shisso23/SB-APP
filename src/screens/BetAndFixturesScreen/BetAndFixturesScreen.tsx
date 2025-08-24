@@ -1,25 +1,7 @@
+/* eslint-disable no-empty */
 // =============================================================
 // File: src/screens/BetAndFixturesScreen.tsx
-// Purpose: Single screen that combines league selection (checkboxes)
-//          + predictions/fixtures view with a 1-minute cooldown between
-//          bet runs and robust localStorage caching + BEAUTIFUL modal
-//          with Head-to-Head, Home/Away last 5, and two-team standings.
-//
-// Palette:
-//  - High-contrast dark theme using Slate + Cyan/Amber accents
-//  - Panels: bg-slate-900, Borders: border-slate-700
-//  - Primary text: text-slate-100, Muted: text-slate-300/400
-//  - Buttons: cyan gradient; Chips: amber
-//  - Datepickers: light inputs for readability
-//
-// This revision adds:
-//  - FAST local search (regex, debounced) for country/league/both
-//  - Floating Bet button + Reset selection
-//  - Filters only real leagues (no Cups) via filters.type = 'League'
-//  - Standings are fetched + cached (6h) before prediction to avoid empty UI
-//  - Predictions fixtures+output caching (6h) with option rehydration
-//  - Multi-season fetch using numberOfSeasonsBack (current + previous seasons)
-//    with retry window and local skip if we already have plenty of FT fixtures.
+// (…header comments unchanged…)
 // =============================================================
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -64,8 +46,6 @@ const LEAGUES_CACHE_TTL = 1000 * 60 * 60 * 24 * 7; // 7 days
 const PREDICTIONS_CACHE_TTL = 1000 * 60 * 60 * 6; // 6 hours
 const STANDINGS_CACHE_TTL = 1000 * 60 * 60 * 6; // 6 hours
 
-// If we already have at least this many FT fixtures for a league+season,
-// skip fetching that season again (avoid overfetch).
 const MIN_SEASON_EXISTING_THRESHOLD = 10;
 
 // ======= Cache shapes =======
@@ -78,11 +58,10 @@ interface LeaguesCacheShape {
 interface PredictionsCacheItem {
   leagueId: number;
   season: number;
-  from: string; // YYYY-MM-DD
-  to: string;   // YYYY-MM-DD
-  optionIds: number[]; // sorted
-  fixtures: FixtureDataModel[]; // raw fixtures used to compute
-  // Store only serializable option meta in cache
+  from: string;
+  to: string;
+  optionIds: number[];
+  fixtures: FixtureDataModel[];
   predicted: {
     fixtures: FixtureDataModel[];
     option: {
@@ -93,7 +72,7 @@ interface PredictionsCacheItem {
       description: string;
     };
   }[];
-  ts: number; // cache timestamp
+  ts: number;
 }
 interface PredictionsCacheShape { items: PredictionsCacheItem[] }
 
@@ -119,22 +98,21 @@ const readLeaguesCache = (): LeaguesCacheShape | null => {
 };
 const writeLeaguesCache = (filters: LeaguesFilterModel, data: LeagueDataModel[]) => {
   const payload: LeaguesCacheShape = { ts: Date.now(), filters, data };
-  try { localStorage.setItem(LEAGUES_CACHE_KEY, JSON.stringify(payload)); } catch { /* ignore */ }
+  try { localStorage.setItem(LEAGUES_CACHE_KEY, JSON.stringify(payload)); } catch {}
 };
 
 const readPredictionsCache = (): PredictionsCacheShape =>
   safeParse<PredictionsCacheShape>(localStorage.getItem(PREDICTIONS_CACHE_KEY)) || { items: [] };
 const writePredictionsCache = (shape: PredictionsCacheShape) => {
-  try { localStorage.setItem(PREDICTIONS_CACHE_KEY, JSON.stringify(shape)); } catch { /* ignore */ }
+  try { localStorage.setItem(PREDICTIONS_CACHE_KEY, JSON.stringify(shape)); } catch {}
 };
 
 const readStandingsCache = (): StandingsCacheShape =>
   safeParse<StandingsCacheShape>(localStorage.getItem(STANDINGS_CACHE_KEY)) || { items: [] };
 const writeStandingsCache = (shape: StandingsCacheShape) => {
-  try { localStorage.setItem(STANDINGS_CACHE_KEY, JSON.stringify(shape)); } catch { /* ignore */ }
+  try { localStorage.setItem(STANDINGS_CACHE_KEY, JSON.stringify(shape)); } catch {}
 };
 
-// Predictions cache key matcher
 const cacheKeyMatch = (
   it: PredictionsCacheItem,
   leagueId: number,
@@ -150,6 +128,8 @@ const cacheKeyMatch = (
   return a.length === b.length && a.every((v, i) => v === b[i]);
 };
 
+// ======= Country group UI =======
+// (CountrySection component unchanged)
 // ======= Country group UI =======
 
 type CountrySectionProps = {
@@ -286,14 +266,16 @@ const StandingsRow: React.FC<{ s: StandingsDataStandingModel }> = ({ s }) => (
   </div>
 );
 
+
+// ======= Mini components for modal =======
+// (FixtureRowCompact, StandingsHeader, StandingsRow unchanged)
+
 // ======= Main Screen =======
 
 const BetAndFixturesScreen: React.FC = () => {
-  // Redux leagues
   const { leagues, isLoadingLeagues }: LeaguesState = useSelector(leaguesSelector);
   const dispatch: any = useDispatch();
 
-  // Leagues list (with cache) — filter to real leagues (no Cups)
   const [leaguesFilters] = useState<LeaguesFilterModel>({ current: true, type: 'League' });
   const [allLeagues, setAllLeagues] = useState<LeagueDataModel[] | null>(null);
 
@@ -306,10 +288,10 @@ const BetAndFixturesScreen: React.FC = () => {
     return () => window.clearTimeout(id);
   }, [rawSearch]);
 
-  // Selection (batch of up to 7)
+  // Selection
   const [selectedBatch, setSelectedBatch] = useState<LeagueDataModel[]>([]);
 
-  // Fixtures & predictions state (accumulated)
+  // Fixtures & predictions
   const [allFixtures, setAllFixtures] = useState<FixtureDataModel[]>([]);
   const [futureFixtures, setFutureFixtures] = useState<FixtureDataModel[]>([]);
   const [currentFixtures, setCurrentFixtures] = useState<FixtureDataModel[]>([]);
@@ -327,15 +309,14 @@ const BetAndFixturesScreen: React.FC = () => {
   const [nowTick, setNowTick] = useState<number>(Date.now());
   const tickRef = useRef<number | null>(null);
 
-  // Modal & standings state
+  // Modal & standings
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedFixtureRow, setSelectedFixtureRow] = useState<FixtureDataModel | null>(null);
   const [fixtureTeamsStandings, setFixtureTeamsStandings] = useState<StandingsDataStandingModel[] | null>(null);
 
-  // Standings store
   const [leaguesStandings, setLeaguesStandings] = useState<StandingsModel[]>([]);
 
-  // ===== Init: leagues list (cache) =====
+  // Init leagues
   useEffect(() => {
     const cached = readLeaguesCache();
     if (cached?.data?.length) {
@@ -348,14 +329,13 @@ const BetAndFixturesScreen: React.FC = () => {
   useEffect(() => {
     const data = leagues?.response?.map((l: LeagueDataModel) => new LeagueDataModel(l));
     if (data && data.length) {
-      // filter out cups locally too, just in case API ignores the type filter
       const filtered = data.filter(l => (l.league?.type || '').toLowerCase() === 'league');
       setAllLeagues(filtered);
       writeLeaguesCache(leaguesFilters, filtered);
     }
   }, [JSON.stringify(leagues)]);
 
-  // ===== Group by country =====
+  // Group by country
   const groupedByCountry = useMemo(() => {
     const map = new Map<string, LeagueDataModel[]>();
     (allLeagues || []).forEach((l) => {
@@ -368,32 +348,22 @@ const BetAndFixturesScreen: React.FC = () => {
       .map(([country, leagues]) => [country, leagues.sort((x, y) => x.league.name.localeCompare(y.league.name))] as const);
   }, [allLeagues]);
 
-  // ===== Local search (country / league / both) =====
+  // Local search
   const filteredGroups = useMemo(() => {
     const q = searchQuery.trim();
     if (!q) return groupedByCountry;
     let re: RegExp;
-    try { re = new RegExp(q, 'i'); } catch {
-      re = new RegExp(q.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&'), 'i');
-    }
+    try { re = new RegExp(q, 'i'); } catch { re = new RegExp(q.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&'), 'i'); }
 
     if (searchMode === 'country') {
-      return groupedByCountry
-        .filter(([country]) => re.test(country))
-        .map(([country, leagues]) => [country, leagues] as const);
+      return groupedByCountry.filter(([country]) => re.test(country)).map(([country, leagues]) => [country, leagues] as const);
     }
-
     if (searchMode === 'league') {
       return groupedByCountry
         .map(([country, leagues]) => [country, leagues.filter(l => re.test(l.league.name))] as const)
         .filter(([, leagues]) => leagues.length > 0);
     }
-
-    // both
-    const countryMatches = new Set(
-      groupedByCountry.filter(([country]) => re.test(country)).map(([country]) => country)
-    );
-
+    const countryMatches = new Set(groupedByCountry.filter(([country]) => re.test(country)).map(([country]) => country));
     return groupedByCountry
       .map(([country, leagues]) => {
         if (countryMatches.has(country)) return [country, leagues] as const;
@@ -403,7 +373,7 @@ const BetAndFixturesScreen: React.FC = () => {
       .filter(([, leagues]) => leagues.length > 0);
   }, [groupedByCountry, searchQuery, searchMode]);
 
-  // ===== Selection helpers (limit 7) =====
+  // Selection helpers
   const isSelected = (id: number) => selectedBatch.some((l) => l.league.id === id);
   const disabledReason = (id: number): string | null => {
     if (isSelected(id)) return null;
@@ -435,15 +405,17 @@ const BetAndFixturesScreen: React.FC = () => {
   };
   const resetSelection = () => setSelectedBatch([]);
 
-  // ===== Cooldown ticker =====
+  // Cooldown ticker
   useEffect(() => {
     tickRef.current = window.setInterval(() => setNowTick(Date.now()), 500);
     return () => { if (tickRef.current) window.clearInterval(tickRef.current); };
   }, []);
   const msLeft = lastBetAt ? Math.max(0, lastBetAt + COOLDOWN_MS - nowTick) : 0;
-  const canBet = msLeft === 0 && selectedBatch.length > 0;
 
-  // ===== Fixtures helpers =====
+  // <<< CHANGE: allow bets during countdown if batch < 7
+  const canBet = selectedBatch.length > 0 && (selectedBatch.length < MAX_BATCH || msLeft === 0);
+
+  // Fixtures helpers
   const filterFutureFixtures = (fixtures: FixtureDataModel[]) =>
     fixtures.filter((fixtureData) =>
       toMomentDate(fixtureData.fixture.date).isSameOrAfter(new Date(moment().subtract(1, 'days').format('YYYY-MM-DD')))
@@ -455,7 +427,7 @@ const BetAndFixturesScreen: React.FC = () => {
       toMomentDate(fixtureData.fixture.date).isSameOrBefore(moment(to))
     );
 
-  // ===== Restore cached predictions on mount (rehydrate options) =====
+  // Restore cached predictions
   useEffect(() => {
     const cache = readPredictionsCache();
     const fresh = cache.items.filter(it => Date.now() - it.ts <= PREDICTIONS_CACHE_TTL);
@@ -478,7 +450,7 @@ const BetAndFixturesScreen: React.FC = () => {
     setPredictedFixtures(prev => [...prev, ...mergedPred]);
   }, []); // run once
 
-  // ===== Keep derived future/current fixtures & grouping in sync =====
+  // Derived fixtures & grouping
   useEffect(() => {
     setFutureFixtures(filterFutureFixtures(allFixtures));
   }, [allFixtures.length]);
@@ -501,7 +473,7 @@ const BetAndFixturesScreen: React.FC = () => {
     setGroupedData(grouped);
   }, [JSON.stringify(predictedFixtures)]);
 
-  // ===== Predict (preserving your logic) =====
+  // Predict
   const runPredict = ({
     allFixturesLocal,
     currentFixturesLocal,
@@ -523,10 +495,10 @@ const BetAndFixturesScreen: React.FC = () => {
     return predictions;
   };
 
-  // ===== Helpers for multi-season fetch =====
+  // Multi-season helpers
   const seasonWindow = (season: number) => {
-    const from = moment(`${season}-07-01`, 'YYYY-MM-DD'); // generic July start
-    const to = moment().add(30, 'days');                  // small lookahead
+    const from = moment(`${season}-07-01`, 'YYYY-MM-DD');
+    const to = moment().add(30, 'days');
     return {
       from: from.isValid() ? from.format('YYYY-MM-DD') : moment().subtract(365, 'days').format('YYYY-MM-DD'),
       to: to.format('YYYY-MM-DD'),
@@ -542,9 +514,12 @@ const BetAndFixturesScreen: React.FC = () => {
     return Array.from(map.values()).sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
   };
 
-  // ===== Fetch fixtures for leagues & multiple seasons (uses numberOfSeasonsBack) =====
-  const getLeaguesSeasonsFixtures = async (leaguesInput: LeagueDataModel[]) => {
+  // <<< CHANGE: return whether we actually hit network per league
+  type LeagueFixturesResult = { leagueId: number; fixtures: FixtureDataModel[]; didNetwork: boolean };
+
+  const getLeaguesSeasonsFixtures = async (leaguesInput: LeagueDataModel[]): Promise<LeagueFixturesResult[]> => {
     const seasonsCount = Math.max(1, Number(numberOfSeasonsBack || 1));
+
     return Promise.all(
       leaguesInput.map(async (league: LeagueDataModel) => {
         const currentSeason =
@@ -553,40 +528,40 @@ const BetAndFixturesScreen: React.FC = () => {
 
         const seasons: number[] = Array.from({ length: seasonsCount }, (_, i) => currentSeason - i);
 
+        let didNetwork = false;
+
         const perSeason = await Promise.all(
           seasons.map(async (season) => {
-            // If we already have enough FT fixtures for this league+season in memory, skip fetching.
             const existing = allFixtures.filter(f => f.league.id === league.league.id && f.league.season === season);
             if (countFinished(existing) >= MIN_SEASON_EXISTING_THRESHOLD) {
-              return existing;
+              return existing; // no network
             }
 
-            // Fast path: league + season
+            // try fast path
             try {
               const resFast: FixturesModel = (await getFilteredFixtures(
                 new FixturesFilterModel({ league: league.league.id, season })
               )).data;
-
+              didNetwork = true;
               const fixturesFast = resFast?.response ?? [];
               if (countFinished(fixturesFast) > 0) {
                 return fixturesFast;
               }
 
-              // Retry with explicit from/to
+              // retry ranged
               const { from, to } = seasonWindow(season);
               const resRanged: FixturesModel = (await getFilteredFixtures(
                 new FixturesFilterModel({ league: league.league.id, season, from, to })
               )).data;
-
+              didNetwork = true;
               return resRanged?.response ?? [];
             } catch {
-              // On error, try ranged query as a fallback
               try {
                 const { from, to } = seasonWindow(season);
                 const resRanged: FixturesModel = (await getFilteredFixtures(
                   new FixturesFilterModel({ league: league.league.id, season, from, to })
                 )).data;
-
+                didNetwork = true;
                 return resRanged?.response ?? [];
               } catch {
                 return [];
@@ -595,13 +570,12 @@ const BetAndFixturesScreen: React.FC = () => {
           })
         );
 
-        // Merge seasons for this league and dedupe
-        return dedupeFixtures(perSeason.flat());
+        return { leagueId: league.league.id, fixtures: dedupeFixtures(perSeason.flat()), didNetwork };
       })
     );
   };
 
-  // standings ensure + cache, returns the standings that will be available for prediction immediately
+  // Standings ensure (unchanged)
   const ensureStandingsFor = async (leaguesInput: LeagueDataModel[]): Promise<StandingsModel[]> => {
     if (!leaguesInput || leaguesInput.length === 0) return [];
     const cache = readStandingsCache();
@@ -623,16 +597,12 @@ const BetAndFixturesScreen: React.FC = () => {
       const fetched = await Promise.all(
         toFetch.map(({ league, season }) => getStandingsByLeagueId({ leagueId: league.league.id, season }))
       );
-
-      // write to cache
       const freshCache = readStandingsCache();
       toFetch.forEach((entry, idx) => {
         freshCache.items = freshCache.items.filter(it => !(it.leagueId === entry.league.league.id && it.season === entry.season));
         freshCache.items.push({ leagueId: entry.league.league.id, season: entry.season, data: fetched[idx], ts: Date.now() });
       });
       writeStandingsCache(freshCache);
-
-      // append to state
       setLeaguesStandings(prev => [...prev, ...fetched]);
       results.push(...fetched);
     }
@@ -640,17 +610,18 @@ const BetAndFixturesScreen: React.FC = () => {
     return results;
   };
 
-  // ===== BET: run batch, obey cooldown, cache results, and append =====
+  // ===== BET flow =====
   const [loadingBatch, setLoadingBatch] = useState(false);
 
   const handleBet = async () => {
-    if (!canBet) return;
+    if (loadingBatch) return;
     setLoadingBatch(true);
 
     const fromStr = moment(fromDate).format('YYYY-MM-DD');
     const toStr   = moment(toDate).format('YYYY-MM-DD');
     const optionIds = [...selectedOptions.map(o => o.id)].sort((a,b) => a-b);
 
+    // Determine cache hits vs misses (per-league)
     const predCache = readPredictionsCache();
     const hits: PredictionsCacheItem[] = [];
     const misses: LeagueDataModel[] = [];
@@ -672,17 +643,20 @@ const BetAndFixturesScreen: React.FC = () => {
       return { fixtures: p.fixtures, option: fallback };
     });
 
-    // new fixtures if any misses (multi-season)
+    // new fixtures if any misses (multi-season) — also tells us whether we hit network per league
     let fetchedFixtures: FixtureDataModel[] = [];
+    let fetchedLeagueCount = 0; // <<< CHANGE: track leagues that actually triggered network
     if (misses.length > 0) {
       const responses = await getLeaguesSeasonsFixtures(misses);
-      fetchedFixtures = responses.flat();
+      fetchedFixtures = responses.flatMap(r => r.fixtures);
+      fetchedLeagueCount = responses.filter(r => r.didNetwork).length;
     }
 
-    // ensure standings (use returned list immediately to avoid race)
+    // ensure standings
     const freshStandings = await ensureStandingsFor(selectedBatch);
     const standingsForPrediction = [...leaguesStandings, ...freshStandings];
 
+    // predict
     const mergedAll = dedupeFixtures([...allFixtures, ...cachedFixtures, ...fetchedFixtures]);
     const currentWindow = filterBetweenDates(filterFutureFixtures(mergedAll), fromDate, toDate);
 
@@ -692,15 +666,13 @@ const BetAndFixturesScreen: React.FC = () => {
       leaguesStandingsLocal: standingsForPrediction
     });
 
-    // Merge predictions: cached + fresh
     const mergedPred = [...predictedFixtures, ...cachedPred, ...freshPred];
 
-    // write predictions cache for misses (store only predictions relevant to that league)
+    // write predictions cache for misses
     if (misses.length > 0) {
       const toWrite = readPredictionsCache();
       for (const lg of misses) {
         const season = lg.seasons.find(s => s.current === true)?.year || lg.seasons[0]?.year;
-
         const perLeaguePred = freshPred
           .map(p => ({
             fixtures: p.fixtures.filter(f => f.league.id === lg.league.id && f.league.season === season),
@@ -724,7 +696,6 @@ const BetAndFixturesScreen: React.FC = () => {
           predicted: perLeaguePred,
           ts: Date.now(),
         };
-
         toWrite.items = toWrite.items.filter(it => !cacheKeyMatch(it, lg.league.id, season, fromStr, toStr, optionIds));
         toWrite.items.push(item);
       }
@@ -734,11 +705,15 @@ const BetAndFixturesScreen: React.FC = () => {
     setAllFixtures(mergedAll);
     setPredictedFixtures(mergedPred);
 
-    setLastBetAt(Date.now());
+    // <<< CHANGE: start cooldown ONLY if we actually fetched 7 leagues now
+    if (fetchedLeagueCount >= MAX_BATCH) {
+      setLastBetAt(Date.now());
+    }
+
     setLoadingBatch(false);
   };
 
-  // ===== Bet Options bar (restored) =====
+  // Bet Options bar (unchanged)
   const addOrRemoveBetOptions = (id: number) => {
     setSelectedOptions((prev) => {
       const exists = prev.some((o) => o.id === id);
@@ -748,7 +723,7 @@ const BetAndFixturesScreen: React.FC = () => {
     });
   };
 
-  // ===== Standings/H2H helpers =====
+  // Standings/H2H helpers (unchanged)
   const toggleModal = () => {
     setIsModalOpen((v) => !v);
     if (isModalOpen) {
@@ -756,12 +731,7 @@ const BetAndFixturesScreen: React.FC = () => {
       setFixtureTeamsStandings(null);
     }
   };
-
-  const getFixtureTeamsStandingsLocal = ({
-    homeTeamId, awayTeamId, leagueId
-  }: {
-    homeTeamId: number; awayTeamId: number; leagueId: number;
-  }) => {
+  const getFixtureTeamsStandingsLocal = ({ homeTeamId, awayTeamId, leagueId }:{ homeTeamId:number; awayTeamId:number; leagueId:number; }) => {
     try {
       const selectedLeagueStandings = [...leaguesStandings]
         .find((standings) => standings.response[0]?.league.id === leagueId)
@@ -772,21 +742,16 @@ const BetAndFixturesScreen: React.FC = () => {
       setFixtureTeamsStandings(null);
     }
   };
-
   const onFixtureClick = (fx: FixtureDataModel) => () => {
     setSelectedFixtureRow(fx);
-    getFixtureTeamsStandingsLocal({
-      homeTeamId: fx.teams.home.id,
-      awayTeamId: fx.teams.away.id,
-      leagueId: fx.league.id,
-    });
+    getFixtureTeamsStandingsLocal({ homeTeamId: fx.teams.home.id, awayTeamId: fx.teams.away.id, leagueId: fx.league.id });
     toggleModal();
   };
 
   // ===== Render =====
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      {/* Top bar */}
+      {/* Top bar (unchanged) */}
       <div className="sticky top-0 z-20 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-6 py-3">
           <div className="text-sm font-semibold">BetSmart</div>
@@ -808,14 +773,14 @@ const BetAndFixturesScreen: React.FC = () => {
       </div>
 
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-6 py-6 lg:grid-cols-12">
-        {/* Left: leagues selection + search + bet options */}
+        {/* Left column (search + options + leagues) — unchanged UI */}
         <div className="lg:col-span-5">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-bold">Select Leagues</h2>
             <div className="text-xs text-slate-400">Batch: {selectedBatch.length}/{MAX_BATCH}</div>
           </div>
 
-          {/* Search controls */}
+          {/* Search */}
           <div className="mb-3 flex items-center gap-2">
             <input
               value={rawSearch}
@@ -840,7 +805,7 @@ const BetAndFixturesScreen: React.FC = () => {
             </button>
           </div>
 
-          {/* Bet Options (restored) */}
+          {/* Bet Options */}
           <div className="mb-3">
             <div className="mb-2 text-sm font-semibold">Bet Options</div>
             <div className="flex flex-wrap gap-2">
@@ -864,6 +829,7 @@ const BetAndFixturesScreen: React.FC = () => {
             </div>
           </div>
 
+          {/* Leagues accordion */}
           <div className="rounded-2xl border border-slate-700/60 bg-slate-900">
             {isLoadingLeagues ? (
               <div className="grid place-items-center py-12"><CircularProgress /></div>
@@ -906,7 +872,7 @@ const BetAndFixturesScreen: React.FC = () => {
           </div>
         </div>
 
-        {/* Right: predictions list */}
+        {/* Right: predictions list (unchanged) */}
         <div className="lg:col-span-7">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-bold">Predictions</h2>
@@ -975,7 +941,7 @@ const BetAndFixturesScreen: React.FC = () => {
         {loadingBatch ? 'Betting…' : 'Bet'}
       </button>
 
-      {/* ===== Modal: H2H + last 5 + standings ===== */}
+      {/* Modal (unchanged) */}
       <Modal
         isOpen={isModalOpen}
         onRequestClose={toggleModal}
@@ -984,7 +950,6 @@ const BetAndFixturesScreen: React.FC = () => {
         contentLabel="Fixture details"
       >
         <div className="flex h-full flex-col">
-          {/* Header */}
           <div className="flex items-center justify-between border-b border-slate-700/60 px-5 py-3">
             <div className="flex items-center gap-3">
               {selectedFixtureRow && (
@@ -1000,9 +965,7 @@ const BetAndFixturesScreen: React.FC = () => {
             <button onClick={toggleModal} className="rounded-xl bg-slate-800 px-3 py-1 text-xs font-semibold text-slate-200 hover:bg-slate-700">Close</button>
           </div>
 
-          {/* Body */}
           <div className="grid flex-1 grid-cols-1 gap-4 overflow-y-auto p-5 md:grid-cols-3">
-            {/* H2H */}
             <div className="rounded-2xl border border-slate-700/60 bg-slate-900 p-3">
               <div className="mb-2 text-sm font-semibold text-slate-100">Head to Head</div>
               <div className="space-y-2">
@@ -1012,7 +975,6 @@ const BetAndFixturesScreen: React.FC = () => {
               </div>
             </div>
 
-            {/* Home last 5 */}
             <div className="rounded-2xl border border-slate-700/60 bg-slate-900 p-3">
               <div className="mb-2 text-sm font-semibold text-slate-100">Home Team – Last 5</div>
               <div className="space-y-2">
@@ -1022,7 +984,6 @@ const BetAndFixturesScreen: React.FC = () => {
               </div>
             </div>
 
-            {/* Away last 5 */}
             <div className="rounded-2xl border border-slate-700/60 bg-slate-900 p-3">
               <div className="mb-2 text-sm font-semibold text-slate-100">Away Team – Last 5</div>
               <div className="space-y-2">
@@ -1032,7 +993,6 @@ const BetAndFixturesScreen: React.FC = () => {
               </div>
             </div>
 
-            {/* Standings (full width) */}
             <div className="md:col-span-3">
               <div className="rounded-2xl border border-slate-700/60 bg-slate-900 p-3">
                 <div className="mb-2 text-sm font-semibold text-slate-100">League Standings (Both Teams)</div>
