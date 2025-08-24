@@ -18,6 +18,7 @@ export const predictBothTeamsToScore = ({
   leaguesStandings: StandingsModel[];
 }) => {
   const predictedFixtures = currentFixtures.filter((currentFixture) => {
+    console.log({currentFixture})
     const awayTeamStanding: StandingsDataStandingModel =
       sharedFunctions.getAwayTeamStanding({
         standings: leaguesStandings,
@@ -45,6 +46,7 @@ export const predictBothTeamsToScore = ({
       currentSeason: currentFixture.league.season,
       teamId: currentFixture.teams.home.id,
     });
+    console.log({allFixtures, allAwayTeamAwayFixtures, allHomeTeamHomeFixtures, head2HeadMatches, homeTeamStanding, awayTeamStanding})
     if (
       allAwayTeamAwayFixtures.length < 3 ||
       allHomeTeamHomeFixtures.length < 3 ||
