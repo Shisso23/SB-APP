@@ -753,65 +753,88 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     }, 0)/lastFiveAwayTeamAwayFixtures.length
   }
 
-
-  export const teamMin0 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
-   return (teamAAverageGoalsScored< 0.9 && teamBAverageGoalsConceded<0.8)
+  type GoalInputs = {
+    teamAAverageGoalsScored: number;
+    teamBAverageGoalsConceded: number;
   }
 
-  export const teamMax0 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
-    return (teamAAverageGoalsScored<=0.8 && teamBAverageGoalsConceded<=0.8)
-   }
+  /**
+ * Simple blended expected goals for Team A vs Team B.
+ * Attack is weighted slightly more than opponent concessions.
+ */
+const expectedGoalsForTeamA = ({
+  teamAAverageGoalsScored,
+  teamBAverageGoalsConceded,
+}: GoalInputs) => {
+  // Safety: clamp crazy values (optional but helps)
+  const scored = Math.max(0, Math.min(teamAAverageGoalsScored, 5));
+  const conceded = Math.max(0, Math.min(teamBAverageGoalsConceded, 5));
 
-  export const teamMax1 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
-    return (teamAAverageGoalsScored<=0.9 && teamBAverageGoalsConceded<1) ||
-    (teamAAverageGoalsScored<=0.8 && teamBAverageGoalsConceded< 1.5)
-   }
-
-  export const teamMin1 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
-    return (teamAAverageGoalsScored>=1 && teamBAverageGoalsConceded>= 1.9) ||
-    (teamAAverageGoalsScored >= 1.8 && teamBAverageGoalsConceded>= 1.5) ||
-    (teamAAverageGoalsScored >= 2 && teamBAverageGoalsConceded>= 1)
-    || (teamAAverageGoalsScored >= 1.5 && teamBAverageGoalsConceded>= 1.8)
-
-  }
-
-  export const teamMax2 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
-    return (((teamAAverageGoalsScored+teamBAverageGoalsConceded)/2) + 1) <= 2
-  }
-
-  export const teamMin2 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
-    return (teamAAverageGoalsScored >= 1.8 && teamBAverageGoalsConceded>= 2.4) ||
-    (teamAAverageGoalsScored >= 2 && teamBAverageGoalsConceded>= 2)||
-    (teamAAverageGoalsScored >= 2.4 && teamBAverageGoalsConceded>= 1.8)||
-    (teamAAverageGoalsScored >= 2.6 && teamBAverageGoalsConceded>= 1.4)
-  }
-
-  export const teamMax3 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
-    return (((teamAAverageGoalsScored+teamBAverageGoalsConceded)/2) + 1) <= 3
-  }
+  // Offense slightly more important than opponent’s conceding
+  return 0.6 * scored + 0.4 * conceded;
+};
 
 
-  export const teamMin3 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
-    return (teamAAverageGoalsScored >= 2.5 && teamBAverageGoalsConceded>= 2) ||
-    (teamAAverageGoalsScored >= 2 && teamBAverageGoalsConceded>= 2.5)||
-    (teamAAverageGoalsScored >= 1.8 && teamBAverageGoalsConceded>= 3)
-    || (teamAAverageGoalsScored >= 3.2 && teamBAverageGoalsConceded>= 2)
+export const teamMax0 = (inputs: GoalInputs) => {
+  const xG = expectedGoalsForTeamA(inputs);
+  // Very low attacking expectation: likely to stay on 0
+  return xG <= 0.2;
+};
 
+export const teamMin0 = (inputs: GoalInputs) => {
+  const xG = expectedGoalsForTeamA(inputs);
+  // We expect *some* goal threat (not a total blank)
+  return xG >= 0.4;
+};
 
-  }
+export const teamMax1 = (inputs: GoalInputs) => {
+  const xG = expectedGoalsForTeamA(inputs);
+  // Comfortable that they don't explode for 2+
+  return xG <= 0.8;
+};
 
-  export const teamMax4 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
-    return (((teamAAverageGoalsScored+teamBAverageGoalsConceded)/2) + 1) <= 4
+   export const teamMin1 = (inputs: GoalInputs) => {
+    const xG = expectedGoalsForTeamA(inputs);
+  
+    // True when we reasonably expect 1+ goal
+    return xG >= 1.0;
+  };
 
-  }
+  export const teamMax2 = (inputs: GoalInputs) => {
+    const xG = expectedGoalsForTeamA(inputs);
+    // From earlier: "we don't expect 3+"
+    return xG <= 1.6;
+  };
 
-  export const teamMin4 =({teamAAverageGoalsScored, teamBAverageGoalsConceded}:{teamAAverageGoalsScored: number, teamBAverageGoalsConceded: number})=>{
-    return (teamAAverageGoalsScored >= 2.8 && teamBAverageGoalsConceded>= 3.2) ||
-    (teamAAverageGoalsScored >= 2.5 && teamBAverageGoalsConceded>= 3.6)||
-    (teamAAverageGoalsScored >= 3.5 && teamBAverageGoalsConceded>= 2.8)
-    || (teamAAverageGoalsScored >= 4 && teamBAverageGoalsConceded>= 2.5)
+  export const teamMin2 = (inputs: GoalInputs) => {
+    const xG = expectedGoalsForTeamA(inputs);
+    // Strong expectation of 2+ goals
+    return xG >= 2.0;
+  };
 
-  }
+  export const teamMax3 = (inputs: GoalInputs) => {
+    const xG = expectedGoalsForTeamA(inputs);
+    // Not expecting a 4+ goal performance
+    return xG <= 2.6;
+  };
+  
+  export const teamMin3 = (inputs: GoalInputs) => {
+    const xG = expectedGoalsForTeamA(inputs);
+    // Only true for very strong attacking expectation
+    return xG >= 3.0;
+  };
+
+  export const teamMax4 = (inputs: GoalInputs) => {
+    const xG = expectedGoalsForTeamA(inputs);
+    // Not expecting a 5+ goal monster performance
+    return xG <= 3.6;
+  };
+  
+  export const teamMin4 = (inputs: GoalInputs) => {
+    const xG = expectedGoalsForTeamA(inputs);
+    // Only in crazy attacking matchups
+    return xG >= 4.0;
+  };
 
   export default {
     getLastFiveHomeTeamHomeFixtures,
