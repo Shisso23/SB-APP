@@ -771,7 +771,7 @@ const expectedGoalsForTeamA = ({
   const conceded = Math.max(0, Math.min(teamBAverageGoalsConceded, 5));
 
   // Offense slightly more important than opponent’s conceding
-  return 0.6 * scored + 0.4 * conceded;
+  return 0.7 * scored + 0.5 * conceded;
 };
 
 
