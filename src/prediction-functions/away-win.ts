@@ -123,7 +123,7 @@ export const predictAwayWin = ({
       sharedFunctions.awayTeamWinsMostMatchesTimes({
         awayTeamId: currentFixture.teams.away.id,
         fixtures: head2HeadMatches,
-        winPercentage: 100,
+        winPercentage: 60,
       })
     );
   });

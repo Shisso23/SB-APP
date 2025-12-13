@@ -60,14 +60,17 @@ export const predict2_6_goals = ({
     ) {
       return false;
     }
+
     return (
       homeTeamGoalsPercentage({ homeTeamStanding }) >= 160 &&
       awayTeamGoalsPercentage({ awayTeamStanding }) >= 160 &&
       homeTeamStanding.all.played >= 2 &&
       awayTeamStanding.all.played >= 2 &&
-      fixtureH2hFixtures.every(
-        (fixture) => fixture.goals.away + fixture.goals.home <= 5
-      ) &&
+      // <<< FIXED: H2H totals must be between 2 and 6 inclusive
+      fixtureH2hFixtures.every((fixture) => {
+        const total = fixture.goals.home + fixture.goals.away;
+        return total >= 2 && total <= 6;
+      }) &&
       homeTeamScroreInMostH2HFixtures({
         h2hFixtures: fixtureH2hFixtures,
         homeTeamId: lastFiveHomeTeamHomeFixtures[0].teams.home.id,
@@ -80,6 +83,7 @@ export const predict2_6_goals = ({
       })
     );
   });
+
   return {
     fixtures: predictedFixtures,
     option: betOptions.find(

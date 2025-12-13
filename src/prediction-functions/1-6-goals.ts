@@ -43,11 +43,13 @@ export const predict1_6_goals = ({
       teamId: currentFixture.teams.away.id,
       allFixtures,
     });
+
     const homeTeamStanding: StandingsDataStandingModel = getHomeTeamStanding({
       standings: leaguesStandings,
       homeTeamId: currentFixture.teams.home.id,
       leagueId: currentFixture.league.id,
     });
+
     const awayTeamStanding: StandingsDataStandingModel = getAwayTeamStanding({
       standings: leaguesStandings,
       awayTeamId: currentFixture.teams.away.id,
@@ -57,17 +59,17 @@ export const predict1_6_goals = ({
     if (fixtureH2hFixtures.length < 3) {
       return false;
     }
+
     return (
       homeTeamGoalsPercentage({ homeTeamStanding }) >= 130 &&
       awayTeamGoalsPercentage({ awayTeamStanding }) >= 130 &&
-      fixtureH2hFixtures.every(
-        (fixture) => fixture.goals.away + fixture.goals.home >= 1
-      ) &&
-      fixtureH2hFixtures.every(
-        (fixture) => fixture.goals.away + fixture.goals.home <= 5
-      )
+      fixtureH2hFixtures.every((fixture) => {
+        const totalGoals = fixture.goals.home + fixture.goals.away;
+        return totalGoals >= 1 && totalGoals <= 6;
+      })
     );
   });
+
   return {
     fixtures: predictedFixtures,
     option: betOptions.find(

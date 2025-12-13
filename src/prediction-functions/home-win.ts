@@ -123,7 +123,7 @@ export const predictHomeWin = ({
       sharedFunctions.homeTeamWinsMostMatches({
         fixtures: head2HeadMatches,
         homeTeamId: currentFixture.teams.home.id,
-        winPercentage: 100,
+        winPercentage: 60,
       })
     );
   });

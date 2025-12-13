@@ -29,93 +29,82 @@ export const predict2_5_goals = ({
       currentSeason: currentFixture.league.season,
       teamId: currentFixture.teams.home.id,
     });
+
     if (
       allAwayTeamAwayFixtures.length < 3 ||
       allHomeTeamHomeFixtures.length < 3
-    )
+    ) {
       return false;
-    const homeTeamAverageGoalsScored = sharedFunctions.averageGoalsScoredAtHome(
-      { homeTeamHomeFixtures: allHomeTeamHomeFixtures }
-    );
+    }
+
+    const homeTeamAverageGoalsScored =
+      sharedFunctions.averageGoalsScoredAtHome({
+        homeTeamHomeFixtures: allHomeTeamHomeFixtures,
+      });
+
     const homeTeamAverageGoalsConceded =
       sharedFunctions.averageGoalsConcededAtHome({
         homeTeamHomeFixtures: allHomeTeamHomeFixtures,
       });
-    const awayTeamAverageGoalsScored = sharedFunctions.averageGoalsScoredAway({
-      awayTeamAwayFixtures: allAwayTeamAwayFixtures,
-    });
+
+    const awayTeamAverageGoalsScored =
+      sharedFunctions.averageGoalsScoredAway({
+        awayTeamAwayFixtures: allAwayTeamAwayFixtures,
+      });
+
     const awayTeamAverageGoalsConceded =
       sharedFunctions.averageGoalsConcededAway({
         awayTeamAwayFixtures: allAwayTeamAwayFixtures,
       });
 
-    return (
-      (sharedFunctions.teamMin2({
-        teamAAverageGoalsScored: awayTeamAverageGoalsScored,
-        teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
-      }) ||
-        sharedFunctions.teamMin2({
-          teamAAverageGoalsScored: homeTeamAverageGoalsScored,
-          teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
-        }) ||
-        (sharedFunctions.teamMin1({
-          teamAAverageGoalsScored: awayTeamAverageGoalsScored,
-          teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
-        }) &&
-          sharedFunctions.teamMin1({
-            teamAAverageGoalsScored: homeTeamAverageGoalsScored,
-            teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
-          }))) &&
-      ((sharedFunctions.teamMax4({
-        teamAAverageGoalsScored: homeTeamAverageGoalsScored,
-        teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
-      }) &&
-        sharedFunctions.teamMax0({
-          teamAAverageGoalsScored: awayTeamAverageGoalsScored,
-          teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
-        })) ||
-        (sharedFunctions.teamMax0({
-          teamAAverageGoalsScored: homeTeamAverageGoalsScored,
-          teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
-        }) &&
-          sharedFunctions.teamMax4({
-            teamAAverageGoalsScored: awayTeamAverageGoalsScored,
-            teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
-          })) ||
-        (sharedFunctions.teamMax1({
-          teamAAverageGoalsScored: homeTeamAverageGoalsScored,
-          teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
-        }) &&
-          sharedFunctions.teamMax4({
-            teamAAverageGoalsScored: awayTeamAverageGoalsScored,
-            teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
-          })) ||
-        (sharedFunctions.teamMax4({
-          teamAAverageGoalsScored: homeTeamAverageGoalsScored,
-          teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
-        }) &&
-          sharedFunctions.teamMax1({
-            teamAAverageGoalsScored: awayTeamAverageGoalsScored,
-            teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
-          })) ||
-        (sharedFunctions.teamMax3({
-          teamAAverageGoalsScored: homeTeamAverageGoalsScored,
-          teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
-        }) &&
-          sharedFunctions.teamMax2({
-            teamAAverageGoalsScored: awayTeamAverageGoalsScored,
-            teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
-          })) ||
-        (sharedFunctions.teamMax2({
-          teamAAverageGoalsScored: homeTeamAverageGoalsScored,
-          teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
-        }) &&
-          sharedFunctions.teamMax3({
-            teamAAverageGoalsScored: awayTeamAverageGoalsScored,
-            teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
-          })))
-    );
+    const homeInputs = {
+      teamAAverageGoalsScored: homeTeamAverageGoalsScored,
+      teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
+    };
+    const awayInputs = {
+      teamAAverageGoalsScored: awayTeamAverageGoalsScored,
+      teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
+    };
+
+    // ---- LOWER BOUND: we want "at least 2 goals in the match" to be likely ----
+    const atLeastTwoGoalsLikely =
+      // one team likely to score 2+ on its own
+      sharedFunctions.teamMin2(homeInputs) ||
+      sharedFunctions.teamMin2(awayInputs) ||
+      // or both teams likely to score at least once
+      (sharedFunctions.teamMin1(homeInputs) &&
+        sharedFunctions.teamMin1(awayInputs));
+
+    // ---- HISTORY: total goals between 2 and 5 happens often in their games ----
+    const lastFiveHomeHomeFixtures =
+      sharedFunctions.getLastFiveHomeTeamHomeFixtures({
+        teamId: currentFixture.teams.home.id,
+        allFixtures,
+      });
+
+    const lastFiveAwayAwayFixtures =
+      sharedFunctions.getLastFiveAwayTeamAwayFixtures({
+        teamId: currentFixture.teams.away.id,
+        allFixtures,
+      });
+
+    const recentFixturesForTotals = [
+      ...lastFiveHomeHomeFixtures,
+      ...lastFiveAwayAwayFixtures,
+    ];
+
+    const totalsMostlyBetween2and5 =
+      sharedFunctions.fixtureTotalMinMax({
+        fixtures: recentFixturesForTotals,
+        minGoals: 2,
+        maxGoals: 5,          // <= 5 goals
+        occurencePercentage: 80, // tweak if you want stricter/looser
+      });
+
+    // ---- FINAL RETURN: literally "2–5 goals is the usual and likely outcome" ----
+    return atLeastTwoGoalsLikely && totalsMostlyBetween2and5;
   });
+
   return {
     fixtures: predictedFixtures,
     option: betOptions.find(

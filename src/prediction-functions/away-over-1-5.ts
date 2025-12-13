@@ -65,12 +65,10 @@ export const predictAwayOver1_5 = ({
         teamAAverageGoalsScored: awayTeamAverageGoalsScored,
         teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
       }) &&
-      sharedFunctions.awayTeamScroreInMostAwayFixtures({
+      sharedFunctions.awayHasAtMostNoScoreGames({
         awayfixtures: allAwayTeamAwayFixtures,
-        minGoals: 1,
-      }) &&
-      awayTeamStanding?.rank < homeTeamStanding?.rank &&
-      homeTeamStanding?.rank - awayTeamStanding?.rank >= 5
+        maxNoScoreGames: 0
+      })
     );
   });
   return {

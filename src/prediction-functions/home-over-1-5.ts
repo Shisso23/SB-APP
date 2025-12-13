@@ -59,14 +59,9 @@ export const predictHomeOver1_5 = ({
         teamAAverageGoalsScored: homeTeamAverageGoalsScored,
         teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
       }) &&
-      sharedFunctions.homeTeamScroreInMostH2HFixtures({
-        h2hFixtures: head2HeadMatches,
-        homeTeamId: currentFixture.teams.home.id,
-        minGoals: 2,
-      }) &&
-      sharedFunctions.HomeTeamScroreInMostHomeFixtures({
+      sharedFunctions.homeHasAtMostNoScoreGames({
         homefixtures: allHomeTeamHomeFixtures,
-        minGoals: 1,
+        maxNoScoreGames: 1
       })
     );
   });
