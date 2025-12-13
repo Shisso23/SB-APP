@@ -93,7 +93,7 @@ export const predictBothTeamsToScore = ({
       }) && 
       sharedFunctions.awayHasAtMostNoScoreGames({
         awayfixtures: allAwayTeamAwayFixtures,
-        maxNoScoreGames: 0
+        maxNoScoreGames: 1
       }) &&
       sharedFunctions.homeHasAtMostNoScoreGames({
         homefixtures: allHomeTeamHomeFixtures,
