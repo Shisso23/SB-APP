@@ -78,13 +78,6 @@ export const predictHomeOver0_5 = ({
         homeTeamId: currentFixture.teams.home.id,
         minGoals: 1,
       }) &&
-      sharedFunctions.againstAwayTeamGoalsPercentage({
-        awayTeamStanding: awayTeamStanding,
-      }) >= 120 &&
-      sharedFunctions.HomeTeamScroreInMostHomeFixtures({
-        homefixtures: allHomeTeamHomeFixtures,
-        minGoals: 1,
-      }) &&
       homeTeamStanding?.rank < awayTeamStanding?.rank
     );
   });
