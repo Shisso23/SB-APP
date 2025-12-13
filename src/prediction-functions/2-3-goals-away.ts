@@ -57,6 +57,10 @@ export const predict2_3_goals_Away = ({
       sharedFunctions.teamMax3({
         teamAAverageGoalsScored: awayTeamAverageGoalsScored,
         teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
+      }) &&
+      sharedFunctions.awayHasAtMostNoScoreGames({
+        awayfixtures: allAwayTeamAwayFixtures,
+        maxNoScoreGames: 0
       })
     );
   });

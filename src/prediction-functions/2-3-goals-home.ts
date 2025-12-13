@@ -50,6 +50,10 @@ export const predict2_3_goals_Home = ({
       sharedFunctions.teamMax3({
         teamAAverageGoalsScored: homeTeamAverageGoalsScored,
         teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
+      }) &&
+      sharedFunctions.homeHasAtMostNoScoreGames({
+        homefixtures: allHomeTeamHomeFixtures,
+        maxNoScoreGames: 1
       })
     );
   });

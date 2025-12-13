@@ -753,6 +753,44 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     }, 0)/lastFiveAwayTeamAwayFixtures.length
   }
 
+  export const homeHasAtMostNoScoreGames = ({
+    homefixtures,
+    maxNoScoreGames = 1,
+  }: {
+    homefixtures: FixtureDataModel[];
+    maxNoScoreGames?: number;
+  }) => {
+    if (!homefixtures.length) return false;
+  
+    let noScoreCount = 0;
+    homefixtures.forEach(fixture => {
+      if (fixture.goals.home === 0) {
+        noScoreCount += 1;
+      }
+    });
+  
+    return noScoreCount <= maxNoScoreGames;
+  };
+  
+  export const awayHasAtMostNoScoreGames = ({
+    awayfixtures,
+    maxNoScoreGames = 1,
+  }: {
+    awayfixtures: FixtureDataModel[];
+    maxNoScoreGames?: number;
+  }) => {
+    if (!awayfixtures.length) return false;
+  
+    let noScoreCount = 0;
+    awayfixtures.forEach(fixture => {
+      if (fixture.goals.away === 0) {
+        noScoreCount += 1;
+      }
+    });
+  
+    return noScoreCount <= maxNoScoreGames;
+  };
+
   type GoalInputs = {
     teamAAverageGoalsScored: number;
     teamBAverageGoalsConceded: number;

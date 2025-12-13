@@ -28,7 +28,11 @@ export const predict1_2_goals_Away = ({
   
       return( 
         (sharedFunctions.teamMin1({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded})) &&
-        (sharedFunctions.teamMax2({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded}))
+        (sharedFunctions.teamMax2({teamAAverageGoalsScored:awayTeamAverageGoalsScored, teamBAverageGoalsConceded: homeTeamAverageGoalsConceded})) &&
+        sharedFunctions.awayHasAtMostNoScoreGames({
+          awayfixtures: allAwayTeamAwayFixtures,
+          maxNoScoreGames: 0
+        })
       )
     });
     return {

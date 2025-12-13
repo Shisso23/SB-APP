@@ -81,8 +81,8 @@ export const predictBothTeamsToScore = ({
       });
 
     return (
-      awayTeamStanding?.rank < homeTeamStanding?.rank &&
-      homeTeamStanding?.rank - awayTeamStanding?.rank >= 5 &&
+      // awayTeamStanding?.rank < homeTeamStanding?.rank &&
+      // homeTeamStanding?.rank - awayTeamStanding?.rank >= 5 &&
       sharedFunctions.teamMin1({
         teamAAverageGoalsScored: homeTeamAverageGoalsScored,
         teamBAverageGoalsConceded: awayTeamAverageGoalsConceded,
@@ -90,6 +90,14 @@ export const predictBothTeamsToScore = ({
       sharedFunctions.teamMin1({
         teamAAverageGoalsScored: awayTeamAverageGoalsScored,
         teamBAverageGoalsConceded: homeTeamAverageGoalsConceded,
+      }) && 
+      sharedFunctions.awayHasAtMostNoScoreGames({
+        awayfixtures: allAwayTeamAwayFixtures,
+        maxNoScoreGames: 0
+      }) &&
+      sharedFunctions.homeHasAtMostNoScoreGames({
+        homefixtures: allHomeTeamHomeFixtures,
+        maxNoScoreGames: 1
       })
     );
   });
