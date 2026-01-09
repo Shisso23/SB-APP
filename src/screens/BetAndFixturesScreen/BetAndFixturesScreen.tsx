@@ -462,6 +462,11 @@ const BetAndFixturesScreen: React.FC = () => {
     setCurrentFixtures(filterBetweenDates(futureFixtures, fromDate, toDate));
   }, [futureFixtures.length, fromDate.toString(), toDate.toString()]);
 
+  useEffect(()=>{
+    const bet = ()=> handleBet()
+    bet()
+  }, [fromDate.toString(), toDate.toString()])
+
   useEffect(() => {
     const grouped: Record<number, betOptionModel[]> = {};
     for (const block of predictedFixtures) {
@@ -763,7 +768,8 @@ const BetAndFixturesScreen: React.FC = () => {
             <DatePicker
               className="rounded-md border border-slate-700 bg-white px-2 py-1 text-xs text-slate-900"
               selected={fromDate}
-              onChange={(d: Date) => setFromDate(d)}
+              onChange={(d: Date) =>{ 
+                setFromDate(d)}}
             />
             <span>to</span>
             <DatePicker
