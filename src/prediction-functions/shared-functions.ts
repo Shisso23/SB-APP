@@ -83,10 +83,9 @@ export const getLastFiveHomeTeamHomeFixtures = ({
           fixture.fixture.status.short === 'FT'
         );
       })
-      .slice(0, numberOfH2HMatchesBack)
       .sort((fixtureA, fixtureB) => {
         return fixtureB.fixture.timestamp - fixtureA.fixture.timestamp;
-      }); //TODO verify there's enough h2h
+      }).slice(0, numberOfH2HMatchesBack);
   };
   
   export const HomeTeamScroreInMostHomeFixtures = ({
