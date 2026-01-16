@@ -834,7 +834,7 @@ export const teamMax1 = (inputs: GoalInputs) => {
     const xG = expectedGoalsForTeamA(inputs);
   
     // True when we reasonably expect 1+ goal
-    return xG >= 1.0;
+    return xG >= 1.4;
   };
 
   export const teamMax2 = (inputs: GoalInputs) => {
@@ -846,7 +846,7 @@ export const teamMax1 = (inputs: GoalInputs) => {
   export const teamMin2 = (inputs: GoalInputs) => {
     const xG = expectedGoalsForTeamA(inputs);
     // Strong expectation of 2+ goals
-    return xG >= 2.0;
+    return xG >= 2.3;
   };
 
   export const teamMax3 = (inputs: GoalInputs) => {
@@ -858,7 +858,7 @@ export const teamMax1 = (inputs: GoalInputs) => {
   export const teamMin3 = (inputs: GoalInputs) => {
     const xG = expectedGoalsForTeamA(inputs);
     // Only true for very strong attacking expectation
-    return xG >= 3.0;
+    return xG >= 3.4;
   };
 
   export const teamMax4 = (inputs: GoalInputs) => {
@@ -870,7 +870,7 @@ export const teamMax1 = (inputs: GoalInputs) => {
   export const teamMin4 = (inputs: GoalInputs) => {
     const xG = expectedGoalsForTeamA(inputs);
     // Only in crazy attacking matchups
-    return xG >= 4.0;
+    return xG >= 4.3;
   };
 
   export default {
