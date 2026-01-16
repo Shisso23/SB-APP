@@ -344,7 +344,7 @@ const BetAndFixturesScreen: React.FC = () => {
     (allLeagues || []).forEach((l) => {
       const key = l?.country?.name || 'Unknown';
       if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(l);
+      map.get(key)?.push(l);
     });
     return Array.from(map.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
