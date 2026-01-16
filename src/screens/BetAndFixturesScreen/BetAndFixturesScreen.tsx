@@ -446,7 +446,7 @@ const BetAndFixturesScreen: React.FC = () => {
     const mergedPred = withinWindow.flatMap(it =>
       it.predicted.map(p => {
         const opt = betOptions.find(o => o.id === p.option.id);
-        const fallback = opt ?? new betOptionModel({ ...p.option, predict: () => ({ fixtures: [], option: {} as any }) });
+        const fallback = opt ?? new betOptionModel({ ...p.option, predict: () => ({ fixtures: [], option: {} as betOptionModel }) });
         return { fixtures: p.fixtures, option: fallback };
       })
     );
@@ -647,7 +647,7 @@ const BetAndFixturesScreen: React.FC = () => {
     const cachedFixtures = hits.flatMap(h => h.fixtures);
     const cachedPred = hits.flatMap(h => h.predicted).map(p => {
       const opt = betOptions.find(o => o.id === p.option.id);
-      const fallback = opt ?? new betOptionModel({ ...p.option, predict: () => ({ fixtures: [], option: {} as any }) });
+      const fallback = opt ?? new betOptionModel({ ...p.option, predict: () => ({ fixtures: [], option: {} as betOptionModel }) });
       return { fixtures: p.fixtures, option: fallback };
     });
 
