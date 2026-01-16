@@ -996,9 +996,10 @@ const BetAndFixturesScreen: React.FC = () => {
             <div className="rounded-2xl border border-slate-700/60 bg-slate-900 p-3">
               <div className="mb-2 text-sm font-semibold text-slate-100">Away Team – Last 5</div>
               <div className="space-y-2">
-                {selectedFixtureRow && getLastFiveTeamFixtures({ teamId: selectedFixtureRow.teams.away.id, allFixtures }).map((fx) => (
+                {selectedFixtureRow && getLastFiveTeamFixtures({ teamId: selectedFixtureRow.teams.away.id, allFixtures }).map((fx) => {
+                  return (
                   <FixtureRowCompact key={fx.fixture.id} fixture={fx} />
-                ))}
+                )})}
               </div>
             </div>
 

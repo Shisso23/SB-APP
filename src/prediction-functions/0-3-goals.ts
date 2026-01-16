@@ -84,6 +84,7 @@ export const predictMultiGoals0_3 = ({
         allFixtures,
       });
 
+
     const lastFiveAwayTeamAwayFixtures =
       sharedFunctions.getLastFiveAwayTeamAwayFixtures({
         teamId: currentFixture.teams.away.id,

@@ -17,10 +17,10 @@ export const getLastFiveHomeTeamHomeFixtures = ({
           fixture.fixture.status.short === 'FT'
         );
       })
-      .slice(0, numberOTeamLastFixturesBack)
       .sort((fixtureA, fixtureB) => {
         return fixtureB.fixture.timestamp - fixtureA.fixture.timestamp;
-      });
+      })
+      .slice(0, numberOTeamLastFixturesBack);
   };
   
   export const getLastFiveAwayTeamAwayFixtures = ({
@@ -37,10 +37,10 @@ export const getLastFiveHomeTeamHomeFixtures = ({
           fixture.fixture.status.short === 'FT'
         );
       })
-      .slice(0, numberOTeamLastFixturesBack)
       .sort((fixtureA, fixtureB) => {
         return fixtureB.fixture.timestamp - fixtureA.fixture.timestamp;
-      });
+      })
+      .slice(0, numberOTeamLastFixturesBack);
   };
 
   export const getLastFiveTeamFixtures = ({
@@ -58,10 +58,10 @@ export const getLastFiveHomeTeamHomeFixtures = ({
           fixture.fixture.status.short === 'FT'
         );
       })
-      .slice(0, numberOTeamLastFixturesBack)
       .sort((fixtureA, fixtureB) => {
         return fixtureB.fixture.timestamp - fixtureA.fixture.timestamp;
-      });
+      })
+      .slice(0, numberOTeamLastFixturesBack);
   };
   
   export const getH2HFixtures = ({
