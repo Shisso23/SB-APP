@@ -95,7 +95,7 @@ export const predictBothTeamsToScore = ({
       }) &&
       sharedFunctions.homeHasAtMostNoScoreGames({
         homefixtures: allHomeTeamHomeFixtures,
-        maxNoScoreGames: 1
+        maxNoScoreGames: 0
       })
     );
   });
