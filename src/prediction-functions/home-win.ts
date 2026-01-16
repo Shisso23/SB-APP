@@ -37,6 +37,7 @@ export const predictHomeWin = ({
         teamId: currentFixture.teams.home.id,
       });
 
+
     const awayTeamStanding: StandingsDataStandingModel =
       sharedFunctions.getAwayTeamStanding({
         standings: leaguesStandings,

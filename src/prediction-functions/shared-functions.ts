@@ -671,7 +671,7 @@ export const getLastFiveHomeTeamHomeFixtures = ({
       // .filter(fixture=> fixture.league.season === currentSeason)
       .sort((fixtureA, fixtureB) => {
         return fixtureB.fixture.timestamp - fixtureA.fixture.timestamp;
-      });
+      }).slice(0, numberOTeamLastFixturesBack);
   };
 
   export const getAllAwayTeamAwayFixtures = ({
@@ -693,7 +693,7 @@ export const getLastFiveHomeTeamHomeFixtures = ({
       // .filter(fixture=> fixture.league.season === currentSeason) //Change this
       .sort((fixtureA, fixtureB) => {
         return fixtureB.fixture.timestamp - fixtureA.fixture.timestamp;
-      });
+      }).slice(0, numberOTeamLastFixturesBack);
   };
 
 
