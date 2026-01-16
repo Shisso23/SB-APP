@@ -53,7 +53,7 @@ export const predict1_2_goals_Home = ({
       }) &&
       sharedFunctions.homeHasAtMostNoScoreGames({
         homefixtures: allHomeTeamHomeFixtures,
-        maxNoScoreGames: 1
+        maxNoScoreGames: 0
       })
     );
   });
