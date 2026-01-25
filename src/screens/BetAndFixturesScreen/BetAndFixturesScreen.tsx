@@ -456,6 +456,13 @@ const BetAndFixturesScreen: React.FC = () => {
   // <<< CHANGE: allow bets during countdown if batch < 7
   const canBet = selectedBatch.length > 0 && (selectedBatch.length < MAX_BATCH || msLeft === 0);
 
+
+  useEffect(() => {
+    if (msLeft === 0) {
+      resetSelection();
+    }
+  }, [msLeft]);
+
   // Fixtures helpers
   const filterFutureFixtures = (fixtures: FixtureDataModel[]) =>
     fixtures.filter((fixtureData) =>
