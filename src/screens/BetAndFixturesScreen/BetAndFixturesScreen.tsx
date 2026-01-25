@@ -458,7 +458,7 @@ const BetAndFixturesScreen: React.FC = () => {
 
 
   useEffect(() => {
-    if (msLeft === 0) {
+    if (msLeft === 0 && selectedBatch.length>=5) {
       resetSelection();
     }
   }, [msLeft]);
