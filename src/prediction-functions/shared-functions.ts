@@ -840,7 +840,7 @@ export const teamMax1 = (inputs: GoalInputs) => {
   export const teamMax2 = (inputs: GoalInputs) => {
     const xG = expectedGoalsForTeamA(inputs);
     // From earlier: "we don't expect 3+"
-    return xG <= 1.6;
+    return xG <= 1.5;
   };
 
   export const teamMin2 = (inputs: GoalInputs) => {
@@ -852,13 +852,13 @@ export const teamMax1 = (inputs: GoalInputs) => {
   export const teamMax3 = (inputs: GoalInputs) => {
     const xG = expectedGoalsForTeamA(inputs);
     // Not expecting a 4+ goal performance
-    return xG <= 2.6;
+    return xG <= 2.5;
   };
   
   export const teamMin3 = (inputs: GoalInputs) => {
     const xG = expectedGoalsForTeamA(inputs);
     // Only true for very strong attacking expectation
-    return xG >= 3.4;
+    return xG >= 3.2;
   };
 
   export const teamMax4 = (inputs: GoalInputs) => {
