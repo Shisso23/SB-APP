@@ -33,6 +33,7 @@ import { betOptions, numberOfSeasonsBack } from '../../variables/variables';
 import { betOptionModel } from '../../models/bet-option-model';
 import { toMomentDate } from '../../helpers/dateTimeHelper';
 import { getH2HFixtures, getLastFiveTeamFixtures } from '../../prediction-functions/shared-functions';
+import { fuzzyScore } from '../../helpers/fuzzy-search';
 
 Modal.setAppElement('#root');
 
@@ -355,26 +356,63 @@ const BetAndFixturesScreen: React.FC = () => {
   const filteredGroups = useMemo(() => {
     const q = searchQuery.trim();
     if (!q) return groupedByCountry;
-    let re: RegExp;
-    try { re = new RegExp(q, 'i'); } catch { re = new RegExp(q.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&'), 'i'); }
-
-    if (searchMode === 'country') {
-      return groupedByCountry.filter(([country]) => re.test(country)).map(([country, leagues]) => [country, leagues] as const);
-    }
-    if (searchMode === 'league') {
+  
+    // tune these thresholds
+    const COUNTRY_THRESHOLD = 0.75;
+    const LEAGUE_THRESHOLD = 0.72;
+  
+    if (searchMode === "country") {
       return groupedByCountry
-        .map(([country, leagues]) => [country, leagues.filter(l => re.test(l.league.name))] as const)
-        .filter(([, leagues]) => leagues.length > 0);
+        .map(([country, leagues]) => {
+          const score = fuzzyScore(q, country);
+          return { country, leagues, score };
+        })
+        .filter(x => x.score >= COUNTRY_THRESHOLD)
+        .sort((a, b) => b.score - a.score)
+        .map(x => [x.country, x.leagues] as const);
     }
-    const countryMatches = new Set(groupedByCountry.filter(([country]) => re.test(country)).map(([country]) => country));
+  
+    if (searchMode === "league") {
+      return groupedByCountry
+        .map(([country, leagues]) => {
+          const scoredLeagues = leagues
+            .map(l => ({ l, score: fuzzyScore(q, l.league.name) }))
+            .filter(x => x.score >= LEAGUE_THRESHOLD)
+            .sort((a, b) => b.score - a.score)
+            .map(x => x.l);
+  
+          return { country, leagues: scoredLeagues, score: scoredLeagues.length ? 1 : 0 };
+        })
+        .filter(x => x.leagues.length > 0)
+        .map(x => [x.country, x.leagues] as const);
+    }
+  
+    // searchMode === "both"
     return groupedByCountry
       .map(([country, leagues]) => {
-        if (countryMatches.has(country)) return [country, leagues] as const;
-        const filtered = leagues.filter(l => re.test(l.league.name));
-        return [country, filtered] as const;
+        const countryScore = fuzzyScore(q, country);
+  
+        if (countryScore >= COUNTRY_THRESHOLD) {
+          // if country matches well, keep all its leagues
+          return { country, leagues, score: countryScore };
+        }
+  
+        const scoredLeagues = leagues
+          .map(l => ({ l, score: fuzzyScore(q, l.league.name) }))
+          .filter(x => x.score >= LEAGUE_THRESHOLD)
+          .sort((a, b) => b.score - a.score)
+          .map(x => x.l);
+  
+        const bestLeagueScore = scoredLeagues.length ? fuzzyScore(q, scoredLeagues[0].league.name) : 0;
+  
+        return { country, leagues: scoredLeagues, score: bestLeagueScore };
       })
-      .filter(([, leagues]) => leagues.length > 0);
+      .filter(x => x.leagues.length > 0)
+      .sort((a, b) => b.score - a.score) // optional: countries with best match first
+      .map(x => [x.country, x.leagues] as const);
+  
   }, [groupedByCountry, searchQuery, searchMode]);
+  
 
   // Selection helpers
   const isSelected = (id: number) => selectedBatch.some((l) => l.league.id === id);
