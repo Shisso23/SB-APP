@@ -11,7 +11,7 @@ export const betOptions: betOptionModel[] = [
     id: betOptionsEnum.BOTH_TEAMS_TO_SCORE,
     shortName: "GG",
     level: 3,
-    description: "Both teams score at least 1 goal",
+    description: "Both teams to score at least one goal in regular time.",
     predict: (params: {
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];
@@ -19,11 +19,11 @@ export const betOptions: betOptionModel[] = [
     }) => predictionFunctions.predictBothTeamsToScore(params),
   },
   {
-    name: "Home",
+    name: "Home Win",
     id: betOptionsEnum.HOME,
     level: 3,
     shortName: "Home",
-    description: "Home team to win",
+    description: "Home team to win the match in regular time.",
     predict: (params: {
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];
@@ -35,15 +35,15 @@ export const betOptions: betOptionModel[] = [
     id: betOptionsEnum.HOME_OVER_1_5,
     level: 3,
     shortName: "H.Over 1.5",
-    description: "Home team scores at least 2 goals",
+    description: "Home team to score 2 or more goals.",
     predict: (params: {
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];
       leaguesStandings: StandingsModel[];
     }) => predictionFunctions.predictHomeOver1_5(params),
   },
-  {name: 'over 1.5', id: betOptionsEnum.OVER_1_5, level: 1, shortName: 'Over 1.5', description: '2 goals or more in the match',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predictOver1_5(params)},
-  {name: 'Over 2.5', id: betOptionsEnum.OVER_2_5, level: 2, shortName: 'Over 2.5', description: '3 goals or more in the match',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predictOver2_5(params)},
+  {name: 'Over 1.5', id: betOptionsEnum.OVER_1_5, level: 1, shortName: 'Over 1.5', description: 'At least 2 total goals in the match.',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predictOver1_5(params)},
+  {name: 'Over 2.5', id: betOptionsEnum.OVER_2_5, level: 2, shortName: 'Over 2.5', description: 'At least 3 total goals in the match.',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predictOver2_5(params)},
   // {
   //   name: "Home Wins Either Half",
   //   id: 5,
@@ -56,8 +56,8 @@ export const betOptions: betOptionModel[] = [
   //     leaguesStandings: StandingsModel[];
   //   }) => predictionFunctions.predictHomeWinsEitherHalf(params),
   // },
-  {name: 'Multi Goals (2-5) Goals', id: betOptionsEnum.TOTAL_2_5_GOALS, level: 2, shortName: '2->5 G', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predict2_5_goals(params)},
-  {name: 'Multi Goals (3-6) Goals', id: betOptionsEnum.TOTAL_3_6_GOALS, level: 3, shortName: '3->6 G', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predict3_6_goals(params)},
+  {name: 'Multi Goals (2-5)', id: betOptionsEnum.TOTAL_2_5_GOALS, level: 2, shortName: '2->5 G', description: 'Total goals range: minimum 2 and maximum 5.',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predict2_5_goals(params)},
+  {name: 'Multi Goals (3-6)', id: betOptionsEnum.TOTAL_3_6_GOALS, level: 3, shortName: '3->6 G', description: 'Total goals range: minimum 3 and maximum 6.',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predict3_6_goals(params)},
   // {name: 'Both Halves Over 0.5', id: 8, level: 4, shortName: 'B.H.Over 0.5', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictBothHalVOver0_5(params)},
   //  {name: 'Draw or GG', id: betOptionsEnum.DRAW_OR_GG, level: 2, shortName: 'DD OR GG', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predictDrawOrBothTeamsScore(params)},
   // {
@@ -74,11 +74,11 @@ export const betOptions: betOptionModel[] = [
   // },
   //  {name: 'Half-Time Draw', id: 11, level: 4, shortName: 'HT-DRAW', description: '',   predict: (params: {currentFixtures: FixtureDataModel[]  ,allFixtures: FixtureDataModel[], leaguesStandings: StandingsModel[]})=> predictionFunctions.predictHTDraw(params)},
   {
-    name: "Away",
+    name: "Away Win",
     id: betOptionsEnum.AWAY,
     level: 4,
     shortName: "Away",
-    description: "Away team to win",
+    description: "Away team to win the match in regular time.",
     predict: (params: {
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];
@@ -90,7 +90,7 @@ export const betOptions: betOptionModel[] = [
     id: betOptionsEnum.AWAY_OVER_1_5,
     level: 4,
     shortName: "A.Over 1.5",
-    description: "Away team scores at least 2 goals",
+    description: "Away team to score 2 or more goals.",
     predict: (params: {
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];
@@ -114,7 +114,7 @@ export const betOptions: betOptionModel[] = [
     id: betOptionsEnum.HOME_OVER_O_5,
     level: 0,
     shortName: "H.Over 0.5",
-    description: "Home team scores at least once",
+    description: "Home team to score at least 1 goal.",
     predict: (params: {
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];
@@ -126,7 +126,7 @@ export const betOptions: betOptionModel[] = [
     id: betOptionsEnum.AWAY_OVER_0_5,
     level: 2,
     shortName: "A.Over 0.5",
-    description: "Away team scores at least once",
+    description: "Away team to score at least 1 goal.",
     predict: (params: {
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];
@@ -151,7 +151,7 @@ export const betOptions: betOptionModel[] = [
     id: betOptionsEnum.TOTAL_0_3_GOALS,
     level: 2,
     shortName: "0->3 G",
-    description: "0 to 3 goals in total score",
+    description: "Total goals range: minimum 0 and maximum 3.",
     predict: (params: {
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];
@@ -163,7 +163,7 @@ export const betOptions: betOptionModel[] = [
     id: betOptionsEnum.HOME_1_2_GOALS,
     level: 3,
     shortName: "1->2 H. G",
-    description: "Home team scores 1 or 2 goals",
+    description: "Home team total goals range: 1 to 2.",
     predict: (params: {
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];
@@ -176,7 +176,7 @@ export const betOptions: betOptionModel[] = [
     id: betOptionsEnum.HOME_2_3_GOALS,
     level: 4,
     shortName: "2->3 H. G",
-    description: "Home team scores 2 or 3 goals",
+    description: "Home team total goals range: 2 to 3.",
     predict: (params: {
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];
@@ -188,7 +188,7 @@ export const betOptions: betOptionModel[] = [
     id: betOptionsEnum.AWAY_1_2_GOALS,
     level: 3,
     shortName: "1->2 A. G",
-    description: "Away team scores 1 or 2 goals",
+    description: "Away team total goals range: 1 to 2.",
     predict: (params: {
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];
@@ -200,7 +200,7 @@ export const betOptions: betOptionModel[] = [
     id: betOptionsEnum.AWAY_2_3_GOALS,
     level: 4,
     shortName: "2->3 A. G",
-    description: "Away team scores 2 or 3 goals",
+    description: "Away team total goals range: 2 to 3.",
     predict: (params: {
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];
@@ -213,7 +213,7 @@ export const betOptions: betOptionModel[] = [
     id: betOptionsEnum.HOME_OR_DRAW,
     level: 1,
     shortName: "Home or Dr.",
-    description: "Home team wins or draw",
+    description: "Double chance: home team win or draw.",
     predict: (params: {
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];

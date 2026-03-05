@@ -2,6 +2,110 @@ import { FixtureDataModel } from "../models/fixtures";
 import { StandingsDataStandingModel, StandingsModel } from "../models/standings-models";
 import { numberOfH2HMatchesBack, numberOTeamLastFixturesBack } from "../variables/variables";
 
+const MIN_FORM_FIXTURES = 3;
+const MIN_H2H_FIXTURES = 2;
+const MAX_REASONABLE_GOALS = 5;
+
+const hasMinimumSample = (fixtures: FixtureDataModel[], minimumSample = 1) =>
+  Array.isArray(fixtures) && fixtures.length >= minimumSample;
+
+const ratioAtLeast = ({
+  passed,
+  total,
+  ratio,
+  minimumSample = 1,
+}: {
+  passed: number;
+  total: number;
+  ratio: number;
+  minimumSample?: number;
+}) => {
+  if (total < minimumSample || total === 0) {
+    return false;
+  }
+  return passed / total >= ratio;
+};
+
+const percentageAtLeast = ({
+  passed,
+  total,
+  percentage,
+  minimumSample = 1,
+}: {
+  passed: number;
+  total: number;
+  percentage: number;
+  minimumSample?: number;
+}) => ratioAtLeast({ passed, total, ratio: percentage / 100, minimumSample });
+
+const countMatchingFixtures = (
+  fixtures: FixtureDataModel[],
+  predicate: (fixture: FixtureDataModel) => boolean
+) => fixtures.reduce((count, fixture) => (predicate(fixture) ? count + 1 : count), 0);
+
+const sortedFinishedFixtures = (
+  allFixtures: FixtureDataModel[],
+  predicate: (fixture: FixtureDataModel) => boolean
+) =>
+  allFixtures
+    .filter(
+      (fixture) =>
+        predicate(fixture) &&
+        fixture.fixture?.status?.short === "FT"
+    )
+    .sort((fixtureA, fixtureB) => fixtureB.fixture.timestamp - fixtureA.fixture.timestamp);
+
+const clampNumber = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value));
+
+const recencyWeightedAverage = (values: number[]) => {
+  if (values.length === 0) {
+    return 0;
+  }
+
+  const weighted = values.reduce(
+    (acc, value, index) => {
+      const weight = values.length - index;
+      return {
+        weightedSum: acc.weightedSum + value * weight,
+        weightTotal: acc.weightTotal + weight,
+      };
+    },
+    { weightedSum: 0, weightTotal: 0 }
+  );
+
+  if (weighted.weightTotal === 0) {
+    return 0;
+  }
+
+  const sorted = [...values].sort((a, b) => a - b);
+  const median =
+    sorted.length % 2 === 0
+      ? (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
+      : sorted[Math.floor(sorted.length / 2)];
+
+  const weightedAverage = weighted.weightedSum / weighted.weightTotal;
+
+  return clampNumber((weightedAverage * 0.8) + (median * 0.2), 0, MAX_REASONABLE_GOALS);
+};
+
+const averageFromFixtures = (
+  fixtures: FixtureDataModel[],
+  goalSelector: (fixture: FixtureDataModel) => number
+) => {
+  if (!fixtures.length) {
+    return 0;
+  }
+
+  const recentFixtures = fixtures.slice(0, numberOTeamLastFixturesBack);
+  const goals = recentFixtures.map((fixture) => {
+    const parsedGoal = Number(goalSelector(fixture));
+    return Number.isFinite(parsedGoal) ? parsedGoal : 0;
+  });
+
+  return recencyWeightedAverage(goals);
+};
+
 
 export const getLastFiveHomeTeamHomeFixtures = ({
     teamId,
@@ -10,17 +114,10 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     teamId: number;
     allFixtures: FixtureDataModel[];
   }) => {
-    return allFixtures
-      .filter(fixture => {
-        return (
-          fixture.teams.home.id === teamId &&
-          fixture.fixture.status.short === 'FT'
-        );
-      })
-      .sort((fixtureA, fixtureB) => {
-        return fixtureB.fixture.timestamp - fixtureA.fixture.timestamp;
-      })
-      .slice(0, numberOTeamLastFixturesBack);
+    return sortedFinishedFixtures(
+      allFixtures,
+      (fixture) => fixture.teams.home.id === teamId
+    ).slice(0, numberOTeamLastFixturesBack);
   };
   
   export const getLastFiveAwayTeamAwayFixtures = ({
@@ -30,17 +127,10 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     teamId: number;
     allFixtures: FixtureDataModel[];
   }) => {
-    return allFixtures
-      .filter(fixture => {
-        return (
-          (fixture.teams.away.id === teamId) &&
-          fixture.fixture.status.short === 'FT'
-        );
-      })
-      .sort((fixtureA, fixtureB) => {
-        return fixtureB.fixture.timestamp - fixtureA.fixture.timestamp;
-      })
-      .slice(0, numberOTeamLastFixturesBack);
+    return sortedFinishedFixtures(
+      allFixtures,
+      (fixture) => fixture.teams.away.id === teamId
+    ).slice(0, numberOTeamLastFixturesBack);
   };
 
   export const getLastFiveTeamFixtures = ({
@@ -50,18 +140,10 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     teamId: number;
     allFixtures: FixtureDataModel[];
   }) => {
-    return allFixtures
-      .filter(fixture => {
-        return (
-          (fixture.teams.away.id === teamId ||
-            fixture.teams.home.id === teamId) &&
-          fixture.fixture.status.short === 'FT'
-        );
-      })
-      .sort((fixtureA, fixtureB) => {
-        return fixtureB.fixture.timestamp - fixtureA.fixture.timestamp;
-      })
-      .slice(0, numberOTeamLastFixturesBack);
+    return sortedFinishedFixtures(
+      allFixtures,
+      (fixture) => fixture.teams.away.id === teamId || fixture.teams.home.id === teamId
+    ).slice(0, numberOTeamLastFixturesBack);
   };
   
   export const getH2HFixtures = ({
@@ -73,19 +155,12 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     teamTwoId: number;
     allFixtures: FixtureDataModel[];
   }) => {
-    return allFixtures
-      .filter(fixture => {
-        return (
-          (fixture.teams.home.id === teamOneId ||
-            fixture.teams.away.id === teamOneId) &&
-          (fixture.teams.home.id === teamTwoId ||
-            fixture.teams.away.id === teamTwoId) &&
-          fixture.fixture.status.short === 'FT'
-        );
-      })
-      .sort((fixtureA, fixtureB) => {
-        return fixtureB.fixture.timestamp - fixtureA.fixture.timestamp;
-      }).slice(0, numberOfH2HMatchesBack);
+    return sortedFinishedFixtures(
+      allFixtures,
+      (fixture) =>
+        (fixture.teams.home.id === teamOneId || fixture.teams.away.id === teamOneId) &&
+        (fixture.teams.home.id === teamTwoId || fixture.teams.away.id === teamTwoId)
+    ).slice(0, numberOfH2HMatchesBack);
   };
   
   export const HomeTeamScroreInMostHomeFixtures = ({
@@ -95,17 +170,17 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     homefixtures: FixtureDataModel[];
     minGoals: number;
   }) => {
-    let conditionPassedCount = 0;
-    homefixtures.forEach(fixtureData => {
-      if (fixtureData.goals.home >= minGoals) {
-        conditionPassedCount += 1;
-      }
+    const conditionPassedCount = countMatchingFixtures(
+      homefixtures,
+      (fixtureData) => fixtureData.goals.home >= minGoals
+    );
+
+    return ratioAtLeast({
+      passed: conditionPassedCount,
+      total: homefixtures.length,
+      ratio: 0.8,
+      minimumSample: MIN_FORM_FIXTURES,
     });
-    if (conditionPassedCount / homefixtures.length >= 0.8) {
-      return true;
-    } else {
-      return false;
-    }
   };
 
   export const awayTeamScroreInMostAwayFixtures = ({
@@ -115,17 +190,17 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     awayfixtures: FixtureDataModel[];
     minGoals: number;
   }) => {
-    let conditionPassedCount = 0;
-    awayfixtures.forEach(fixtureData => {
-      if (fixtureData.goals.away >= minGoals) {
-        conditionPassedCount += 1;
-      }
+    const conditionPassedCount = countMatchingFixtures(
+      awayfixtures,
+      (fixtureData) => fixtureData.goals.away >= minGoals
+    );
+
+    return ratioAtLeast({
+      passed: conditionPassedCount,
+      total: awayfixtures.length,
+      ratio: 0.6,
+      minimumSample: MIN_FORM_FIXTURES,
     });
-    if (conditionPassedCount / awayfixtures.length >= 0.6) {
-      return true;
-    } else {
-      return false;
-    }
   };
   
   export const awayTeamFailScroringInMostAwayFixtures = ({
@@ -133,22 +208,27 @@ export const getLastFiveHomeTeamHomeFixtures = ({
   }: {
     awayfixtures: FixtureDataModel[];
   }) => {
-    let conditionPassedCount = 0;
-    awayfixtures.forEach(fixtureData => {
-      if (fixtureData.goals.away < 1) {
-        conditionPassedCount += 1;
-      }
+    const conditionPassedCount = countMatchingFixtures(
+      awayfixtures,
+      (fixtureData) => fixtureData.goals.away < 1
+    );
+
+    return ratioAtLeast({
+      passed: conditionPassedCount,
+      total: awayfixtures.length,
+      ratio: 0.45,
+      minimumSample: MIN_FORM_FIXTURES,
     });
-    if (conditionPassedCount / awayfixtures.length >= 0.45) {
-      return true;
-    } else {
-      return false;
-    }
   };
 
   export const teamDidNotWinLastFixture=({allPastFiveFixtures, teamId}: {allPastFiveFixtures: FixtureDataModel[], teamId: number })=>{
-      if ((allPastFiveFixtures[0].teams.home.id=== teamId && allPastFiveFixtures[0].goals.home<= allPastFiveFixtures[0].goals.away)||
-      allPastFiveFixtures[0].teams.away.id=== teamId && allPastFiveFixtures[0].goals.away<= allPastFiveFixtures[0].goals.home
+      const lastFixture = allPastFiveFixtures?.[0];
+      if (!lastFixture) {
+        return false;
+      }
+
+      if ((lastFixture.teams.home.id=== teamId && lastFixture.goals.home<= lastFixture.goals.away)||
+      lastFixture.teams.away.id=== teamId && lastFixture.goals.away<= lastFixture.goals.home
       ){
         return true
       }
@@ -156,8 +236,13 @@ export const getLastFiveHomeTeamHomeFixtures = ({
   }
 
   export const teamDidNotLoseLastFixture=({allPastFiveFixtures, teamId}: {allPastFiveFixtures: FixtureDataModel[], teamId: number })=>{
-    if ((allPastFiveFixtures[0].teams.home.id=== teamId && allPastFiveFixtures[0].goals.home>= allPastFiveFixtures[0].goals.away)||
-    allPastFiveFixtures[0].teams.away.id=== teamId && allPastFiveFixtures[0].goals.away>= allPastFiveFixtures[0].goals.home
+    const lastFixture = allPastFiveFixtures?.[0];
+    if (!lastFixture) {
+      return false;
+    }
+
+    if ((lastFixture.teams.home.id=== teamId && lastFixture.goals.home>= lastFixture.goals.away)||
+    lastFixture.teams.away.id=== teamId && lastFixture.goals.away>= lastFixture.goals.home
     ){
       return true
     }
@@ -165,8 +250,13 @@ export const getLastFiveHomeTeamHomeFixtures = ({
 }
 
   export const teamWonLastFixture=({allPastFiveFixtures, teamId}: {allPastFiveFixtures: FixtureDataModel[], teamId: number })=>{
-    if ((allPastFiveFixtures[0].teams.home.id=== teamId && allPastFiveFixtures[0].goals.home> allPastFiveFixtures[0].goals.away)||
-    allPastFiveFixtures[0].teams.away.id=== teamId && allPastFiveFixtures[0].goals.away> allPastFiveFixtures[0].goals.home
+    const lastFixture = allPastFiveFixtures?.[0];
+    if (!lastFixture) {
+      return false;
+    }
+
+    if ((lastFixture.teams.home.id=== teamId && lastFixture.goals.home> lastFixture.goals.away)||
+    lastFixture.teams.away.id=== teamId && lastFixture.goals.away> lastFixture.goals.home
     ){
       return true
     }
@@ -178,17 +268,17 @@ export const getLastFiveHomeTeamHomeFixtures = ({
   }: {
     homefixtures: FixtureDataModel[];
   }) => {
-    let conditionPassedCount = 0;
-    homefixtures.forEach(fixtureData => {
-      if (fixtureData.goals.home < 1) {
-        conditionPassedCount += 1;
-      }
+    const conditionPassedCount = countMatchingFixtures(
+      homefixtures,
+      (fixtureData) => fixtureData.goals.home < 1
+    );
+
+    return ratioAtLeast({
+      passed: conditionPassedCount,
+      total: homefixtures.length,
+      ratio: 0.45,
+      minimumSample: MIN_FORM_FIXTURES,
     });
-    if (conditionPassedCount / homefixtures.length >= 0.45) {
-      return true;
-    } else {
-      return false;
-    }
   };
 
   export const homeTeamFailWinningInMostHomeFixtures = ({
@@ -196,17 +286,17 @@ export const getLastFiveHomeTeamHomeFixtures = ({
   }: {
     homefixtures: FixtureDataModel[];
   }) => {
-    let conditionPassedCount = 0;
-    homefixtures.forEach(fixtureData => {
-      if (fixtureData.goals.home <= fixtureData.goals.away) {
-        conditionPassedCount += 1;
-      }
+    const conditionPassedCount = countMatchingFixtures(
+      homefixtures,
+      (fixtureData) => fixtureData.goals.home <= fixtureData.goals.away
+    );
+
+    return ratioAtLeast({
+      passed: conditionPassedCount,
+      total: homefixtures.length,
+      ratio: 0.6,
+      minimumSample: MIN_FORM_FIXTURES,
     });
-    if (conditionPassedCount / homefixtures.length >= 0.6) {
-      return true;
-    } else {
-      return false;
-    }
   };
   
   export const awayTeamFailWinningInMostAwayFixtures = ({
@@ -214,17 +304,17 @@ export const getLastFiveHomeTeamHomeFixtures = ({
   }: {
     awayFixtures: FixtureDataModel[];
   }) => {
-    let conditionPassedCount = 0;
-    awayFixtures.forEach(fixtureData => {
-      if (fixtureData.goals.away <= fixtureData.goals.home) {
-        conditionPassedCount += 1;
-      }
+    const conditionPassedCount = countMatchingFixtures(
+      awayFixtures,
+      (fixtureData) => fixtureData.goals.away <= fixtureData.goals.home
+    );
+
+    return ratioAtLeast({
+      passed: conditionPassedCount,
+      total: awayFixtures.length,
+      ratio: 0.6,
+      minimumSample: MIN_FORM_FIXTURES,
     });
-    if (conditionPassedCount / awayFixtures.length >= 0.6) {
-      return true;
-    } else {
-      return false;
-    }
   };
   
   export const homeTeamMinGoals = ({
@@ -236,16 +326,17 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     minGoals: number;
     occurencePercentage: number
   }) => {
-    let count = 0;
-    homeTeamFixtures.forEach(fixture => {
-      if (fixture.goals.home >= minGoals) {
-        count += 1;
-      }
+    const count = countMatchingFixtures(
+      homeTeamFixtures,
+      (fixture) => fixture.goals.home >= minGoals
+    );
+
+    return percentageAtLeast({
+      passed: count,
+      total: homeTeamFixtures.length,
+      percentage: occurencePercentage,
+      minimumSample: MIN_FORM_FIXTURES,
     });
-    if ((count / homeTeamFixtures.length) *100 >= occurencePercentage) {
-      return true;
-    }
-    return false;
   };
   
   export const awayTeamMinGoals = ({
@@ -257,16 +348,17 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     minGoals: number;
     occurencePercentage: number
   }) => {
-    let count = 0;
-    awayTeamFixtures.forEach(fixture => {
-      if (fixture.goals.away >= minGoals) {
-        count += 1;
-      }
+    const count = countMatchingFixtures(
+      awayTeamFixtures,
+      (fixture) => fixture.goals.away >= minGoals
+    );
+
+    return percentageAtLeast({
+      passed: count,
+      total: awayTeamFixtures.length,
+      percentage: occurencePercentage,
+      minimumSample: MIN_FORM_FIXTURES,
     });
-    if ((count / awayTeamFixtures.length )*100>= occurencePercentage) {
-      return true;
-    }
-    return false;
   };
 
   export const otherHomeTeamGoalsInAwayFixtures = ({
@@ -276,17 +368,17 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     awayTeamFixtures: FixtureDataModel[];
     goals: number;
   }) => {
-    let conditionPassedCount = 0;
-    awayTeamFixtures.forEach(fixtureData => {
-      if (fixtureData.goals.home >= goals) {
-        conditionPassedCount += 1;
-      }
+    const conditionPassedCount = countMatchingFixtures(
+      awayTeamFixtures,
+      (fixtureData) => fixtureData.goals.home >= goals
+    );
+
+    return ratioAtLeast({
+      passed: conditionPassedCount,
+      total: awayTeamFixtures.length,
+      ratio: 0.8,
+      minimumSample: MIN_FORM_FIXTURES,
     });
-    if (conditionPassedCount / awayTeamFixtures.length >=0.8) {
-      return true;
-    } else {
-      return false;
-    }
   };
   
   export const otherAwayTeamGoalsInHomeFixtures = ({
@@ -296,17 +388,17 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     homeTeamFixtures: FixtureDataModel[];
     goals: number;
   }) => {
-    let conditionPassedCount = 0;
-    homeTeamFixtures.forEach(fixtureData => {
-      if (fixtureData.goals.away >= goals) {
-        conditionPassedCount += 1;
-      }
+    const conditionPassedCount = countMatchingFixtures(
+      homeTeamFixtures,
+      (fixtureData) => fixtureData.goals.away >= goals
+    );
+
+    return ratioAtLeast({
+      passed: conditionPassedCount,
+      total: homeTeamFixtures.length,
+      ratio: 0.8,
+      minimumSample: MIN_FORM_FIXTURES,
     });
-    if (conditionPassedCount / homeTeamFixtures.length >=0.8) {
-      return true;
-    } else {
-      return false;
-    }
   };
   
   export const otherHomeTeamMinMaxGoalsInAwayFixtures = ({
@@ -318,20 +410,17 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     minGoals: number;
     maxGoals: number;
   }) => {
-    let conditionPassedCount = 0;
-    awayTeamFixtures.forEach(fixtureData => {
-      if (
-        fixtureData.goals.home >= minGoals &&
-        fixtureData.goals.home <= maxGoals
-      ) {
-        conditionPassedCount += 1;
-      }
+    const conditionPassedCount = countMatchingFixtures(
+      awayTeamFixtures,
+      (fixtureData) => fixtureData.goals.home >= minGoals && fixtureData.goals.home <= maxGoals
+    );
+
+    return ratioAtLeast({
+      passed: conditionPassedCount,
+      total: awayTeamFixtures.length,
+      ratio: 0.6,
+      minimumSample: MIN_FORM_FIXTURES,
     });
-    if (conditionPassedCount / awayTeamFixtures.length > 0.6) {
-      return true;
-    } else {
-      return false;
-    }
   };
   
   export const otherAwayTeamMinMaxGoalsInHomeFixtures = ({
@@ -343,20 +432,17 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     minGoals: number;
     maxGoals: number;
   }) => {
-    let conditionPassedCount = 0;
-    homeTeamFixtures.forEach(fixtureData => {
-      if (
-        fixtureData.goals.away >= minGoals &&
-        fixtureData.goals.away <= maxGoals
-      ) {
-        conditionPassedCount += 1;
-      }
+    const conditionPassedCount = countMatchingFixtures(
+      homeTeamFixtures,
+      (fixtureData) => fixtureData.goals.away >= minGoals && fixtureData.goals.away <= maxGoals
+    );
+
+    return ratioAtLeast({
+      passed: conditionPassedCount,
+      total: homeTeamFixtures.length,
+      ratio: 0.6,
+      minimumSample: MIN_FORM_FIXTURES,
     });
-    if (conditionPassedCount / homeTeamFixtures.length > 0.6) {
-      return true;
-    } else {
-      return false;
-    }
   };
   
   export const homeTeamWinsMostMatches = ({
@@ -368,22 +454,21 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     homeTeamId: number;
     winPercentage?: number
   }) => {
-    let conditionPassedCount = 0;
-    fixtures.forEach(fixtureData => {
-      if (
+    const conditionPassedCount = countMatchingFixtures(
+      fixtures,
+      (fixtureData) =>
         (fixtureData.score.fulltime.home > fixtureData.score.fulltime.away &&
           fixtureData.teams.home.id === homeTeamId) ||
         (fixtureData.score.fulltime.away > fixtureData.score.fulltime.home &&
           fixtureData.teams.away.id === homeTeamId)
-      ) {
-        conditionPassedCount += 1;
-      }
+    );
+
+    return percentageAtLeast({
+      passed: conditionPassedCount,
+      total: fixtures.length,
+      percentage: winPercentage,
+      minimumSample: MIN_H2H_FIXTURES,
     });
-    if (conditionPassedCount / fixtures.length >= (winPercentage/100)) {
-      return true;
-    } else {
-      return false;
-    }
   };
   //  return false;
   //   }
@@ -398,31 +483,25 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     awayTeamId: number;
     winPercentage?: number
   }) => {
-    let conditionPassedCount = 0;
-    fixtures.forEach(fixtureData => {
-      if (
+    const conditionPassedCount = countMatchingFixtures(
+      fixtures,
+      (fixtureData) =>
         (fixtureData.score.fulltime.home > fixtureData.score.fulltime.away &&
           fixtureData.teams.home.id === awayTeamId) ||
         (fixtureData.score.fulltime.away > fixtureData.score.fulltime.home &&
           fixtureData.teams.away.id === awayTeamId)
-      ) {
-        conditionPassedCount += 1;
-      }
+    );
+
+    return percentageAtLeast({
+      passed: conditionPassedCount,
+      total: fixtures.length,
+      percentage: winPercentage,
+      minimumSample: MIN_H2H_FIXTURES,
     });
-    if (conditionPassedCount / fixtures.length >= (winPercentage/100)) {
-      return true;
-    } else {
-      return false;
-
-
-
-    }
   };
   
-
-
   export const filterByDate = (fixtures: FixtureDataModel[]) =>
-    fixtures.sort((fixtureA, fixtureB) => {
+    [...fixtures].sort((fixtureA, fixtureB) => {
       return fixtureA.fixture.timestamp - fixtureB.fixture.timestamp;
     });
   
@@ -436,9 +515,14 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     leagueId: number;
   }) => {
     let teamStanding: StandingsDataStandingModel;
-    standings.forEach(standing => {
-      standing?.response[0]?.league.standings.forEach(teamStanding_ => {
-        teamStanding_.forEach(standing_ => {
+    standings.forEach((standing) => {
+      const response = standing?.response?.[0];
+      if (!response || response.league?.id !== leagueId) {
+        return;
+      }
+
+      response.league.standings.forEach((teamStanding_) => {
+        teamStanding_.forEach((standing_) => {
           if (`${standing_.team.id}` === `${homeTeamId}`) {
             teamStanding = standing_;
           }
@@ -458,9 +542,14 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     leagueId: number;
   }) => {
     let teamStanding: StandingsDataStandingModel;
-    standings.forEach(standing => {
-      standing.response[0]?.league.standings.forEach(teamStanding_ => {
-        teamStanding_.forEach(standing_ => {
+    standings.forEach((standing) => {
+      const response = standing?.response?.[0];
+      if (!response || response.league?.id !== leagueId) {
+        return;
+      }
+
+      response.league.standings.forEach((teamStanding_) => {
+        teamStanding_.forEach((standing_) => {
           if (`${standing_.team.id}` === `${awayTeamId}`) {
             teamStanding = standing_;
           }
@@ -475,8 +564,11 @@ export const getLastFiveHomeTeamHomeFixtures = ({
   }: {
     homeTeamStanding: StandingsDataStandingModel;
   }) => {
-    const numberOfMatches = homeTeamStanding?.all.played;
-    const goalsScored = homeTeamStanding?.all.goals.for;
+    const numberOfMatches = homeTeamStanding?.all.played || 0;
+    const goalsScored = homeTeamStanding?.all.goals.for || 0;
+    if (numberOfMatches === 0) {
+      return 0;
+    }
     return (goalsScored / numberOfMatches) * 100;
   };
   
@@ -485,8 +577,11 @@ export const getLastFiveHomeTeamHomeFixtures = ({
   }: {
     awayTeamStanding: StandingsDataStandingModel;
   }) => {
-    const numberOfMatches = awayTeamStanding?.all.played;
-    const goalsScored = awayTeamStanding?.all.goals.for;
+    const numberOfMatches = awayTeamStanding?.all.played || 0;
+    const goalsScored = awayTeamStanding?.all.goals.for || 0;
+    if (numberOfMatches === 0) {
+      return 0;
+    }
     return (goalsScored / numberOfMatches) * 100;
   };
   
@@ -495,8 +590,11 @@ export const getLastFiveHomeTeamHomeFixtures = ({
   }: {
     homeTeamStanding: StandingsDataStandingModel;
   }) => {
-    const numberOfMatches = homeTeamStanding?.all.played;
-    const goalsScored = homeTeamStanding?.all.goals.against;
+    const numberOfMatches = homeTeamStanding?.all.played || 0;
+    const goalsScored = homeTeamStanding?.all.goals.against || 0;
+    if (numberOfMatches === 0) {
+      return 0;
+    }
     return (goalsScored / numberOfMatches) * 100;
   };
   
@@ -505,13 +603,20 @@ export const getLastFiveHomeTeamHomeFixtures = ({
   }: {
     awayTeamStanding: StandingsDataStandingModel;
   }) => {
-    const numberOfMatches = awayTeamStanding?.all.played;
-    const goalsScored = awayTeamStanding?.all.goals.against;
+    const numberOfMatches = awayTeamStanding?.all.played || 0;
+    const goalsScored = awayTeamStanding?.all.goals.against || 0;
+    if (numberOfMatches === 0) {
+      return 0;
+    }
     return (goalsScored / numberOfMatches) * 100;
   };
 
 
   export const hasNoNilNilInFixtures  =({fixtures}:{fixtures: FixtureDataModel[]})=>{
+    if (!fixtures.length) {
+      return false;
+    }
+
     if (fixtures.every(fixture=> fixture.goals.home+ fixture.goals.away>=1)){
       return true
     }
@@ -519,133 +624,153 @@ export const getLastFiveHomeTeamHomeFixtures = ({
   }
   
   export const awayTeamScroreInMostH2HFixtures =({h2hFixtures, minGoals, awayTeamId}: {h2hFixtures: FixtureDataModel[]; minGoals: number, awayTeamId: number })=>{
-    let conditionPassedCount =0;
-    h2hFixtures.forEach(fixtureData=> {
-        if(((fixtureData.goals.home>= minGoals) && fixtureData.teams.home.id ===awayTeamId) || ((fixtureData.goals.away>= minGoals) && fixtureData.teams.away.id ===awayTeamId) ){
-            conditionPassedCount+=1;
-        }
-  })
-  if(((conditionPassedCount/h2hFixtures.length))>= 0.8){
-      return true;
-  }else{
-      return false
-  }
+    const conditionPassedCount = countMatchingFixtures(
+      h2hFixtures,
+      (fixtureData) =>
+        ((fixtureData.goals.home>= minGoals) && fixtureData.teams.home.id ===awayTeamId) ||
+        ((fixtureData.goals.away>= minGoals) && fixtureData.teams.away.id ===awayTeamId)
+    );
+
+    return ratioAtLeast({
+      passed: conditionPassedCount,
+      total: h2hFixtures.length,
+      ratio: 0.8,
+      minimumSample: MIN_H2H_FIXTURES,
+    });
   }
   
   export const homeTeamScroreInMostH2HFixtures =({h2hFixtures, minGoals, homeTeamId}: {h2hFixtures: FixtureDataModel[]; minGoals: number, homeTeamId: number })=>{
-    let conditionPassedCount =0;
-    h2hFixtures.forEach(fixtureData=> {
-      if(((fixtureData.goals.home>= minGoals) && fixtureData.teams.home.id ===homeTeamId) || ((fixtureData.goals.away>= minGoals) && fixtureData.teams.away.id ===homeTeamId) ){
-          conditionPassedCount+=1;
-      }
-  })
+    const conditionPassedCount = countMatchingFixtures(
+      h2hFixtures,
+      (fixtureData) =>
+        ((fixtureData.goals.home>= minGoals) && fixtureData.teams.home.id ===homeTeamId) ||
+        ((fixtureData.goals.away>= minGoals) && fixtureData.teams.away.id ===homeTeamId)
+    );
 
-  if(((conditionPassedCount/h2hFixtures.length))>=0.8){
-      return true;
-  }else{
-      return false
-  }
+    return ratioAtLeast({
+      passed: conditionPassedCount,
+      total: h2hFixtures.length,
+      ratio: 0.8,
+      minimumSample: MIN_H2H_FIXTURES,
+    });
   }
 
   export const teamMinGoalsInH2H =({h2hFixtures, minGoals, teamId, occurencePercentage}: {h2hFixtures: FixtureDataModel[]; minGoals:number; teamId: number; occurencePercentage: number })=>{
-    let conditionPassedCount =0;
-    h2hFixtures.forEach(fixtureData=> {
-      if(((fixtureData.goals.home>= minGoals) && fixtureData.teams.home.id ===teamId) || ((fixtureData.goals.away>= minGoals) && fixtureData.teams.away.id ===teamId) ){
-          conditionPassedCount+=1;
-      }
-  })
-  if(((conditionPassedCount/h2hFixtures.length)*100)>=occurencePercentage){
-    return true;
-}else{
-    return false
-}
+    const conditionPassedCount = countMatchingFixtures(
+      h2hFixtures,
+      (fixtureData) =>
+        ((fixtureData.goals.home>= minGoals) && fixtureData.teams.home.id ===teamId) ||
+        ((fixtureData.goals.away>= minGoals) && fixtureData.teams.away.id ===teamId)
+    );
+
+    return percentageAtLeast({
+      passed: conditionPassedCount,
+      total: h2hFixtures.length,
+      percentage: occurencePercentage,
+      minimumSample: MIN_H2H_FIXTURES,
+    });
   }
 
   export const teamMinMaxInH2H =({h2hFixtures, maxGoals, teamId, occurencePercentage}: {h2hFixtures: FixtureDataModel[]; maxGoals:number; teamId: number; occurencePercentage: number })=>{
-    let conditionPassedCount =0;
-    h2hFixtures.forEach(fixtureData=> {
-      if(((fixtureData.goals.home<= maxGoals) && fixtureData.teams.home.id ===teamId) || ((fixtureData.goals.away<= maxGoals) && fixtureData.teams.away.id ===teamId) ){
-          conditionPassedCount+=1;
-      }
-  })
-  if(((conditionPassedCount/h2hFixtures.length)*100)>=occurencePercentage){
-    return true;
-}else{
-    return false
-}
+    const conditionPassedCount = countMatchingFixtures(
+      h2hFixtures,
+      (fixtureData) =>
+        ((fixtureData.goals.home<= maxGoals) && fixtureData.teams.home.id ===teamId) ||
+        ((fixtureData.goals.away<= maxGoals) && fixtureData.teams.away.id ===teamId)
+    );
+
+    return percentageAtLeast({
+      passed: conditionPassedCount,
+      total: h2hFixtures.length,
+      percentage: occurencePercentage,
+      minimumSample: MIN_H2H_FIXTURES,
+    });
 
 }
   export const againstAwayTeamMinMax =({awayTeamFixtures, maxGoals, occurencePercentage}: {awayTeamFixtures: FixtureDataModel[]; maxGoals:number; occurencePercentage: number })=>{
-    let conditionPassedCount =0;
-    awayTeamFixtures.forEach(fixtureData=> {
-      if((fixtureData.goals.home<= maxGoals) ){
-          conditionPassedCount+=1;
-      }
-  })
-  if(((conditionPassedCount/awayTeamFixtures.length)*100)>=occurencePercentage){
-      return true;
-  }else{
-      return false
-  }
+    const conditionPassedCount = countMatchingFixtures(
+      awayTeamFixtures,
+      (fixtureData) => fixtureData.goals.home<= maxGoals
+    );
+
+    return percentageAtLeast({
+      passed: conditionPassedCount,
+      total: awayTeamFixtures.length,
+      percentage: occurencePercentage,
+      minimumSample: MIN_FORM_FIXTURES,
+    });
   }
 
   export const againstHomeTeamMinMax =({homeTeamFixtures, maxGoals, occurencePercentage}: {homeTeamFixtures: FixtureDataModel[]; maxGoals:number,occurencePercentage: number })=>{
-    let conditionPassedCount =0;
-    homeTeamFixtures.forEach(fixtureData=> {
-      if((fixtureData.goals.away<= maxGoals) ){
-          conditionPassedCount+=1;
-      }
-  })
-  if(((conditionPassedCount/homeTeamFixtures.length)*100)>=occurencePercentage){
-      return true;
-  }else{
-      return false
-  }
+    const conditionPassedCount = countMatchingFixtures(
+      homeTeamFixtures,
+      (fixtureData) => fixtureData.goals.away<= maxGoals
+    );
+
+    return percentageAtLeast({
+      passed: conditionPassedCount,
+      total: homeTeamFixtures.length,
+      percentage: occurencePercentage,
+      minimumSample: MIN_FORM_FIXTURES,
+    });
   }
 
   export const fixtureTotalMinMax =({fixtures, maxGoals, minGoals, occurencePercentage}: {fixtures: FixtureDataModel[]; maxGoals:number; minGoals:number; occurencePercentage: number })=>{
-    let conditionPassedCount =0;
-    fixtures.forEach(fixtureData=> {
-      if((fixtureData.goals.away + fixtureData.goals.home >= minGoals && fixtureData.goals.away + fixtureData.goals.home <= maxGoals ) ){
-          conditionPassedCount+=1;
-      }
-  })
-  if(((conditionPassedCount/fixtures.length)*100)>=occurencePercentage){
-      return true;
-  }else{
-      return false
-  }
+    const conditionPassedCount = countMatchingFixtures(
+      fixtures,
+      (fixtureData) =>
+        fixtureData.goals.away + fixtureData.goals.home >= minGoals &&
+        fixtureData.goals.away + fixtureData.goals.home <= maxGoals
+    );
+
+    return percentageAtLeast({
+      passed: conditionPassedCount,
+      total: fixtures.length,
+      percentage: occurencePercentage,
+      minimumSample: MIN_FORM_FIXTURES,
+    });
   }
 
   export const mostFixturesAreBTTS =({fixtures, bttsPercentage=80}: {fixtures: FixtureDataModel[], bttsPercentage: number})=>{
-  
-    let conditionPassedCount =0;
-    fixtures.forEach(fixtureData=> {
-      if(((fixtureData.goals.home> 0 && fixtureData.goals.away>0)) ){
-          conditionPassedCount+=1;
-      }
-    })
-    if(((conditionPassedCount/fixtures.length)*100)>=bttsPercentage){
-      return true;
-    }else{
-        return false
-    }
+    const conditionPassedCount = countMatchingFixtures(
+      fixtures,
+      (fixtureData) => fixtureData.goals.home > 0 && fixtureData.goals.away > 0
+    );
+
+    return percentageAtLeast({
+      passed: conditionPassedCount,
+      total: fixtures.length,
+      percentage: bttsPercentage,
+      minimumSample: MIN_FORM_FIXTURES,
+    });
 
   }
   
 
 
   export const goodAwayTeamwinPercentage =({awayStanding, homeStanding, winPercentage, lossPercentage}: {homeStanding: StandingsDataStandingModel, awayStanding: StandingsDataStandingModel, winPercentage: number, lossPercentage: number})=>{
-  
-   if ((awayStanding.all.win/ awayStanding.all.played)*100 >=winPercentage && (homeStanding.all.lose/homeStanding.all.played*100)>= lossPercentage){
+    const awayPlayed = awayStanding?.all?.played || 0;
+    const homePlayed = homeStanding?.all?.played || 0;
+
+    if (awayPlayed < MIN_FORM_FIXTURES || homePlayed < MIN_FORM_FIXTURES) {
+      return false;
+    }
+
+   if ((awayStanding.all.win / awayPlayed) * 100 >= winPercentage && (homeStanding.all.lose / homePlayed * 100) >= lossPercentage){
     return true
    }
    return false
   }
 
   export const goodHomeTeamwinPercentage =({awayStanding, homeStanding, winPercentage, lossPercentage}: {homeStanding: StandingsDataStandingModel, awayStanding: StandingsDataStandingModel, winPercentage: number, lossPercentage: number})=>{
-  
-    if ((homeStanding.all.win/ homeStanding.all.played)*100 >=winPercentage && (awayStanding.all.lose/awayStanding.all.played*100)>= lossPercentage){
+    const homePlayed = homeStanding?.all?.played || 0;
+    const awayPlayed = awayStanding?.all?.played || 0;
+
+    if (awayPlayed < MIN_FORM_FIXTURES || homePlayed < MIN_FORM_FIXTURES) {
+      return false;
+    }
+
+    if ((homeStanding.all.win / homePlayed) * 100 >= winPercentage && (awayStanding.all.lose / awayPlayed * 100) >= lossPercentage){
      return true
     }
     return false
@@ -660,17 +785,20 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     allFixtures: FixtureDataModel[];
     currentSeason: number
   }) => {
-    return allFixtures
-      .filter(fixture => {
-        return (
-          (fixture.teams.home.id === teamId) &&
-          fixture.fixture.status.short === 'FT'
-        );
-      })
-      // .filter(fixture=> fixture.league.season === currentSeason)
-      .sort((fixtureA, fixtureB) => {
-        return fixtureB.fixture.timestamp - fixtureA.fixture.timestamp;
-      }).slice(0, numberOTeamLastFixturesBack);
+    const teamFixtures = sortedFinishedFixtures(
+      allFixtures,
+      (fixture) => fixture.teams.home.id === teamId
+    );
+
+    const currentSeasonFixtures = teamFixtures.filter(
+      (fixture) => fixture.league.season === currentSeason
+    );
+
+    const sourceFixtures = hasMinimumSample(currentSeasonFixtures, MIN_FORM_FIXTURES)
+      ? currentSeasonFixtures
+      : teamFixtures;
+
+    return sourceFixtures.slice(0, numberOTeamLastFixturesBack);
   };
 
   export const getAllAwayTeamAwayFixtures = ({
@@ -682,17 +810,20 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     allFixtures: FixtureDataModel[];
     currentSeason: number
   }) => {
-    return allFixtures
-      .filter(fixture => {
-        return (
-          (fixture.teams.away.id === teamId) &&
-          fixture.fixture.status.short === 'FT'
-        );
-      })
-      // .filter(fixture=> fixture.league.season === currentSeason) //Change this
-      .sort((fixtureA, fixtureB) => {
-        return fixtureB.fixture.timestamp - fixtureA.fixture.timestamp;
-      }).slice(0, numberOTeamLastFixturesBack);
+    const teamFixtures = sortedFinishedFixtures(
+      allFixtures,
+      (fixture) => fixture.teams.away.id === teamId
+    );
+
+    const currentSeasonFixtures = teamFixtures.filter(
+      (fixture) => fixture.league.season === currentSeason
+    );
+
+    const sourceFixtures = hasMinimumSample(currentSeasonFixtures, MIN_FORM_FIXTURES)
+      ? currentSeasonFixtures
+      : teamFixtures;
+
+    return sourceFixtures.slice(0, numberOTeamLastFixturesBack);
   };
 
 
@@ -701,27 +832,21 @@ export const getLastFiveHomeTeamHomeFixtures = ({
   }: {
     homeTeamHomeFixtures:  FixtureDataModel[];
   })=>{
-    const lastFiveHomeTeamHomeFixtures = getLastFiveHomeTeamHomeFixtures({
-      teamId: homeTeamHomeFixtures[0]?.teams.home.id,
-      allFixtures: homeTeamHomeFixtures
-    });
-    return lastFiveHomeTeamHomeFixtures.reduce((goalsAverage, fixture)=>{
-      return goalsAverage+ fixture.goals.home
-    }, 0)/lastFiveHomeTeamHomeFixtures.length
+    return averageFromFixtures(
+      homeTeamHomeFixtures,
+      (fixture) => fixture.goals.home
+    );
   }
 
   export const averageGoalsConcededAtHome =({
     homeTeamHomeFixtures,
   }: {
     homeTeamHomeFixtures:  FixtureDataModel[];
-  })=>{ const lastFiveHomeTeamHomeFixtures = getLastFiveHomeTeamHomeFixtures({
-    teamId: homeTeamHomeFixtures[0].teams.home.id,
-    allFixtures: homeTeamHomeFixtures
-  });
-
-    return lastFiveHomeTeamHomeFixtures.reduce((goalsAverage, fixture)=>{
-      return goalsAverage+ fixture.goals.away
-    }, 0)/lastFiveHomeTeamHomeFixtures.length
+  })=>{
+    return averageFromFixtures(
+      homeTeamHomeFixtures,
+      (fixture) => fixture.goals.away
+    );
   }
  
   export const averageGoalsScoredAway =({
@@ -729,13 +854,10 @@ export const getLastFiveHomeTeamHomeFixtures = ({
   }: {
     awayTeamAwayFixtures:  FixtureDataModel[];
   })=>{
-    const lastFiveAwayTeamAwayFixtures = getLastFiveAwayTeamAwayFixtures({
-      teamId: awayTeamAwayFixtures[0].teams.away.id,
-      allFixtures: awayTeamAwayFixtures,
-    });
-    return lastFiveAwayTeamAwayFixtures.reduce((goalsAverage, fixture)=>{
-      return goalsAverage+ fixture.goals.away
-    }, 0)/lastFiveAwayTeamAwayFixtures.length
+    return averageFromFixtures(
+      awayTeamAwayFixtures,
+      (fixture) => fixture.goals.away
+    );
   }
 
   export const averageGoalsConcededAway =({
@@ -743,13 +865,10 @@ export const getLastFiveHomeTeamHomeFixtures = ({
   }: {
     awayTeamAwayFixtures:  FixtureDataModel[];
   })=>{
-    const lastFiveAwayTeamAwayFixtures = getLastFiveAwayTeamAwayFixtures({
-      teamId: awayTeamAwayFixtures[0].teams.away.id,
-      allFixtures: awayTeamAwayFixtures,
-    });
-    return lastFiveAwayTeamAwayFixtures.reduce((goalsAverage, fixture)=>{
-      return goalsAverage+ fixture.goals.home
-    }, 0)/lastFiveAwayTeamAwayFixtures.length
+    return averageFromFixtures(
+      awayTeamAwayFixtures,
+      (fixture) => fixture.goals.home
+    );
   }
 
   export const homeHasAtMostNoScoreGames = ({
@@ -759,14 +878,12 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     homefixtures: FixtureDataModel[];
     maxNoScoreGames?: number;
   }) => {
-    if (!homefixtures.length) return false;
+    if (!hasMinimumSample(homefixtures, MIN_FORM_FIXTURES)) return false;
   
-    let noScoreCount = 0;
-    homefixtures.forEach(fixture => {
-      if (fixture.goals.home === 0) {
-        noScoreCount += 1;
-      }
-    });
+    const noScoreCount = countMatchingFixtures(
+      homefixtures,
+      (fixture) => fixture.goals.home === 0
+    );
   
     return noScoreCount <= maxNoScoreGames;
   };
@@ -778,14 +895,12 @@ export const getLastFiveHomeTeamHomeFixtures = ({
     awayfixtures: FixtureDataModel[];
     maxNoScoreGames?: number;
   }) => {
-    if (!awayfixtures.length) return false;
+    if (!hasMinimumSample(awayfixtures, MIN_FORM_FIXTURES)) return false;
   
-    let noScoreCount = 0;
-    awayfixtures.forEach(fixture => {
-      if (fixture.goals.away === 0) {
-        noScoreCount += 1;
-      }
-    });
+    const noScoreCount = countMatchingFixtures(
+      awayfixtures,
+      (fixture) => fixture.goals.away === 0
+    );
   
     return noScoreCount <= maxNoScoreGames;
   };
@@ -803,12 +918,17 @@ const expectedGoalsForTeamA = ({
   teamAAverageGoalsScored,
   teamBAverageGoalsConceded,
 }: GoalInputs) => {
-  // Safety: clamp crazy values (optional but helps)
-  const scored = Math.max(0, Math.min(teamAAverageGoalsScored, 5));
-  const conceded = Math.max(0, Math.min(teamBAverageGoalsConceded, 5));
+  const scored = clampNumber(teamAAverageGoalsScored, 0, MAX_REASONABLE_GOALS);
+  const conceded = clampNumber(teamBAverageGoalsConceded, 0, MAX_REASONABLE_GOALS);
 
-  // Offense slightly more important than opponent’s conceding
-  return (0.7 * scored) + (0.4 * conceded);
+  // Blend arithmetic and geometric means so one extreme input does not over-drive xG.
+  const linearBlend = (0.68 * scored) + (0.37 * conceded);
+  const geometricBlend = Math.sqrt(scored * conceded);
+  const volatilityPenalty = Math.abs(scored - conceded) * 0.05;
+
+  const blendedXg = (0.9 * linearBlend) + (0.1 * geometricBlend) - volatilityPenalty;
+
+  return clampNumber(blendedXg, 0, MAX_REASONABLE_GOALS);
 };
 
 
