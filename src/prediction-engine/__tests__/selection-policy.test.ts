@@ -1,6 +1,6 @@
 import { DEFAULT_PREDICTION_CONFIG, mergePredictionConfig } from '../../config/prediction-config';
 import { predictFixture } from '../predict-fixture';
-import { buildCandidateSelections, reliabilityScore } from '../selection';
+import { buildCandidateSelections, reliabilityScore, rankDirectPicks, rankUnpricedForecasts } from '../selection';
 import { buildMarketValue } from '../odds';
 import { rankSelections, groupCorrelatedMarkets } from '../markets';
 import { makeFixture, makeStandingRow, makeStandings } from '../test-support/fixture-builders';
@@ -27,6 +27,48 @@ const history = () => {
 const upcoming = makeFixture({ id: 9999, timestamp: NOW, homeId: 1, awayId: 2, homeGoals: null, awayGoals: null, season: 2023, status: 'NS' });
 
 describe('selection policy: configurable thresholds are enforced', () => {
+  it('ranks unpriced forecasts by likelihood without presenting them as value-qualified', () => {
+    const prediction = predictFixture({ fixture: upcoming, allFixtures: history(), leaguesStandings: standings, now: NOW });
+    prediction.fixture = { ...prediction.fixture, fixture: { ...prediction.fixture.fixture, timestamp: NOW / 1000 } };
+    const ranked = rankUnpricedForecasts([prediction], NOW - 1);
+    expect(ranked).toHaveLength(1);
+    expect(ranked[0].market).toBeDefined();
+    const market = ranked[0].market!;
+    expect(market.qualifies).toBe(false);
+    expect(market.decimalOdds).toBeUndefined();
+    expect(market.evidence.length).toBeGreaterThan(0);
+    expect(['home_dnb', 'away_dnb', 'home_or_draw', 'away_or_draw']).not.toContain(market.marketId);
+    expect(rankUnpricedForecasts([prediction], NOW)).toEqual([]);
+    expect(rankUnpricedForecasts([{ ...prediction, dataQuality: { ...prediction.dataQuality, oddsAvailable: true } }], NOW - 1)).toEqual([]);
+    const lowSample = { ...prediction, awayTeam: { ...prediction.awayTeam, overallSampleSize: 2 }, dataQuality: { ...prediction.dataQuality, awaySampleSize: 2 } };
+    expect(rankUnpricedForecasts([lowSample], NOW - 1)[0].market).toBeUndefined();
+    const belowThreshold = { ...prediction, markets: [{ ...market, passedProbabilityThreshold: false }] };
+    expect(rankUnpricedForecasts([belowThreshold], NOW - 1)[0].market?.passedProbabilityThreshold).toBe(false);
+    const lower = { ...prediction, markets: [{ ...market, modelProbability: market.modelProbability / 2 }] };
+    expect(rankUnpricedForecasts([lower, prediction], NOW - 1)[0].prediction).toBe(prediction);
+    expect(rankUnpricedForecasts([{ ...prediction, markets: [{ ...market, modelProbability: NaN }] }], NOW - 1)[0].market).toBeUndefined();
+  });
+
+  it('offers one final qualified option per upcoming fixture, ordered by EV', () => {
+    const prediction = predictFixture({ fixture: upcoming, allFixtures: history(), leaguesStandings: standings, now: NOW });
+    prediction.fixture = { ...prediction.fixture, fixture: { ...prediction.fixture.fixture, timestamp: NOW / 1000 } };
+    const makeMarket = (modelProbability: number, decimalOdds: number) => buildMarketValue({
+      marketId: 'home_over_0_5', modelProbability,
+      odds: { marketId: 'home_over_0_5', decimalOdds, timestamp: NOW }, config, now: NOW,
+    });
+    const lower = makeMarket(0.8, 1.5);
+    const higher = makeMarket(0.8, 2);
+    const other = { ...prediction, fixture: { ...prediction.fixture, fixture: { ...prediction.fixture.fixture, id: 10000 } }, selections: [higher, lower] };
+    const ranked = rankDirectPicks([{ ...prediction, selections: [lower] }, other], NOW - 1);
+    expect(ranked.map((entry) => entry.prediction.fixture.fixture.id)).toEqual([10000, 9999]);
+    expect(ranked[0].market).toBe(higher);
+    expect(rankDirectPicks([other], NOW)).toEqual([]);
+    expect(rankDirectPicks([{ ...prediction, selections: [] }], NOW - 1)).toEqual([]);
+    expect(rankDirectPicks([{ ...prediction, selections: [{ ...higher, oddsStale: true }] }], NOW - 1)).toEqual([]);
+    expect(rankDirectPicks([{ ...prediction, selections: [{ ...higher, expectedValue: -0.1 }] }], NOW - 1)).toEqual([]);
+    expect(rankDirectPicks([{ ...prediction, selections: [{ ...higher, oddsTimestamp: NOW - 13 * 3600000 }] }], NOW - 1)).toEqual([]);
+  });
+
   it('honours a raised minimum edge (configurable)', () => {
     const strict = mergePredictionConfig({ selection: { defaultMinEdge: 0.25 } });
     const odds = { marketId: 'over_2_5' as const, decimalOdds: 2.2, timestamp: NOW };

@@ -106,8 +106,8 @@ or recommended a paid provider without a user-approved budget/coverage requireme
   hit rate, mean predicted probability, and grouping by market / league / probability band / odds range.
 - `src/prediction-engine/paper-store.ts`: defensive `localStorage` persistence, duplicate prevention,
   append/update and settlement.
-- `BetAndFixturesScreen`: in Statistical mode, **Bet (run predictions)** fetches odds once per UTC
-  fixture date (not once per fixture), maps quotes by fixture ID, reruns priced model comparisons,
+- `BetAndFixturesScreen`: in Statistical mode, **Bet (run predictions)** fetches all pages of odds per UTC
+  fixture date, retries unpriced upcoming fixtures by fixture ID, maps quotes, reruns priced model comparisons,
   and stores model/odds snapshots for future fixtures. It rejects odds timestamps at or after kickoff.
   The per-fixture **Capture pre-match odds** action remains as a manual refresh/retry.
 - On a later prediction refresh, completed fixtures are matched by fixture ID and pending paper entries
@@ -115,6 +115,22 @@ or recommended a paid provider without a user-approved budget/coverage requireme
   pending/settled counts and per-market hit rate, Brier, log loss, ROI and a 95% ROI interval.
 
 ## 3. How to use the prospective workflow
+
+The **Best available options** list shows one leading option per upcoming match, ranked across fixtures
+by estimated EV. Only final sample-qualified selections with fresh odds, the configured probability/edge
+thresholds and strictly positive offered-price EV appear. Add/Remove controls update the existing pick
+list. This is a model ranking, not proven betting profitability. Full probability cards and rejected
+markets remain under **All forecasts and market details**. **Awaiting odds** separates provider-empty
+responses, unsupported markets, invalid timestamps and network/provider errors; a provider-empty response
+does not tell us whether coverage is absent or prices have not been published. No odds are fabricated.
+
+**Forecasts without odds** shows one leading standard-market estimate per unpriced upcoming fixture,
+ranked by model probability rather than EV. Each row includes supporting evidence, venue/overall sample
+sizes, warnings, the odds-availability reason and approximate model break-even decimal odds (`1 / p`).
+These are likelihood-only forecasts, never value-qualified picks. Below-cutoff estimates remain labelled;
+fixtures with insufficient history have no leading forecast. Conditional draw-no-bet and broad
+double-chance markets are excluded from this ranking to avoid presenting them as directly comparable
+standard outcomes. The full market list remains in the detailed forecasts section.
 
 Select Statistical mode, choose leagues/date range, and press **Bet (run predictions)**. The app fetches
 fixtures/history/standings, computes the model output, requests date-batched odds, displays qualifying
@@ -200,7 +216,7 @@ effective sample size. Profitability is **unvalidated**.
   timestamps, invalid prices and exclusion of Asian/unsupported goal lines.
 - `paper-tracking.test.ts`: settlement, profit, pushes, Brier/log-loss summary, confidence interval,
   grouping, de-duplication and model/price pairing using explicitly synthetic unit-test inputs.
-- Full suite: **20 passed / 21 total suites; 105 tests passed**. The only failure is the pre-existing,
+- Full suite: **21 passed / 22 total suites; 111 tests passed**. The only failure is the pre-existing,
   unrelated `src/App.test.js` CRA boilerplate test (`react-modal: No elements were found for selector
   #root`).
 - `npx tsc --noEmit`: **0 TypeScript errors**.

@@ -82,6 +82,19 @@ describe('odds', () => {
     expect(value.qualifies).toBe(false);
   });
 
+  it('rejects a positive no-vig edge when the offered price has non-positive EV', () => {
+    [1.5, 1 / 0.6].forEach((decimalOdds) => {
+      const value = buildMarketValue({
+        marketId: 'over_2_5', modelProbability: 0.6,
+        odds: { marketId: 'over_2_5', decimalOdds, timestamp: now },
+        marginAdjustedProbability: 0.55, config, now,
+      });
+      expect(value.passedEdgeThreshold).toBe(true);
+      expect(value.qualifies).toBe(false);
+      expect(value.rejectReasons.join(' ')).toMatch(/expected value/);
+    });
+  });
+
   it('never qualifies a market without odds and labels it accordingly', () => {
     const value = buildMarketValue({
       marketId: 'btts_yes',

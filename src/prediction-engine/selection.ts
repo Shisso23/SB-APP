@@ -1,6 +1,7 @@
-import { PredictionConfig } from '../config/prediction-config';
+import { DEFAULT_PREDICTION_CONFIG, PredictionConfig } from '../config/prediction-config';
 import { FixturePrediction, MarketValue } from './types';
 import { rankSelections } from './markets';
+import { isStale } from './odds';
 
 export interface CandidateSelection {
   fixtureId: number;
@@ -24,6 +25,34 @@ export interface RejectedCandidate {
   market: MarketValue;
   reasons: string[];
 }
+
+export const rankDirectPicks = (predictions: FixturePrediction[], now: number, config = DEFAULT_PREDICTION_CONFIG) =>
+  predictions
+    .filter((prediction) => prediction.fixture.fixture.timestamp * 1000 > now)
+    .flatMap((prediction) => {
+      const market = [...prediction.selections]
+        .filter((entry) => entry.qualifies && !entry.oddsStale &&
+          !isStale(entry.oddsTimestamp, now, config.odds.staleAfterMinutes) && (entry.expectedValue ?? 0) > 0)
+        .sort((first, second) => (second.expectedValue ?? 0) - (first.expectedValue ?? 0))[0];
+      return market ? [{ prediction, market }] : [];
+    })
+    .sort((first, second) => (second.market.expectedValue ?? 0) - (first.market.expectedValue ?? 0));
+
+export const rankUnpricedForecasts = (predictions: FixturePrediction[], now: number, config = DEFAULT_PREDICTION_CONFIG) =>
+  predictions
+    .filter((prediction) => !prediction.dataQuality.oddsAvailable && prediction.fixture.fixture.timestamp * 1000 > now)
+    .map((prediction) => {
+      const enoughHistory =
+        Math.max(prediction.dataQuality.homeSampleSize, prediction.homeTeam.overallSampleSize) >= config.minTeamMatches &&
+        Math.max(prediction.dataQuality.awaySampleSize, prediction.awayTeam.overallSampleSize) >= config.minTeamMatches;
+      const market = enoughHistory ? [...prediction.markets]
+        .filter((entry) => !entry.decimalOdds && Number.isFinite(entry.modelProbability) &&
+          entry.modelProbability > 0 && entry.modelProbability < 1 &&
+          !['home_dnb', 'away_dnb', 'home_or_draw', 'away_or_draw'].includes(entry.marketId))
+        .sort((first, second) => second.modelProbability - first.modelProbability)[0] : undefined;
+      return { prediction, market, enoughHistory };
+    })
+    .sort((first, second) => (second.market?.modelProbability ?? 0) - (first.market?.modelProbability ?? 0));
 
 /**
  * Turn per-fixture predictions into a ranked candidate list.

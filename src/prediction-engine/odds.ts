@@ -28,7 +28,7 @@ const OVER_UNDER_PAIRS: Array<[MarketId, MarketId]> = [
   ['over_3_5', 'under_3_5'],
 ];
 
-const isStale = (timestamp: number | undefined, now: number, staleAfterMinutes: number): boolean => {
+export const isStale = (timestamp: number | undefined, now: number, staleAfterMinutes: number): boolean => {
   if (!timestamp) {
     return false;
   }
@@ -114,6 +114,9 @@ export const buildMarketValue = ({
   if (stale) {
     rejectReasons.push('Odds are older than the configured freshness window.');
   }
+  if (ev <= 0) {
+    rejectReasons.push('The offered price has no positive estimated expected value.');
+  }
 
   return {
     marketId,
@@ -130,7 +133,7 @@ export const buildMarketValue = ({
     oddsStale: stale,
     passedProbabilityThreshold,
     passedEdgeThreshold,
-    qualifies: passedProbabilityThreshold && passedEdgeThreshold && !stale,
+    qualifies: passedProbabilityThreshold && passedEdgeThreshold && !stale && ev > 0,
     rejectReasons,
     evidence,
   };

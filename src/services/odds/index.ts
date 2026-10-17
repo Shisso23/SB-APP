@@ -2,26 +2,31 @@ import authNetworkService from '../auth-network-service/auth-network.service';
 
 const endpoint = 'odds';
 
-/**
- * API-Football pre-match odds.
- *
- * IMPORTANT (verified 2026-10-17):
- *  - The current API key is on the **Free** plan, which returns odds ONLY for upcoming
- *    fixtures (today / near-future). Historical odds queries (by date, league+season, or
- *    old fixture id) return 0 results.
- *  - Therefore this service can power a *prospective* paper-tracking workflow, not a
- *    historical profitability backtest.
- */
+const getAllOddsPages = async (params: Record<string, string | number>) => {
+  const first = await authNetworkService.get<ApiFootballOddsPayload>(endpoint, { params });
+  const entries: ApiFootballOddsResponse[] = [];
+  const append = (payload: ApiFootballOddsPayload) => {
+    const errors = payload.errors;
+    const messages = typeof errors === 'string' ? [errors]
+      : errors && typeof errors === 'object' ? Object.values(errors).map(String) : [];
+    if (messages.some(Boolean)) throw new Error(`Odds provider: ${messages.filter(Boolean).join(' ')}`);
+    entries.push(...(payload.response ?? []));
+  };
+  append(first.data);
+  const totalPages = first.data.paging?.total ?? 1;
+  for (let page = 2; page <= totalPages; page += 1) {
+    const next = await authNetworkService.get<ApiFootballOddsPayload>(endpoint, { params: { ...params, page } });
+    append(next.data);
+  }
+  return { ...first, data: { ...first.data, response: entries, results: entries.length } };
+};
+
 export const getOddsByFixture = async (fixtureId: number) => {
-  return authNetworkService.get(endpoint, {
-    params: { fixture: fixtureId },
-  });
+  return getAllOddsPages({ fixture: fixtureId });
 };
 
 export const getOddsByDate = async (date: string) => {
-  return authNetworkService.get(endpoint, {
-    params: { date },
-  });
+  return getAllOddsPages({ date });
 };
 
 export const getOddsByLeagueSeason = async ({ leagueId, season }: { leagueId: number; season: number }) => {
@@ -40,6 +45,7 @@ export const getLiveOdds = async () => {
 
 /** Raw payload shape (loosely typed; only the fields we read are named). */
 export interface ApiFootballOddsPayload {
+  paging?: { current?: number; total?: number };
   results?: number;
   errors?: unknown;
   response?: ApiFootballOddsResponse[];
