@@ -3,6 +3,7 @@ import { betOptionModel } from "../models/bet-option-model";
 import { FixtureDataModel } from "../models/fixtures/index";
 import { StandingsModel } from "../models/standings-models/index";
 import predictionFunctions from "../prediction-functions";
+import { createModelBetOption } from "../prediction-engine";
 export const levels: number[] = [0, 1, 2, 3, 4, 5];
 
 export const betOptions: betOptionModel[] = [
@@ -366,6 +367,30 @@ export const betOptions: betOptionModel[] = [
   //   }) => predictionFunctions.predict2_6_goals(params),
   // },
 ];
+
+/**
+ * Model markets contributed by the statistical prediction engine
+ * (`src/prediction-engine`). They are appended to the existing options rather than
+ * replacing any, so the original rule-based markets keep working unchanged.
+ */
+export const modelBetOptions: betOptionModel[] = (
+  [
+    'home_win',
+    'draw',
+    'away_win',
+    'home_over_0_5',
+    'away_over_0_5',
+    'btts_yes',
+    'btts_no',
+    'over_1_5',
+    'over_2_5',
+    'over_3_5',
+    'home_or_draw',
+    'away_or_draw',
+  ] as const
+).map((marketId) => createModelBetOption(marketId));
+
+export const allBetOptions: betOptionModel[] = [...betOptions, ...modelBetOptions];
 
 export const numberOfH2HMatchesBack = 4;
 
