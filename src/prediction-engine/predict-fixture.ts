@@ -1,7 +1,13 @@
-import { PredictionConfig, DEFAULT_PREDICTION_CONFIG, mergePredictionConfig } from '../config/prediction-config';
+import {
+  PredictionConfig,
+  DeepPartial,
+  DEFAULT_PREDICTION_CONFIG,
+  mergePredictionConfig,
+} from '../config/prediction-config';
 import {
   DataQuality,
   FixturePrediction,
+  MarketId,
   MarketOdds,
   MarketValue,
   MatchProbabilities,
@@ -28,9 +34,9 @@ import { FixtureDataModel } from '../models/fixtures';
  */
 export const predictFixture = (
   input: PredictionInput,
-  configOverrides?: Partial<PredictionConfig>
+  configOverrides?: DeepPartial<PredictionConfig>
 ): FixturePrediction => {
-  const config = mergePredictionConfig(configOverrides as any, DEFAULT_PREDICTION_CONFIG);
+  const config = mergePredictionConfig(configOverrides, DEFAULT_PREDICTION_CONFIG);
   const now = input.now ?? Date.now();
   const { fixture, allFixtures, leaguesStandings } = input;
 
@@ -44,7 +50,9 @@ export const predictFixture = (
   // --- Collect matches, ensuring a prediction never sees this fixture or the future.
   const cutoff = safeNumber(fixture.fixture?.timestamp) || now;
   const eligibleFixtures = (allFixtures || []).filter(
-    (candidate) => safeNumber(candidate.fixture?.id) !== safeNumber(fixture.fixture?.id)
+    (candidate) =>
+      safeNumber(candidate.fixture?.id) !== safeNumber(fixture.fixture?.id) &&
+      safeNumber(candidate.fixture?.timestamp) < cutoff
   );
 
   const homeCollections = collectTeamMatches({
@@ -170,9 +178,8 @@ export const predictFixture = (
   };
 
   // --- Model the matchup.
-  const h2hAll = (allFixtures || []).filter(
+  const h2hAll = eligibleFixtures.filter(
     (candidate) =>
-      safeNumber(candidate.fixture?.id) !== safeNumber(fixture.fixture?.id) &&
       ((safeNumber(candidate.teams?.home?.id) === homeTeamId &&
         safeNumber(candidate.teams?.away?.id) === awayTeamId) ||
         (safeNumber(candidate.teams?.home?.id) === awayTeamId &&
@@ -257,10 +264,18 @@ export const predictFixture = (
     oddsStale,
     fullTimeResultsOnly: true,
     warnings,
-    validatedMarkets: goalModelApplied
-      ? ['home_win', 'away_win', 'btts_yes', 'over_1_5', 'over_2_5', 'over_3_5']
-      : ['home_win', 'away_win'],
-    weakMarkets: ['btts_yes', 'home_over_0_5', 'away_over_0_5', 'over_1_5', 'over_3_5', 'draw'],
+    validatedMarkets: [
+      'home_win',
+      'away_win',
+      'home_over_0_5',
+      'away_over_0_5',
+      ...(goalModelApplied ? ['over_1_5', 'over_2_5', 'over_3_5'] : []),
+    ] as MarketId[],
+    weakMarkets: [
+      'draw',
+      'btts_yes',
+      ...(goalModelApplied ? [] : ['over_1_5', 'over_2_5', 'over_3_5']),
+    ] as MarketId[],
     goalModel: goalModelApplied ? 'prior-blended' : 'engine',
   };
 
@@ -276,6 +291,7 @@ export const predictFixture = (
     away: awayTeam,
     now,
     dataQualityWarnings: warnings,
+    goalModelApplied,
     quality: {
       homeSampleSize: homeVenueForm.sampleSize,
       awaySampleSize: awayVenueForm.sampleSize,

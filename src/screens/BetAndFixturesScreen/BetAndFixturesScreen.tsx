@@ -63,6 +63,17 @@ const POPULAR_LEAGUE_IDS_KEY = 'popularLeagueIds_v1';
 const LEAGUES_CACHE_TTL = 1000 * 60 * 60 * 24 * 7; // 7 days
 const PREDICTIONS_CACHE_TTL = 1000 * 60 * 60 * 6; // 6 hours
 const STANDINGS_CACHE_TTL = 1000 * 60 * 60 * 6; // 6 hours
+const PREDICTION_MODE_KEY = 'predictionMode_v1';
+
+type PredictionMode = 'legacy' | 'statistical';
+
+const readPredictionMode = (): PredictionMode => {
+  try {
+    return localStorage.getItem(PREDICTION_MODE_KEY) === 'legacy' ? 'legacy' : 'statistical';
+  } catch {
+    return 'statistical';
+  }
+};
 
 const MIN_SEASON_EXISTING_THRESHOLD = 10;
 
@@ -446,7 +457,7 @@ const EnginePredictionPanel: React.FC<{
           Statistical model
         </span>
         <span className="text-[10px] text-slate-300">
-          xG {probabilities.expectedGoals.home.toFixed(2)}–{probabilities.expectedGoals.away.toFixed(2)}
+          Base xG H–A {probabilities.expectedGoals.home.toFixed(2)}–{probabilities.expectedGoals.away.toFixed(2)}
         </span>
         <span className="text-[10px] text-slate-400">
           samples H{dataQuality.homeSampleSize}/A{dataQuality.awaySampleSize}
@@ -464,7 +475,7 @@ const EnginePredictionPanel: React.FC<{
               <div className="flex items-center justify-between gap-1">
                 <span className="truncate text-slate-400">{market.label}</span>
                 {validated && (
-                  <span title="Beat a simple baseline on real historical data" className="shrink-0 rounded bg-emerald-500/20 px-1 text-[8px] font-semibold text-emerald-200">✓</span>
+                  <span title="Positive Brier skill on the 2023 held-out evaluation; preliminary, not profitability evidence" className="shrink-0 rounded bg-emerald-500/20 px-1 text-[8px] font-semibold text-emerald-200">✓</span>
                 )}
                 {!validated && weak && (
                   <span title="Weak or unvalidated edge over a simple baseline" className="shrink-0 rounded bg-amber-500/20 px-1 text-[8px] font-semibold text-amber-200">~</span>
@@ -479,6 +490,11 @@ const EnginePredictionPanel: React.FC<{
       <div className="mt-1 text-[9px] text-slate-400">
         ✓ validated vs baseline · ~ weak/unvalidated · goal model: {dataQuality.goalModel}
       </div>
+      {dataQuality.goalModel === 'prior-blended' && (
+        <div className="mt-1 text-[9px] text-slate-400">
+          BTTS and total-goals percentages use the separate prior-blended goal model; base xG above is used for 1X2 and team-to-score.
+        </div>
+      )}
 
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <button
@@ -569,6 +585,16 @@ const BetAndFixturesScreen: React.FC = () => {
   const [isBetOptionsCollapsed, setIsBetOptionsCollapsed] = useState(true);
 
   const [selectedOptions, setSelectedOptions] = useState<betOptionModel[]>(betOptions);
+  const [predictionMode, setPredictionMode] = useState<PredictionMode>(readPredictionMode);
+
+  const changePredictionMode = (mode: PredictionMode) => {
+    setPredictionMode(mode);
+    try {
+      localStorage.setItem(PREDICTION_MODE_KEY, mode);
+    } catch {
+      // Keep the in-memory mode if browser storage is unavailable.
+    }
+  };
 
   // Date range
   const [fromDate, setFromDate] = useState(new Date(moment().format('YYYY-MM-DD')));
@@ -751,6 +777,7 @@ const BetAndFixturesScreen: React.FC = () => {
   const clearPredictions = () => {
     setPredictedFixtures([]);
     setGroupedData({});
+    setEnginePredictions({});
     setAllFixtures([]);
     setFutureFixtures([]);
     setCurrentFixtures([]);
@@ -1283,9 +1310,9 @@ const BetAndFixturesScreen: React.FC = () => {
   const settledPaperSelections = paperSelections.filter((selection) => selection.settled);
   const paperSummaries = summariseBy(settledPaperSelections, (selection) => selection.marketId);
   const pendingPaperCount = paperSelections.filter((selection) => !selection.settled).length;
-  const displayedFixtureIds = Array.from(
-    new Set([...Object.keys(groupedData), ...Object.keys(enginePredictions)])
-  );
+  const displayedFixtureIds = predictionMode === 'legacy'
+    ? Object.keys(groupedData)
+    : Object.keys(enginePredictions);
 
   // ===== Render =====
   return (
@@ -1299,8 +1326,30 @@ const BetAndFixturesScreen: React.FC = () => {
                 <p className="mt-1 text-sm text-slate-200">Search leagues fast, pick options, and run predictions for fixtures in your date window.</p>
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                   <span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-cyan-100">Selected leagues: {selectedBatch.length}/{MAX_BATCH}</span>
-                  <span className="rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-sky-100">Active options: {selectedOptions.length}</span>
-                  <span className="rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-slate-300">Predicted fixtures: {Object.keys(groupedData).length}</span>
+                  {predictionMode === 'legacy' && (
+                    <span className="rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-sky-100">Active legacy options: {selectedOptions.length}</span>
+                  )}
+                  <span className="rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-slate-300">
+                    {predictionMode === 'statistical' ? 'Statistical model' : 'Legacy rules'} · {displayedFixtureIds.length} fixtures
+                  </span>
+                </div>
+                <div className="mt-3 inline-flex rounded-lg border border-slate-600 bg-slate-950 p-1" role="group" aria-label="Prediction model">
+                  <button
+                    type="button"
+                    aria-pressed={predictionMode === 'statistical'}
+                    onClick={() => changePredictionMode('statistical')}
+                    className={`rounded-md px-3 py-1.5 text-xs font-semibold ${predictionMode === 'statistical' ? 'bg-cyan-600 text-white' : 'text-slate-300 hover:bg-slate-800'}`}
+                  >
+                    Statistical
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={predictionMode === 'legacy'}
+                    onClick={() => changePredictionMode('legacy')}
+                    className={`rounded-md px-3 py-1.5 text-xs font-semibold ${predictionMode === 'legacy' ? 'bg-cyan-600 text-white' : 'text-slate-300 hover:bg-slate-800'}`}
+                  >
+                    Legacy rules
+                  </button>
                 </div>
               </div>
 
@@ -1432,7 +1481,7 @@ const BetAndFixturesScreen: React.FC = () => {
               )}
             </div>
 
-            <div className="rounded-2xl border border-slate-600 bg-slate-900 p-4">
+            {predictionMode === 'legacy' && <div className="rounded-2xl border border-slate-600 bg-slate-900 p-4">
               <button
                 onClick={() => setIsBetOptionsCollapsed((value) => !value)}
                 className="mb-2 flex w-full items-center justify-between text-left"
@@ -1464,7 +1513,7 @@ const BetAndFixturesScreen: React.FC = () => {
                   })}
                 </div>
               )}
-            </div>
+            </div>}
 
             <div className="rounded-2xl border border-slate-600 bg-slate-900">
               <button
@@ -1529,7 +1578,7 @@ const BetAndFixturesScreen: React.FC = () => {
               <div className="mb-2 flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-100">Predictions</h2>
-                  <div className="text-xs text-slate-400">Fixtures matched in current range: {Object.keys(groupedData).length}</div>
+                  <div className="text-xs text-slate-400">Fixtures matched in current range: {displayedFixtureIds.length}</div>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-[11px] text-slate-300">{predictionRangeLabel}</div>
@@ -1695,7 +1744,7 @@ const BetAndFixturesScreen: React.FC = () => {
                           </button>
                         </div>
 
-                        {enginePrediction && (
+                        {predictionMode === 'statistical' && enginePrediction && (
                           <EnginePredictionPanel
                             prediction={enginePrediction}
                             onCaptureOdds={capturePaperOdds}
@@ -1715,7 +1764,7 @@ const BetAndFixturesScreen: React.FC = () => {
                         </div>
 
                         <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                          {groupedData[currentFixture.fixture.id]?.map((option) => {
+                          {predictionMode === 'legacy' && groupedData[currentFixture.fixture.id]?.map((option) => {
                             const favorite = isFavoritePrediction(currentFixture.fixture.id, option.id);
                             return (
                               <div key={option.id} className="rounded-lg border border-sky-400/20 bg-sky-500/10 p-2">

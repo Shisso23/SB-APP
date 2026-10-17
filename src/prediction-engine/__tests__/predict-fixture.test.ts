@@ -126,6 +126,30 @@ describe('predictFixture (end-to-end)', () => {
     expect(seen.every((f) => f.fixture.id !== upcoming.fixture.id)).toBe(true);
   });
 
+  it('ignores completed results timestamped after the target kickoff', () => {
+    const futureResult = makeFixture({
+      id: 8888,
+      timestamp: upcoming.fixture.timestamp + 86_400,
+      homeId: upcoming.teams.home.id,
+      awayId: 999,
+      homeGoals: 8,
+      awayGoals: 0,
+      leagueId: upcoming.league.id,
+      season: upcoming.league.season,
+      status: 'FT',
+    });
+    const withFutureResult = predictFixture({
+      fixture: upcoming,
+      allFixtures: [...history, futureResult],
+      leaguesStandings: standings,
+      standingsAreCurrent: false,
+      now: upcoming.fixture.timestamp,
+    });
+
+    expect(withFutureResult.homeTeam.overallSampleSize).toBe(prediction.homeTeam.overallSampleSize);
+    expect(withFutureResult.probabilities).toEqual(prediction.probabilities);
+  });
+
   it('qualifies a selection and ranks by EV when odds are provided', () => {
     const withOdds = predictFixture({
       fixture: upcoming,

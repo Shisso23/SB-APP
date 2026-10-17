@@ -84,11 +84,13 @@ export const buildMarketEvidence = ({
   home,
   away,
   probabilities,
+  goalModelApplied = false,
 }: {
   marketId: MarketId;
   home: TeamFormAnalysis;
   away: TeamFormAnalysis;
   probabilities: MatchProbabilities;
+  goalModelApplied?: boolean;
 }): string[] => {
   const homeName = home.teamName;
   const awayName = away.teamName;
@@ -128,7 +130,7 @@ export const buildMarketEvidence = ({
     case 'over_3_5': {
       const threshold = marketId === 'over_1_5' ? 1.5 : marketId === 'over_2_5' ? 2.5 : 3.5;
       lines.push(
-        `Model expected goals: ${homeName} ${probabilities.expectedGoals.home.toFixed(2)}, ${awayName} ${probabilities.expectedGoals.away.toFixed(2)} (total ${(probabilities.expectedGoals.home + probabilities.expectedGoals.away).toFixed(2)}).`
+        `Base-model expected goals: ${homeName} ${probabilities.expectedGoals.home.toFixed(2)}, ${awayName} ${probabilities.expectedGoals.away.toFixed(2)} (total ${(probabilities.expectedGoals.home + probabilities.expectedGoals.away).toFixed(2)}). ${goalModelApplied ? 'This total-goals probability uses the separate prior-blended goal model.' : ''}`
       );
       lines.push(
         `Sample over ${threshold} frequency: home venue ${formatPercent((marketId === 'over_1_5' ? home.blended.over1_5Pct : marketId === 'over_2_5' ? home.blended.over2_5Pct : home.blended.over3_5Pct) / 100)}; away venue ${formatPercent((marketId === 'over_1_5' ? away.blended.over1_5Pct : marketId === 'over_2_5' ? away.blended.over2_5Pct : away.blended.over3_5Pct) / 100)}.`
@@ -139,7 +141,7 @@ export const buildMarketEvidence = ({
     case 'under_2_5':
     case 'under_3_5':
       lines.push(
-        `Model expected goals total ${(probabilities.expectedGoals.home + probabilities.expectedGoals.away).toFixed(2)}; clean-sheet frequencies are ${formatPercent(home.blended.cleanSheetPct / 100)} (${homeName}) and ${formatPercent(away.blended.cleanSheetPct / 100)} (${awayName}).`
+        `Base-model expected goals total ${(probabilities.expectedGoals.home + probabilities.expectedGoals.away).toFixed(2)}; clean-sheet frequencies are ${formatPercent(home.blended.cleanSheetPct / 100)} (${homeName}) and ${formatPercent(away.blended.cleanSheetPct / 100)} (${awayName}). ${goalModelApplied ? 'This total-goals probability uses the separate prior-blended goal model.' : ''}`
       );
       break;
     case 'home_win':
@@ -202,6 +204,7 @@ export const buildMarkets = ({
   now,
   dataQualityWarnings,
   quality,
+  goalModelApplied = false,
 }: {
   probabilities: MatchProbabilities;
   odds?: MarketOdds[];
@@ -211,6 +214,7 @@ export const buildMarkets = ({
   now: number;
   dataQualityWarnings: string[];
   quality?: SelectionQualityGate;
+  goalModelApplied?: boolean;
 }): BuildMarketsResult => {
   const adjusted = odds ? computeMarginAdjustedOverUnder(odds) : {};
   const oddsById = new Map<MarketId, MarketOdds>();
@@ -224,7 +228,7 @@ export const buildMarkets = ({
   const markets = SUPPORTED_MARKETS.map((marketId) => {
     const modelProbability = marketProbability(probabilities, marketId);
     const evidence = [
-      ...buildMarketEvidence({ marketId, home, away, probabilities }),
+      ...buildMarketEvidence({ marketId, home, away, probabilities, goalModelApplied }),
       ...strengthEvidence,
       ...dataQualityWarnings,
     ];
