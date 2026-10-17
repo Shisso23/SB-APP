@@ -106,19 +106,22 @@ or recommended a paid provider without a user-approved budget/coverage requireme
   hit rate, mean predicted probability, and grouping by market / league / probability band / odds range.
 - `src/prediction-engine/paper-store.ts`: defensive `localStorage` persistence, duplicate prevention,
   append/update and settlement.
-- `BetAndFixturesScreen`: an explicit **Capture pre-match odds** action on each model panel. It fetches
-  only when clicked, rejects capture at/after kickoff and rejects odds timestamps at/after kickoff,
-  then stores the model snapshot and mapped odds together. It does not make automatic odds calls.
+- `BetAndFixturesScreen`: in Statistical mode, **Bet (run predictions)** fetches odds once per UTC
+  fixture date (not once per fixture), maps quotes by fixture ID, reruns priced model comparisons,
+  and stores model/odds snapshots for future fixtures. It rejects odds timestamps at or after kickoff.
+  The per-fixture **Capture pre-match odds** action remains as a manual refresh/retry.
 - On a later prediction refresh, completed fixtures are matched by fixture ID and pending paper entries
   are settled from their final scores. A collapsible **Prospective odds tracking** section displays
   pending/settled counts and per-market hit rate, Brier, log loss, ROI and a 95% ROI interval.
 
 ## 3. How to use the prospective workflow
 
-For each upcoming fixture, select **Capture pre-match odds** on its Statistical model panel before
-kickoff. This captures the displayed engine model probabilities and available prices in one record.
-After the fixture finishes, refresh predictions for that league so the result is loaded and matching
-paper entries are settled. The collapsible report appears in the Predictions header.
+Select Statistical mode, choose leagues/date range, and press **Bet (run predictions)**. The app fetches
+fixtures/history/standings, computes the model output, requests date-batched odds, displays qualifying
+and rejected markets, and records every priced market snapshot before kickoff. Use **Capture pre-match
+odds** on a card only to retry or refresh that fixture. After a fixture finishes, rerun predictions
+for its league so the result is loaded and matching paper entries are settled. The collapsible report
+appears in the Predictions header.
 
 The equivalent exported functions remain available for tests or a future worker:
 `getOddsByFixture` → `mapApiFootballOddsPayload` → `predictFixture({ ..., odds })` →
@@ -197,7 +200,7 @@ effective sample size. Profitability is **unvalidated**.
   timestamps, invalid prices and exclusion of Asian/unsupported goal lines.
 - `paper-tracking.test.ts`: settlement, profit, pushes, Brier/log-loss summary, confidence interval,
   grouping, de-duplication and model/price pairing using explicitly synthetic unit-test inputs.
-- Full suite: **19 passed / 20 total suites; 101 tests passed**. The only failure is the pre-existing,
+- Full suite: **20 passed / 21 total suites; 105 tests passed**. The only failure is the pre-existing,
   unrelated `src/App.test.js` CRA boilerplate test (`react-modal: No elements were found for selector
   #root`).
 - `npx tsc --noEmit`: **0 TypeScript errors**.

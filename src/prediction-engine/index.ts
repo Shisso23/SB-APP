@@ -1,5 +1,9 @@
 export * from './types';
-export { predictFixture, estimateLeagueAverage } from './predict-fixture';
+export {
+  predictFixture,
+  estimateLeagueAverage,
+  estimateLeagueAverageFromFixtures,
+} from './predict-fixture';
 export {
   buildPoissonGrid,
   estimateExpectedGoals,

@@ -3,7 +3,8 @@
 Date: 2026-10-17
 Companion documents:
 [`prediction-engine-investigation.md`](./prediction-engine-investigation.md),
-[`prediction-engine-audit-and-evaluation.md`](./prediction-engine-audit-and-evaluation.md)
+[`prediction-engine-audit-and-evaluation.md`](./prediction-engine-audit-and-evaluation.md),
+[`prediction-engine-goal-market-improvement.md`](./prediction-engine-goal-market-improvement.md)
 
 > **CORRECTIONS (2026-10-17, independent audit).** The audit found and fixed four defects in the
 > original implementation: (a) opponent-strength *confidence* was a no-op in the xG multiplier;
@@ -13,6 +14,12 @@ Companion documents:
 > superseded — see the audit report for the corrected behaviour and real-data evaluation results.
 > The low-score adjustment is an **approximation with a fixed constant**, **not** a fitted
 > Dixon-Coles model.
+>
+> **LOOKBACK UPDATE:** after a chronological 2021–2025 Premier League evaluation, the Statistical
+> model's default window is now **20 matches** and the fixture fetch depth is **3 seasons**. Validation
+> selected 20 on 2024; untouched 2025 showed relative improvement over 5 matches, but goal markets
+> still did not beat the base-rate baseline. Full results and early-season sample behavior are in
+> `prediction-engine-goal-market-improvement.md` §6.
 
 ---
 
@@ -187,7 +194,8 @@ with real odds absent, the product labels it as having no verified betting value
 - Opponent strength **adjusts** (tight 0.9–1.1 band), never mechanically determines, the prediction.
 - Home/away records are never mixed indiscriminately: venue splits are primary, overall form is an
   explicitly labelled supplementary blend when the venue sample is small.
-- Sample sizes are surfaced everywhere; five recent matches are never implied to be conclusive.
+- Sample sizes are surfaced everywhere; the current 20-match default is still a finite sample and is
+  not implied to be conclusive. Early-season low samples warn or abstain below three prior matches.
 - Standings are matched by league **and season**; mismatches yield `unknown`, and current-table usage
   sets a hindsight-bias flag.
 - All thresholds live in `src/config/prediction-config.ts`.

@@ -104,9 +104,10 @@ describe('predictFixture (end-to-end)', () => {
   it('records sample sizes and home/away venue splits', () => {
     expect(prediction.homeTeam.venue).toBe('home');
     expect(prediction.awayTeam.venue).toBe('away');
-    expect(prediction.homeTeam.venueSampleSize).toBe(5); // recentWindow default
-    expect(prediction.awayTeam.venueSampleSize).toBe(5);
-    expect(prediction.dataQuality.homeSampleSize).toBe(5);
+    expect(config.recentWindow).toBe(20);
+    expect(prediction.homeTeam.venueSampleSize).toBe(Math.min(config.recentWindow, 6));
+    expect(prediction.awayTeam.venueSampleSize).toBe(Math.min(config.recentWindow, 6));
+    expect(prediction.dataQuality.homeSampleSize).toBe(prediction.homeTeam.venueSampleSize);
   });
 
   it('uses the correct competition standings and marks no hindsight bias when told they are historical', () => {

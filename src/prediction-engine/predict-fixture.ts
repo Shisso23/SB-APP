@@ -74,7 +74,9 @@ export const predictFixture = (
 
   // League scoring baseline from the standings (goals for / matches played).
   const standingsTable = findStandingsTable({ standings: leaguesStandings, leagueId, season });
-  const leagueAverageGoalsPerTeam = estimateLeagueAverage(standingsTable);
+  const leagueAverageGoalsPerTeam =
+    estimateLeagueAverage(standingsTable) ??
+    estimateLeagueAverageFromFixtures(eligibleFixtures, leagueId);
 
   const homeVenueForm = aggregateTeamForm({
     matches: homeCollections.venueMatches,
@@ -336,6 +338,31 @@ export const estimateGlobalBaseline = (fixtures: FixtureDataModel[]): number | u
   }
   const totalGoals = finished.reduce(
     (acc, f) => acc + safeNumber(f.goals.home) + safeNumber(f.goals.away),
+    0
+  );
+  return round(totalGoals / (2 * finished.length), 4);
+};
+
+/**
+ * Per-league fallback prior from completed fixtures available before the target kickoff.
+ * This avoids borrowing a scoring rate from another competition when standings are missing.
+ */
+export const estimateLeagueAverageFromFixtures = (
+  fixtures: FixtureDataModel[],
+  leagueId: number
+): number | undefined => {
+  const finished = (fixtures || []).filter(
+    (fixture) =>
+      safeNumber(fixture.league?.id) === leagueId &&
+      fixture.fixture?.status?.short === 'FT' &&
+      Number.isFinite(fixture.goals?.home) &&
+      Number.isFinite(fixture.goals?.away)
+  );
+  if (finished.length === 0) {
+    return undefined;
+  }
+  const totalGoals = finished.reduce(
+    (total, fixture) => total + safeNumber(fixture.goals.home) + safeNumber(fixture.goals.away),
     0
   );
   return round(totalGoals / (2 * finished.length), 4);

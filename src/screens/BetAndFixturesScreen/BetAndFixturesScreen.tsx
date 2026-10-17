@@ -24,7 +24,7 @@ import {
   FixturesModel,
 } from '../../models/fixtures';
 import { getFilteredFixtures } from '../../services/fixtures';
-import { getOddsByFixture } from '../../services/odds';
+import { getOddsByDate, getOddsByFixture } from '../../services/odds';
 import {
   StandingsModel,
   StandingsDataStandingModel,
@@ -40,6 +40,7 @@ import {
   predictFixture,
   FixturePrediction,
   MarketId,
+  mapApiFootballOdds,
   mapApiFootballOddsPayload,
   buildPaperSelections,
   readPaperRecord,
@@ -48,7 +49,7 @@ import {
   settlePaperRecord,
   summariseBy,
 } from '../../prediction-engine';
-import type { PaperSelection } from '../../prediction-engine';
+import type { MarketValue, PaperSelection } from '../../prediction-engine';
 
 Modal.setAppElement('#root');
 
@@ -56,9 +57,10 @@ Modal.setAppElement('#root');
 const MAX_BATCH = 7;
 const COOLDOWN_MS = 60_000; // 1 minute
 const LEAGUES_CACHE_KEY = 'leaguesCache_v1';
-const PREDICTIONS_CACHE_KEY = 'leaguePredictions_v1';
-const STANDINGS_CACHE_KEY = 'standingsCache_v1';
+const PREDICTIONS_CACHE_KEY = 'leaguePredictions_v3';
+const STANDINGS_CACHE_KEY = 'standingsCache_v2';
 const FAVORITES_CACHE_KEY = 'favoritePredictions_v1';
+const STATISTICAL_PICKS_KEY = 'statisticalPicks_v1';
 const POPULAR_LEAGUE_IDS_KEY = 'popularLeagueIds_v1';
 const LEAGUES_CACHE_TTL = 1000 * 60 * 60 * 24 * 7; // 7 days
 const PREDICTIONS_CACHE_TTL = 1000 * 60 * 60 * 6; // 6 hours
@@ -235,6 +237,11 @@ const writeStandingsCache = (shape: StandingsCacheShape) => {
 
 const readFavoritesCache = (): FavoritePredictionItem[] =>
   safeParse<FavoritePredictionItem[]>(localStorage.getItem(FAVORITES_CACHE_KEY)) || [];
+
+const readStatisticalPickKeys = (): string[] => {
+  const parsed = safeParse<string[]>(localStorage.getItem(STATISTICAL_PICKS_KEY));
+  return Array.isArray(parsed) ? parsed.filter((key) => typeof key === 'string') : [];
+};
 
 const writeFavoritesCache = (items: FavoritePredictionItem[]) => {
   try { localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(items)); } catch {}
@@ -433,7 +440,9 @@ const pct = (value: number, decimals = 0) =>
 const EnginePredictionPanel: React.FC<{
   prediction: FixturePrediction;
   onCaptureOdds: (prediction: FixturePrediction) => Promise<string>;
-}> = ({ prediction, onCaptureOdds }) => {
+  selectedPickKeys: string[];
+  onTogglePick: (market: MarketValue) => void;
+}> = ({ prediction, onCaptureOdds, selectedPickKeys, onTogglePick }) => {
   const [capturingOdds, setCapturingOdds] = useState(false);
   const [captureMessage, setCaptureMessage] = useState('');
   const { probabilities, markets, selections, dataQuality, headline } = prediction;
@@ -449,6 +458,8 @@ const EnginePredictionPanel: React.FC<{
     'away_over_0_5',
   ];
   const lookup = (marketId: MarketId) => markets.find((market) => market.marketId === marketId);
+  const selectedMarketIds = new Set(selections.map((market) => market.marketId));
+  const rejectedMarkets = markets.filter((market) => !selectedMarketIds.has(market.marketId));
 
   return (
     <div className="mb-3 rounded-lg border border-indigo-400/30 bg-indigo-500/5 p-2">
@@ -512,9 +523,9 @@ const EnginePredictionPanel: React.FC<{
             }
           }}
           className="rounded border border-cyan-500/40 bg-cyan-500/10 px-2 py-1 text-[10px] font-semibold text-cyan-100 disabled:cursor-not-allowed disabled:opacity-50"
-          title="Capture current odds and this model snapshot before kickoff"
+          title={dataQuality.oddsAvailable ? 'Refresh current odds and update the pending paper snapshot' : 'Capture current odds and this model snapshot before kickoff'}
         >
-          {capturingOdds ? 'Capturing…' : 'Capture pre-match odds'}
+          {capturingOdds ? 'Capturing…' : dataQuality.oddsAvailable ? 'Refresh odds snapshot' : 'Capture pre-match odds'}
         </button>
         {captureMessage && <span className="text-[10px] text-slate-300">{captureMessage}</span>}
       </div>
@@ -537,6 +548,59 @@ const EnginePredictionPanel: React.FC<{
           No selection passed the configured probability/edge thresholds.
           {dataQuality.oddsAvailable ? '' : ' No odds supplied, so no verified betting value was assessed.'}
         </div>
+      )}
+
+      {selections.length > 0 && (
+        <div className="mt-2 rounded border border-emerald-400/20 bg-slate-950/70 p-2">
+          <div className="mb-1 text-[10px] font-semibold text-emerald-100">Eligible picks · ranked by estimated EV</div>
+          <div className="space-y-1.5">
+            {selections.map((market) => {
+              const pickKey = `${prediction.fixture.fixture.id}:${market.marketId}`;
+              const picked = selectedPickKeys.includes(pickKey);
+              return (
+                <div key={market.marketId} className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800 pt-1.5 first:border-0 first:pt-0">
+                  <div className="text-[10px] text-slate-200">
+                    <span className="font-semibold">{market.label}</span>
+                    {' · '}model {pct(market.modelProbability)}
+                    {market.decimalOdds ? ` · ${market.decimalOdds.toFixed(2)}${market.bookmaker ? ` ${market.bookmaker}` : ''}` : ''}
+                    {market.marginAdjustedProbability !== undefined ? ` · market ${pct(market.marginAdjustedProbability)}` : ''}
+                    {market.edge !== 0 ? ` · edge ${pct(market.edge, 1)}` : ''}
+                    {market.expectedValue !== undefined ? ` · EV ${pct(market.expectedValue, 1)}` : ''}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onTogglePick(market)}
+                    className={`rounded border px-2 py-1 text-[10px] font-semibold ${picked ? 'border-emerald-400/50 bg-emerald-500/20 text-emerald-100' : 'border-slate-600 bg-slate-800 text-slate-200 hover:border-emerald-400/40'}`}
+                  >
+                    {picked ? 'Remove from pick list' : 'Add to pick list'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-1 text-[9px] text-slate-500">Pick list only; no bet is placed by the app.</div>
+        </div>
+      )}
+
+      {rejectedMarkets.length > 0 && (
+        <details className="mt-2 rounded border border-slate-700/70 px-2 py-1.5">
+          <summary className="cursor-pointer text-[10px] font-semibold text-slate-300">
+            Why other markets were rejected ({rejectedMarkets.length})
+          </summary>
+          <div className="mt-2 space-y-1.5">
+            {rejectedMarkets.map((market) => (
+              <div key={market.marketId} className="border-t border-slate-800 pt-1.5 text-[10px] first:border-0 first:pt-0">
+                <span className="font-semibold text-slate-200">{market.label}</span>
+                {' · '}model {pct(market.modelProbability)}
+                <div className="text-slate-400">
+                  {market.rejectReasons.length > 0
+                    ? market.rejectReasons.join(' ')
+                    : 'Passed market thresholds but was omitted by the sample-quality or ranking limit.'}
+                </div>
+              </div>
+            ))}
+          </div>
+        </details>
       )}
 
       {dataQuality.warnings.length > 0 && (
@@ -579,6 +643,7 @@ const BetAndFixturesScreen: React.FC = () => {
   const [groupedData, setGroupedData] = useState<Record<number, betOptionModel[]>>({});
   const [enginePredictions, setEnginePredictions] = useState<Record<number, FixturePrediction>>({});
   const [paperSelections, setPaperSelections] = useState<PaperSelection[]>(() => readPaperRecord().selections);
+  const [selectedStatisticalPickKeys, setSelectedStatisticalPickKeys] = useState<string[]>(readStatisticalPickKeys);
   const [fixtureLoadWarnings, setFixtureLoadWarnings] = useState<string[]>([]);
   const [favoritePredictions, setFavoritePredictions] = useState<FavoritePredictionItem[]>(() => readFavoritesCache());
   const [isLeaguesByCountryCollapsed, setIsLeaguesByCountryCollapsed] = useState(false);
@@ -593,6 +658,19 @@ const BetAndFixturesScreen: React.FC = () => {
       localStorage.setItem(PREDICTION_MODE_KEY, mode);
     } catch {
       // Keep the in-memory mode if browser storage is unavailable.
+    }
+  };
+
+  const toggleStatisticalPick = (fixtureId: number, market: MarketValue) => {
+    const key = `${fixtureId}:${market.marketId}`;
+    const next = selectedStatisticalPickKeys.includes(key)
+      ? selectedStatisticalPickKeys.filter((existing) => existing !== key)
+      : [...selectedStatisticalPickKeys, key];
+    setSelectedStatisticalPickKeys(next);
+    try {
+      localStorage.setItem(STATISTICAL_PICKS_KEY, JSON.stringify(next));
+    } catch {
+      // The in-memory shortlist still works if storage is unavailable.
     }
   };
 
@@ -1070,6 +1148,7 @@ const BetAndFixturesScreen: React.FC = () => {
       awayTeam: fixture.teams.away.name,
       markets: withOdds.markets,
       odds: mapped.markets,
+      qualifiedMarketIds: withOdds.selections.map((market) => market.marketId),
       capturedAt,
     });
     if (paperSelections.length === 0) {
@@ -1167,20 +1246,98 @@ const BetAndFixturesScreen: React.FC = () => {
       leaguesStandingsLocal: standingsForPrediction
     });
 
+    // In Statistical mode, fetch odds in date batches (not one request per fixture).
+    // Odds failure never blocks the prediction calculation; those fixtures simply have
+    // probabilities without a verified value assessment.
+    const oddsByFixtureId = new Map<number, ReturnType<typeof mapApiFootballOdds>['markets']>();
+    if (predictionMode === 'statistical') {
+      const now = Date.now();
+      const dates = Array.from(new Set(
+        currentWindow
+          .filter((fixture) => fixture.fixture.timestamp * 1000 > now)
+          .map((fixture) => fixture.fixture.date.slice(0, 10))
+      ));
+      for (const date of dates) {
+        try {
+          const response = await getOddsByDate(date);
+          const payload = response.data;
+          (payload?.response ?? []).forEach((oddsResponse: Parameters<typeof mapApiFootballOdds>[0]) => {
+            const mapped = mapApiFootballOdds(oddsResponse);
+            const target = currentWindow.find((fixture) => fixture.fixture.id === mapped.fixtureId);
+            if (
+              target &&
+              target.fixture.timestamp * 1000 > now &&
+              mapped.markets.length > 0 &&
+              mapped.markets.every((market) => market.timestamp === undefined || market.timestamp < target.fixture.timestamp * 1000)
+            ) {
+              oddsByFixtureId.set(target.fixture.id, mapped.markets);
+            }
+          });
+          if (payload?.errors && Object.keys(payload.errors).length > 0) {
+            console.warn(`Odds unavailable for ${date}.`, payload.errors);
+          }
+        } catch (error) {
+          console.warn(`Odds request failed for ${date}; continuing without odds.`, error);
+        }
+      }
+    }
+
     // Statistical engine: calibrated probabilities + explanations for every fixture.
     // Guarded so an unexpected error in the engine cannot break the existing bet flow.
     try {
-      const engineResults = predictFixturesWithEngine({
+      const baseEngineResults = predictFixturesWithEngine({
         currentFixtures: currentWindow,
         allFixtures: mergedAll,
         leaguesStandings: standingsForPrediction,
         standingsAreCurrent: true,
       });
+      const engineResults = baseEngineResults.map((basePrediction) => {
+        const fixtureId = basePrediction.fixture.fixture.id;
+        const odds = oddsByFixtureId.get(fixtureId);
+        if (!odds?.length) return basePrediction;
+        return predictFixture({
+          fixture: basePrediction.fixture,
+          allFixtures: mergedAll,
+          leaguesStandings: standingsForPrediction,
+          odds,
+          standingsAreCurrent: true,
+          now: Date.now(),
+        });
+      });
       const engineMap: Record<number, FixturePrediction> = {};
       engineResults.forEach((prediction) => {
         engineMap[Number(prediction.fixture.fixture.id)] = prediction;
       });
-      setEnginePredictions((prev) => ({ ...prev, ...engineMap }));
+      setEnginePredictions(engineMap);
+
+      // Save every priced market (including rejected ones) once per fixture/market.
+      const existingRecord = readPaperRecord();
+      const existingKeys = new Set(
+        existingRecord.selections.map((selection) => `${selection.fixtureId}:${selection.marketId}`)
+      );
+      const newPaperSelections = engineResults.flatMap((prediction) => {
+        const fixture = prediction.fixture;
+        const kickoff = fixture.fixture.timestamp * 1000;
+        const odds = oddsByFixtureId.get(fixture.fixture.id);
+        if (!odds?.length || kickoff <= Date.now()) return [];
+        return buildPaperSelections({
+          fixtureId: fixture.fixture.id,
+          kickoff,
+          leagueId: fixture.league.id,
+          leagueName: fixture.league.name,
+          homeTeam: fixture.teams.home.name,
+          awayTeam: fixture.teams.away.name,
+          markets: prediction.markets,
+          odds,
+          qualifiedMarketIds: prediction.selections.map((market) => market.marketId),
+          capturedAt: Date.now(),
+        }).filter((selection) => !existingKeys.has(`${selection.fixtureId}:${selection.marketId}`));
+      });
+      if (newPaperSelections.length > 0) {
+        const updatedRecord = appendPaperSelections(existingRecord, newPaperSelections);
+        writePaperRecord(updatedRecord);
+        setPaperSelections(updatedRecord.selections);
+      }
     } catch (error) {
       console.error('Prediction engine failed; existing predictions are unaffected.', error);
     }
@@ -1222,6 +1379,8 @@ const BetAndFixturesScreen: React.FC = () => {
     }
 
     setAllFixtures(mergedAll);
+    setFutureFixtures(filterFutureFixtures(mergedAll));
+    setCurrentFixtures(currentWindow);
     setPredictedFixtures(mergedPred);
 
     // <<< CHANGE: start cooldown ONLY if we actually fetched 7 leagues now
@@ -1310,6 +1469,12 @@ const BetAndFixturesScreen: React.FC = () => {
   const settledPaperSelections = paperSelections.filter((selection) => selection.settled);
   const paperSummaries = summariseBy(settledPaperSelections, (selection) => selection.marketId);
   const pendingPaperCount = paperSelections.filter((selection) => !selection.settled).length;
+  const paperSelectionsByKey = new Map(
+    paperSelections.map((selection) => [`${selection.fixtureId}:${selection.marketId}`, selection])
+  );
+  const selectedPaperPicks = selectedStatisticalPickKeys
+    .map((key) => paperSelectionsByKey.get(key))
+    .filter((selection): selection is PaperSelection => Boolean(selection));
   const displayedFixtureIds = predictionMode === 'legacy'
     ? Object.keys(groupedData)
     : Object.keys(enginePredictions);
@@ -1351,6 +1516,11 @@ const BetAndFixturesScreen: React.FC = () => {
                     Legacy rules
                   </button>
                 </div>
+                <p className="mt-1 text-[10px] text-slate-400">
+                  {predictionMode === 'statistical'
+                    ? 'Probabilities, price comparison, eligible picks and rejection reasons.'
+                    : 'Original rule-based fixture matches; choose legacy markets below.'}
+                </p>
               </div>
 
               <div className="rounded-2xl border border-slate-600 bg-slate-800 p-3">
@@ -1590,6 +1760,46 @@ const BetAndFixturesScreen: React.FC = () => {
                   </button>
                 </div>
               </div>
+              <details className="mb-2 border-t border-slate-700/60 pt-2">
+                <summary className="cursor-pointer text-xs font-semibold text-slate-300">
+                  My Statistical pick list · {selectedPaperPicks.length} selected
+                </summary>
+                {selectedPaperPicks.length === 0 ? (
+                  <div className="mt-2 text-[11px] text-slate-400">
+                    Add a qualified market from a Statistical fixture card. This is a shortlist only; no bet is placed.
+                  </div>
+                ) : (
+                  <div className="mt-2 space-y-1.5">
+                    {selectedPaperPicks.map((pick) => {
+                      const key = `${pick.fixtureId}:${pick.marketId}`;
+                      return (
+                        <div key={key} className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-700 bg-slate-950/70 p-2 text-[10px]">
+                          <div className="text-slate-200">
+                            <span className="font-semibold">{pick.homeTeam} vs {pick.awayTeam}</span>
+                            {' · '}{pick.label}
+                            {' · model '}{pct(pick.modelProbability)}
+                            {' · odds '}{pick.decimalOdds.toFixed(2)}{pick.bookmaker ? ` ${pick.bookmaker}` : ''}
+                            {' · edge '}{pct(pick.edge, 1)}
+                            {' · EV '}{pct(pick.expectedValue, 1)}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = selectedStatisticalPickKeys.filter((existing) => existing !== key);
+                              setSelectedStatisticalPickKeys(next);
+                              try { localStorage.setItem(STATISTICAL_PICKS_KEY, JSON.stringify(next)); } catch {}
+                            }}
+                            className="rounded border border-slate-600 px-2 py-1 text-slate-300 hover:border-rose-400/50 hover:text-rose-200"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      );
+                    })}
+                    <div className="text-[9px] text-slate-500">Selections from the same match are correlated; this list does not account for combined stake or portfolio risk.</div>
+                  </div>
+                )}
+              </details>
               <details className="mt-3 border-t border-slate-700/60 pt-2">
                 <summary className="cursor-pointer text-xs font-semibold text-slate-300">
                   Prospective odds tracking · {pendingPaperCount} pending · {settledPaperSelections.length} settled
@@ -1748,6 +1958,10 @@ const BetAndFixturesScreen: React.FC = () => {
                           <EnginePredictionPanel
                             prediction={enginePrediction}
                             onCaptureOdds={capturePaperOdds}
+                            selectedPickKeys={selectedStatisticalPickKeys}
+                            onTogglePick={(market) =>
+                              toggleStatisticalPick(enginePrediction.fixture.fixture.id, market)
+                            }
                           />
                         )}
 

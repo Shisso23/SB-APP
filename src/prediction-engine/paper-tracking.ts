@@ -83,6 +83,7 @@ export const buildPaperSelections = ({
   awayTeam,
   markets,
   odds,
+  qualifiedMarketIds,
   capturedAt = Date.now(),
 }: {
   fixtureId: number;
@@ -93,9 +94,12 @@ export const buildPaperSelections = ({
   awayTeam: string;
   markets: MarketValue[];
   odds: MarketOdds[];
+  /** Final markets that survived sample-quality gating and recommendation ranking. */
+  qualifiedMarketIds?: MarketId[];
   capturedAt?: number;
 }): PaperSelection[] => {
   const oddsById = new Map(odds.map((o) => [o.marketId, o]));
+  const qualifiedIds = qualifiedMarketIds ? new Set(qualifiedMarketIds) : undefined;
   const selections: PaperSelection[] = [];
 
   markets.forEach((market) => {
@@ -121,7 +125,7 @@ export const buildPaperSelections = ({
       expectedValue: round(expectedValue(market.modelProbability, price.decimalOdds), 4),
       bookmaker: price.bookmaker,
       oddsTimestamp: price.timestamp,
-      qualified: market.qualifies,
+      qualified: qualifiedIds ? qualifiedIds.has(market.marketId) : market.qualifies,
     });
   });
 

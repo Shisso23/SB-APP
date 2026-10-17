@@ -213,6 +213,7 @@ export interface MarketValue {
   expectedValue?: number;
   breakEvenProbability?: number;
   decimalOdds?: number;
+  bookmaker?: string;
   oddsTimestamp?: number;
   oddsStale: boolean;
   /** Reasons this selection passed or failed its thresholds. */

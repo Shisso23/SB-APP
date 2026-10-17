@@ -4,6 +4,7 @@ import { FixtureDataModel } from "../models/fixtures/index";
 import { StandingsModel } from "../models/standings-models/index";
 import predictionFunctions from "../prediction-functions";
 import { createModelBetOption } from "../prediction-engine";
+import { DEFAULT_PREDICTION_CONFIG } from "../config/prediction-config";
 export const levels: number[] = [0, 1, 2, 3, 4, 5];
 
 export const betOptions: betOptionModel[] = [
@@ -396,8 +397,6 @@ export const numberOfH2HMatchesBack = 4;
 
 export const numberOTeamLastFixturesBack = 5;
 
-export const numberOfSeasonsBack = 2;
-
-export const seasonsBack = [2025, 2024]; // modify this to work better. SHould not be hardcorded. Adding 2023 in janury gave me issues
+export const numberOfSeasonsBack = DEFAULT_PREDICTION_CONFIG.historySeasons;
 
 //TODO Should make these constants UPPERCASE

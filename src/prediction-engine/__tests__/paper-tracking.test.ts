@@ -151,6 +151,7 @@ describe('paper-tracking: model and price pairing', () => {
       awayTeam: 'Synthetic Away',
       markets,
       odds,
+      qualifiedMarketIds: ['over_2_5'],
       capturedAt: 50,
     });
 
@@ -158,6 +159,7 @@ describe('paper-tracking: model and price pairing', () => {
     expect(selections.map((s) => s.marketId)).toEqual(['btts_yes', 'over_2_5']);
     expect(selections.every((s) => s.capturedAt < s.kickoff)).toBe(true);
     expect(selections.every((s) => s.bookmaker === 'Test Book')).toBe(true);
+    expect(selections.find((s) => s.marketId === 'btts_yes')?.qualified).toBe(false);
     expect(selections.find((s) => s.marketId === 'over_2_5')?.qualified).toBe(true);
   });
 });

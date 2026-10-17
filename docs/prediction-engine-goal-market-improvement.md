@@ -141,26 +141,76 @@ test-set tuning); the existing configurable thresholds were kept.
 (2023 was a high-scoring PL season and the model under-shoots), La Liga +0.006, Serie A +0.041.
 The aggregate gain is real but not uniform across competitions.
 
-## 6. What remains unvalidated
+## 6. Recent-window selection using Premier League data
 
-1. **Bookmaker value / profitability** — **no odds data exists**, so edge/EV cannot be evaluated.
-   The engine's EV machinery is implemented and unit-tested, but no value claim is made.
-2. **Opponent-strength adjustment for goal markets** — API-Football has no period-correct standings,
+The app previously used a fixed five-match Statistical window and fetched two seasons. I evaluated
+lookbacks of **5, 8, 10, 15 and 20 matches** using API-Football Premier League seasons 2021–2025:
+1,900 completed matches, 380 per season. Each fixture prediction uses only matches strictly before
+its kickoff. The 2021–2023 seasons form the prior/training history, **2024 is validation** for choosing
+the window, and **2025 remains the untouched test season**.
+
+Validation selected 20 matches by mean Brier skill across BTTS and total markets:
+
+| Window | 2024 mean Brier skill (BTTS + totals) |
+|--------|---------------------------------------|
+| 5 | −0.0069 |
+| 8 | −0.0074 |
+| 10 | −0.0104 |
+| 15 | −0.0079 |
+| 20 | **−0.0066** |
+
+The validation differences are small. On untouched 2025, 20 vs 5 produced:
+
+| Market | 20-match skill | 5-match skill |
+|--------|----------------|---------------|
+| BTTS Yes | −0.0048 | −0.0048 |
+| Over 1.5 | −0.0051 | −0.0149 |
+| Over 2.5 | −0.0033 | −0.0168 |
+| Over 3.5 | −0.0045 | −0.0082 |
+| Home win | +0.0603 | +0.0265 |
+| Draw | +0.0085 | +0.0044 |
+| Away win | +0.0474 | +0.0274 |
+
+**Decision:** set the Statistical default to a 20-match window and fetch three seasons of fixture
+history. It is a more stable, broader sample and improved the 2025 scores relative to five matches,
+especially 1X2 and totals. However, EPL goal markets still do **not** beat the simple base-rate
+baseline in 2025, so this is a relative improvement, not evidence of reliable goal-market value. The
+window is configurable and should be rechecked on later seasons and other leagues.
+
+### Early-season and low-sample behavior
+
+- The engine uses up to 20 prior team matches from the fetched history. Venue-specific records are
+  preferred; overall recent form supplements them when venue samples are small.
+- Per-team averages shrink toward the league prior. Predictions are still calculable with fewer than
+  20 matches; the sample count remains visible and small samples carry warnings.
+- The recommendation-quality gate requires at least **three prior matches per team**. With zero to
+  two, the system may display statistical estimates but abstains from recommending a market. With
+  three or four, it can qualify a market only if its other configured thresholds pass, but the sample
+  warning remains visible.
+- Newly promoted teams may not have prior records in the selected league. If available, the current
+  fetched history is used; missing records are not invented. Their early predictions rely more on
+  the league prior and are lower-confidence.
+
+## 7. What remains unvalidated
+
+1. **Bookmaker profitability** — historical odds remain unavailable for 2023, and the prospective
+  2026 paper record has not settled. No value/profitability claim is made.
+2. **Opponent-strength adjustment for historical goal-market evaluation** — API-Football has no period-correct standings,
    so this feature is disabled in backtests and remains unmeasured.
-3. **Cross-season stability** — only the 2023 season was available; the improvement is validated on
-   three leagues in one season.
-4. **`over_2_5` above 65%** is mildly over-confident (small n) and should not be trusted yet.
+3. **Cross-league stability** — the 20-match choice was checked on EPL validation/test seasons; other
+  leagues and future seasons should be evaluated before treating it as universal.
+4. **`over_2_5` above 65%** remains mildly over-confident in the earlier 2023 evaluation (small n).
 5. **Lineups / injuries / rest** — not available; not used.
 
-## 7. What was changed (files)
+## 8. What was changed (files)
 
 | File | Change |
 |------|--------|
 | `src/prediction-engine/goal-model.ts` | **New**: prior-blended goal model (`computeGoalModel`, `applyGoalModelOverride`) with per-market weights and coherent over/under coupling. |
-| `src/config/prediction-config.ts` | Added `goalModel` config block (`enabled`, per-market `recentFormWeight`, `priorSource`). |
-| `src/prediction-engine/predict-fixture.ts` | Applies the goal model to BTTS/totals only; added `estimateGlobalBaseline`; populates `validatedMarkets`, `weakMarkets`, `goalModel` in `dataQuality`. |
+| `src/config/prediction-config.ts` | `recentWindow` now defaults to 20; `historySeasons` defaults to 3; goal model remains per-market configurable. |
+| `src/prediction-engine/predict-fixture.ts` | Applies the goal model to BTTS/totals only; uses per-league prior fallback from pre-kickoff fixtures; filters all model inputs strictly before kickoff; populates validation/data-quality fields. |
 | `src/prediction-engine/types.ts` | Extended `DataQuality` with `validatedMarkets`, `weakMarkets`, `goalModel`. |
-| `src/screens/BetAndFixturesScreen/BetAndFixturesScreen.tsx` | `EnginePredictionPanel` shows a ✓ (validated) / ~ (weak) badge per market and the goal-model source. |
+| `src/screens/BetAndFixturesScreen/BetAndFixturesScreen.tsx` | Statistical/Legacy mode switch; model-qualified Add/Remove pick controls and rejection reasons; automatic date-batched odds capture during Statistical runs; inclusive end-date and surfaced API errors. |
 | `src/prediction-engine/test-support/evaluation.ts` | **New**: leakage-safe evaluation dataset builder + metrics/calibration helpers. |
 | `src/prediction-engine/test-support/candidates.ts` | **New**: candidate models for comparison. |
 | `src/prediction-engine/__tests__/goal-baseline.test.ts` | Baseline metrics, calibration, per-league, home/away. |
@@ -170,14 +220,15 @@ The aggregate gain is real but not uniform across competitions.
 | `src/prediction-engine/__tests__/goal-proposed.test.ts` | Proposed model vs engine, per league, calibration. |
 | `src/prediction-engine/__tests__/goal-thresholds.test.ts` | Calibration bands + selection-threshold survival counts. |
 | `src/prediction-engine/__tests__/goal-model-regression.test.ts` | **Permanent guard** asserting the improvement holds and 1X2 is preserved. |
+| `src/prediction-engine/__tests__/premier-league-lookback.test.ts` | EPL 2021–2025 window sweep with validation-only selection and untouched 2025 test. |
 
 ## 8. Tests run
 
 ```
 npx tsc --noEmit                                                             -> exit 0
 CI=true npx react-scripts test --watchAll=false
-  Test Suites: 17 passed, 18 total   (App.test.js fails pre-existing, unrelated)
-  Tests:       85 passed, 85 total
+  Test Suites: 20 passed, 21 total   (App.test.js fails pre-existing, unrelated)
+  Tests:       105 passed, 105 total
 ```
 
 Key reproducible commands:

@@ -125,6 +125,7 @@ export const buildMarketValue = ({
     expectedValue: round(ev, 4),
     breakEvenProbability: round(breakEvenProbability(odds.decimalOdds), 4),
     decimalOdds: odds.decimalOdds,
+    bookmaker: odds.bookmaker,
     oddsTimestamp: odds.timestamp,
     oddsStale: stale,
     passedProbabilityThreshold,

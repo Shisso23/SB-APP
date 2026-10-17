@@ -9,6 +9,8 @@
 export interface PredictionConfig {
   /** Number of recent matches used as the primary form window. */
   recentWindow: number;
+  /** Number of league seasons fetched so recent form can reach its configured window. */
+  historySeasons: number;
   /** Absolute minimum number of finished matches before a team is considered analysable. */
   minTeamMatches: number;
   /** Minimum venue-specific matches before we rely on the venue split alone. */
@@ -124,7 +126,8 @@ export interface PredictionConfig {
 }
 
 export const DEFAULT_PREDICTION_CONFIG: PredictionConfig = {
-  recentWindow: 5,
+  recentWindow: 20,
+  historySeasons: 3,
   minTeamMatches: 3,
   minVenueMatches: 3,
   minH2hMatches: 2,

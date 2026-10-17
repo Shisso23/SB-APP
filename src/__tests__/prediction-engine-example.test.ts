@@ -77,7 +77,8 @@ describe('prediction engine — runnable example', () => {
   it('documents the configuration surface that controls thresholds', () => {
     // Thresholds live in one place and are overridable without touching engine code.
     expect(DEFAULT_PREDICTION_CONFIG.selection.defaultMinEdge).toBeGreaterThan(0);
-    expect(DEFAULT_PREDICTION_CONFIG.recentWindow).toBe(5);
+    expect(DEFAULT_PREDICTION_CONFIG.recentWindow).toBe(20);
+    expect(DEFAULT_PREDICTION_CONFIG.historySeasons).toBe(3);
     expect(standings.length).toBeGreaterThan(0);
     expect(history.length).toBeGreaterThan(0);
     expect(odds.length).toBeGreaterThan(0);
