@@ -19,6 +19,7 @@ import { buildOpponentAdjustedForm } from './opponent-strength';
 import { modelMatch } from './poisson';
 import { computeGoalModel, applyGoalModelOverride } from './goal-model';
 import { buildMarkets } from './markets';
+import { isStale } from './odds';
 import { findStandingsTable } from './standings-lookup';
 import { formatPercent, round, safeNumber } from './math-utils';
 import { parseSeason } from './standings-lookup';
@@ -239,19 +240,13 @@ export const predictFixture = (
   // --- Odds & data quality.
   const odds: MarketOdds[] | undefined = input.odds;
   const oddsAvailable = Boolean(odds && odds.length > 0);
-  const oddsStale =
-    Boolean(odds) &&
-    (odds as MarketOdds[]).some(
-      (entry) =>
-        entry.timestamp !== undefined &&
-        now - entry.timestamp > config.odds.staleAfterMinutes * 60_000
-    );
+  const oddsStale = Boolean(odds?.some((entry) => isStale(entry.timestamp, now, config.odds.staleAfterMinutes)));
 
   if (!oddsAvailable) {
     warnings.push('No bookmaker odds supplied: this is a statistical prediction with no verified betting-value assessment.');
   }
   if (oddsStale) {
-    warnings.push('Supplied odds are older than the configured freshness window.');
+    warnings.push('Supplied odds have an unverifiable update time or are outside the configured freshness window.');
   }
 
   const dataQuality: DataQuality = {

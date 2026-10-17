@@ -5,12 +5,33 @@ import {
   breakEvenProbability,
   buildMarketValue,
   computeMarginAdjustedOverUnder,
+  isStale,
 } from '../odds';
 
 const config = DEFAULT_PREDICTION_CONFIG;
 const now = Date.UTC(2024, 0, 1);
 
 describe('odds', () => {
+  it.each([undefined, NaN, Infinity, 0, -1, now + 1])('refuses unverifiable quote timestamp %s', (timestamp) => {
+    const value = buildMarketValue({
+      marketId: 'over_2_5', modelProbability: 0.65,
+      odds: { marketId: 'over_2_5', decimalOdds: 2.2, timestamp },
+      marginAdjustedProbability: 0.45, config, now,
+    });
+    expect(value.passedProbabilityThreshold).toBe(true);
+    expect(value.passedEdgeThreshold).toBe(true);
+    expect(value.oddsStale).toBe(true);
+    expect(value.qualifies).toBe(false);
+    expect(value.rejectReasons.join(' ')).toMatch(/update time|freshness/);
+  });
+
+  it('preserves the configured freshness boundary', () => {
+    const boundary = now - config.odds.staleAfterMinutes * 60_000;
+    expect(isStale(boundary, now, config.odds.staleAfterMinutes)).toBe(false);
+    expect(isStale(boundary - 1, now, config.odds.staleAfterMinutes)).toBe(true);
+    expect(isStale(now, now, config.odds.staleAfterMinutes)).toBe(false);
+  });
+
   it('converts decimal odds to implied probability', () => {
     expect(impliedProbability(2.0)).toBeCloseTo(0.5, 6);
     expect(impliedProbability(4.0)).toBeCloseTo(0.25, 6);

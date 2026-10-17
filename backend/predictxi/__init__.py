@@ -1,0 +1,1 @@
+"""PredictXI Django project."""

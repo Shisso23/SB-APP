@@ -1016,7 +1016,7 @@ const BetAndFixturesScreen: React.FC = () => {
     return apiErrors.length > 0 ? apiErrors : [requestError?.message || 'Fixture request failed.'];
   };
 
-  const getLeaguesSeasonsFixtures = async (leaguesInput: LeagueDataModel[]): Promise<LeagueFixturesResult[]> => {
+  const getLeaguesSeasonsFixtures = async (leaguesInput: LeagueDataModel[], refreshCurrentSeason = false): Promise<LeagueFixturesResult[]> => {
     const seasonsCount = Math.max(1, Number(numberOfSeasonsBack || 1));
 
     return Promise.all(
@@ -1033,7 +1033,7 @@ const BetAndFixturesScreen: React.FC = () => {
         const perSeason = await Promise.all(
           seasons.map(async (season) => {
             const existing = allFixtures.filter(f => f.league.id === league.league.id && f.league.season === season);
-            if (countFinished(existing) >= MIN_SEASON_EXISTING_THRESHOLD) {
+            if (!(refreshCurrentSeason && season === currentSeason) && countFinished(existing) >= MIN_SEASON_EXISTING_THRESHOLD) {
               return existing; // no network
             }
 
@@ -1176,7 +1176,7 @@ const BetAndFixturesScreen: React.FC = () => {
     return `Captured ${paperSelections.length} priced markets from ${mapped.bookmakers.length} bookmakers.`;
   };
 
-  const handleBet = async () => {
+  const handleBet = async (refreshCurrentSeason = false) => {
     if (loadingBatch) return;
     setLoadingBatch(true);
     setFixtureLoadWarnings([]);
@@ -1197,7 +1197,7 @@ const BetAndFixturesScreen: React.FC = () => {
         cacheKeyMatch(it, lg.league.id, season, fromStr, toStr, optionIds) &&
         (Date.now() - it.ts <= PREDICTIONS_CACHE_TTL)
       );
-      if (item) hits.push(item); else misses.push(lg);
+      if (item && !refreshCurrentSeason) hits.push(item); else misses.push(lg);
     }
 
     // fixtures from cache
@@ -1212,7 +1212,7 @@ const BetAndFixturesScreen: React.FC = () => {
     let fetchedFixtures: FixtureDataModel[] = [];
     let fetchedLeagueCount = 0; // <<< CHANGE: track leagues that actually triggered network
     if (misses.length > 0) {
-      const responses = await getLeaguesSeasonsFixtures(misses);
+      const responses = await getLeaguesSeasonsFixtures(misses, refreshCurrentSeason);
       fetchedFixtures = responses.flatMap(r => r.fixtures);
       fetchedLeagueCount = responses.filter(r => r.didNetwork).length;
       setFixtureLoadWarnings(
@@ -1770,7 +1770,7 @@ const BetAndFixturesScreen: React.FC = () => {
               <div className="flex items-center justify-between gap-3">
                 <div className="text-xs text-slate-400">{msLeft > 0 ? `Cooldown: ${Math.ceil(msLeft / 1000)}s` : 'Ready'}</div>
                 <button
-                  onClick={handleBet}
+                  onClick={() => handleBet(true)}
                   disabled={!canBet || loadingBatch}
                   className={`rounded-xl px-5 py-2.5 text-sm font-semibold transition ${
                     !canBet || loadingBatch
@@ -2133,7 +2133,7 @@ const BetAndFixturesScreen: React.FC = () => {
       </div>
 
       <button
-        onClick={handleBet}
+        onClick={() => handleBet(true)}
         disabled={!canBet || loadingBatch}
         className={`fixed bottom-5 right-4 z-30 rounded-full px-5 py-3 text-sm font-semibold shadow-xl transition lg:hidden ${
           !canBet || loadingBatch

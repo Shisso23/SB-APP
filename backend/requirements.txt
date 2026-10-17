@@ -1,0 +1,7 @@
+Django==5.2.18
+djangorestframework==3.18.3
+firebase-admin==7.7.0
+psycopg[binary]==3.3.6
+django-environ==0.14.0
+django-cors-headers==4.9.0
+requests==2.34.2

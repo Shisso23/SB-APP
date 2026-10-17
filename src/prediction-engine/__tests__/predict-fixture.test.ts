@@ -70,6 +70,95 @@ const upcoming = makeFixture({
 const history = buildHistory({ homeId: 1, awayId: 2 });
 
 describe('predictFixture (end-to-end)', () => {
+  it('preserves the migration golden outputs with production timestamp units', () => {
+    const normaliseFixture = (fixture: typeof upcoming) => ({
+      ...fixture,
+      fixture: { ...fixture.fixture, timestamp: Math.floor(fixture.fixture.timestamp / 1000) },
+    });
+    const fixture = normaliseFixture(upcoming);
+    const now = Date.parse(fixture.fixture.date) - 3_600_000;
+    const input = {
+      fixture,
+      allFixtures: history.map(normaliseFixture),
+      leaguesStandings: standings,
+      standingsAreCurrent: false,
+      now,
+    };
+    const priced = predictFixture({ ...input, odds: [
+      { marketId: 'btts_yes', decimalOdds: 2.4, timestamp: now - 60_000 },
+      { marketId: 'btts_no', decimalOdds: 1.6, timestamp: now - 60_000 },
+      { marketId: 'home_over_0_5', decimalOdds: 1.6, timestamp: now - 60_000 },
+      { marketId: 'away_over_0_5', decimalOdds: 1.8, timestamp: now - 60_000 },
+    ] });
+    const coldStart = predictFixture({ ...input, allFixtures: [], leaguesStandings: [] });
+    const output = {
+      probabilities: priced.probabilities,
+      samples: [priced.homeTeam.venueSampleSize, priced.awayTeam.venueSampleSize,
+        priced.homeTeam.overallSampleSize, priced.awayTeam.overallSampleSize],
+      selections: priced.selections.map((market) => ({
+        id: market.marketId, probability: market.modelProbability,
+        edge: market.edge, ev: market.expectedValue,
+      })),
+      coldStart: { probabilities: coldStart.probabilities, selectionIds: coldStart.selections.map((market) => market.marketId) },
+    };
+    const roundedOutput = JSON.parse(JSON.stringify(output, (_key, value) =>
+      typeof value === 'number' ? Number(value.toFixed(4)) : value
+    ));
+    expect(roundedOutput).toEqual({
+      probabilities: {
+        expectedGoals: {
+          home: 1.572, away: 0.9291, homeAttack: 1.2525, homeDefence: 0.4734,
+          awayAttack: 0.7209, awayDefence: 0.7696, shrinkageApplied: 0,
+        },
+        homeWin: 0.521, draw: 0.2552, awayWin: 0.2237,
+        homeScores: 0.791, awayScores: 0.606,
+        bttsYes: 0.6112, bttsNo: 0.3888,
+        over1_5: 0.8026, under1_5: 0.1974,
+        over2_5: 0.5816, under2_5: 0.4184,
+        over3_5: 0.3602, under3_5: 0.6398,
+        homeOrDraw: 0.7763, awayOrDraw: 0.479,
+        homeDrawNoBet: 0.6996, awayDrawNoBet: 0.3004,
+        topScorelines: [
+          { home: 1, away: 0, probability: 0.1309 },
+          { home: 1, away: 1, probability: 0.1205 },
+          { home: 2, away: 0, probability: 0.1001 },
+          { home: 2, away: 1, probability: 0.093 },
+          { home: 0, away: 0, probability: 0.0813 },
+        ],
+      },
+      samples: [6, 6, 6, 6],
+      selections: [
+        { id: 'btts_yes', probability: 0.6112, edge: 0.2112, ev: 0.4669 },
+        { id: 'home_over_0_5', probability: 0.791, edge: 0.166, ev: 0.2656 },
+      ],
+      coldStart: {
+        probabilities: {
+          expectedGoals: {
+            home: 1.35, away: 1.35, homeAttack: 1, homeDefence: 1,
+            awayAttack: 1, awayDefence: 1, shrinkageApplied: 0,
+          },
+          homeWin: 0.3699, draw: 0.2601, awayWin: 0.3699,
+          homeScores: 0.7408, awayScores: 0.7408,
+          bttsYes: 0.5475, bttsNo: 0.4525,
+          over1_5: 0.7477, under1_5: 0.2523,
+          over2_5: 0.5035, under2_5: 0.4965,
+          over3_5: 0.2857, under3_5: 0.7143,
+          homeOrDraw: 0.6301, awayOrDraw: 0.6301,
+          homeDrawNoBet: 0.5, awayDrawNoBet: 0.5,
+          topScorelines: [
+            { home: 1, away: 1, probability: 0.1232 },
+            { home: 0, away: 1, probability: 0.0932 },
+            { home: 1, away: 0, probability: 0.0932 },
+            { home: 1, away: 2, probability: 0.0817 },
+            { home: 2, away: 1, probability: 0.0817 },
+          ],
+        },
+        selectionIds: [],
+      },
+    });
+    expect(predictFixture(input).probabilities).toEqual(priced.probabilities);
+  });
+
   const prediction = predictFixture({
     fixture: upcoming,
     allFixtures: history,
@@ -85,6 +174,19 @@ describe('predictFixture (end-to-end)', () => {
     expect(p.over2_5 + p.under2_5).toBeCloseTo(1, 2);
     expect(p.homeScores).toBeGreaterThan(0);
     expect(p.homeScores).toBeLessThanOrEqual(1);
+  });
+
+  it.each([undefined, NaN, upcoming.fixture.timestamp + 1])('reports unverifiable odds consistently without altering probabilities (%s)', (timestamp) => {
+    const withOdds = predictFixture({
+      fixture: upcoming, allFixtures: history, leaguesStandings: standings,
+      standingsAreCurrent: false, now: upcoming.fixture.timestamp,
+      odds: [{ marketId: 'btts_yes', decimalOdds: 3, timestamp }],
+    });
+    expect(withOdds.probabilities).toEqual(prediction.probabilities);
+    expect(withOdds.dataQuality.oddsAvailable).toBe(true);
+    expect(withOdds.dataQuality.oddsStale).toBe(true);
+    expect(withOdds.selections).toEqual([]);
+    expect(withOdds.dataQuality.warnings.join(' ')).toMatch(/update time|freshness/);
   });
 
   it('exposes every supported market with probabilities in [0,1]', () => {

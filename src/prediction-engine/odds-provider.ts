@@ -65,7 +65,7 @@ export const mapApiFootballOdds = (
     return result;
   }
 
-  const fixtureTimestamp = parseTimestamp(response?.update) ?? parseTimestamp(response?.fixture?.date);
+  const fixtureTimestamp = parseTimestamp(response?.update);
   const best = new Map<MarketId, { odd: number; bookmaker: string; marginAdjustedProbability?: number }>();
   const seenBookmakers = new Set<string>();
 

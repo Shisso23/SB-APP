@@ -15,6 +15,13 @@ const loadSample = (): ApiFootballOddsPayload =>
 describe('odds-provider (real API-Football payload)', () => {
   const payload = loadSample();
 
+  it.each([undefined, 'not-a-date'])('never substitutes kickoff for missing or invalid update %s', (update) => {
+    const response = payload.response![0];
+    const mapped = mapApiFootballOdds({ ...response, update });
+    expect(mapped.markets.length).toBeGreaterThan(0);
+    expect(mapped.markets.every((market) => market.timestamp === undefined)).toBe(true);
+  });
+
   it('maps the real payload to engine markets', () => {
     const mapped = mapApiFootballOddsPayload(payload);
 

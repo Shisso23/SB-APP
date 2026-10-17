@@ -54,7 +54,7 @@ describe('selection policy: configurable thresholds are enforced', () => {
     prediction.fixture = { ...prediction.fixture, fixture: { ...prediction.fixture.fixture, timestamp: NOW / 1000 } };
     const makeMarket = (modelProbability: number, decimalOdds: number) => buildMarketValue({
       marketId: 'home_over_0_5', modelProbability,
-      odds: { marketId: 'home_over_0_5', decimalOdds, timestamp: NOW }, config, now: NOW,
+      odds: { marketId: 'home_over_0_5', decimalOdds, timestamp: NOW - 1 }, config, now: NOW,
     });
     const lower = makeMarket(0.8, 1.5);
     const higher = makeMarket(0.8, 2);

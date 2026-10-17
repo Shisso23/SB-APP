@@ -29,8 +29,8 @@ const OVER_UNDER_PAIRS: Array<[MarketId, MarketId]> = [
 ];
 
 export const isStale = (timestamp: number | undefined, now: number, staleAfterMinutes: number): boolean => {
-  if (!timestamp) {
-    return false;
+  if (timestamp === undefined || !Number.isFinite(timestamp) || timestamp <= 0 || timestamp > now) {
+    return true;
   }
   const ageMs = now - timestamp;
   return ageMs > staleAfterMinutes * 60_000;
@@ -112,7 +112,7 @@ export const buildMarketValue = ({
     );
   }
   if (stale) {
-    rejectReasons.push('Odds are older than the configured freshness window.');
+    rejectReasons.push('Odds update time is missing, invalid, in the future, or outside the configured freshness window.');
   }
   if (ev <= 0) {
     rejectReasons.push('The offered price has no positive estimated expected value.');
