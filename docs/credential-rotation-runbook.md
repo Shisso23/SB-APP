@@ -5,26 +5,40 @@ require explicit sign-off. Nothing in this document has been run automatically.
 
 ## 1. What is exposed
 
-Two API-Football credentials were committed to this repository:
+**Three** API-Football credentials were committed to this repository. (An earlier
+revision of this runbook said two; a history search by literal value later surfaced a
+third.)
+
+| # | Secret | Where it appeared | Status |
+|---|---|---|---|
+| 1 | sports key A | literal in `src/config.ts` | removed from source; still in history |
+| 2 | sports key B | `.env` via `REACT_APP_API_KEY` + `X_API_SPORTS_KEY` | removed from `.env`; still in history |
+| 3 | sports key C | hardcoded in `src/config.ts` by commit `b245ba9` | removed from source; still in history |
+
+Also involved:
 
 | Where | Detail |
 |---|---|
-| `src/config.ts` | literal key in source (removed) |
-| `.env` | `REACT_APP_API_KEY` + `X_API_SPORTS_KEY` (removed from the file) |
 | `backend/.env.example` | a real key had been pasted in (replaced with a placeholder) |
-| Bundle artefacts | the key was inlined into production JS by CRA |
+| Bundle artefacts | keys were inlined into production JS by CRA; a stale pre-cutover `build/` was deleted |
+| `backend/.prediction-build/` | the old scratch tree captured a literal key at compile time; the directory was **never committed** and has been rebuilt clean |
 
-Both values must be treated as **compromised**: they were pushed to
+All three values must be treated as **compromised**: they were pushed to
 `https://github.com/Shisso23/SB-APP.git` and are present in history.
 
-Measured scope at time of writing:
+Measured scope (by literal-value search across all refs):
 
 - `.env` appears in **7 commits**
-- the literal key appears in **4 commits**
-- the second key appears in **3 commits**
+- sports key A appears in **4 commits**
+- sports key B appears in **3 commits**
+- sports key C appears in **4 commits**:
+  `d9e251b "More changes"`, `a010392 "API integration"`,
+  `8124ead "Major improvements in predictions"`, `b245ba9 "Hardcoded key"`
 - affected refs: `master`, `backend-predcits`, `feat/old-preds`, all pushed to `origin`
-- one commit is literally titled `new api key`, suggesting a previous rotation that did
-  not revoke the superseded key
+- two commits are self-describing (`new api key`, `Hardcoded key`), indicating repeated
+  manual key handling and that earlier rotations never revoked the superseded values
+
+**Rotate all three.** Rotating only the two originally listed would leave key C live.
 
 ## 2. Rotation first (revocation is what actually stops the leak)
 
@@ -60,7 +74,7 @@ branches. Anyone with a clone must re-clone. Coordinate before running.
 
 Prerequisites:
 
-- [ ] Rotation done and the old key verified dead.
+- [ ] Rotation done and all **three** old keys verified dead.
 - [ ] Every collaborator notified and their work pushed or stashed.
 - [ ] CI/automation credentials that read these branches identified.
 - [ ] A full mirror backup taken:
@@ -68,7 +82,7 @@ Prerequisites:
 - [ ] `git filter-repo` installed (`brew install git-filter-repo`). Do **not** use the
       deprecated `git filter-branch`.
 - [ ] The exact old key values available locally, in a file **outside** the repo
-      (e.g. `/tmp/secrets-to-purge.txt`), never committed.
+      (e.g. `/tmp/secrets-to-purge.txt`), never committed. Include all three values.
 
 Suggested sequence (review before executing):
 
@@ -82,7 +96,9 @@ git clone https://github.com/Shisso23/SB-APP.git /tmp/SB-APP-scrub && cd /tmp/SB
 # 3. Drop .env from all history entirely
 git filter-repo --invert-paths --path .env --force
 
-# 4. Replace any residual secret strings everywhere else
+# 4. Replace every residual secret string everywhere else.
+#    One "literal==>***REMOVED***" line per key; all three keys must be listed,
+#    because dropping .env alone does not touch the keys hardcoded in src/config.ts.
 git filter-repo --replace-text /tmp/secrets-to-purge.txt --force
 
 # 5. Sanity-check: no key remains in history
@@ -107,10 +123,15 @@ Post-rewrite:
 ## 5. Verification checklist
 
 - [ ] `git ls-files | grep -E '(^|/)\.env$'` returns nothing.
-- [ ] `git log --all -S'<OLD_KEY>' --oneline` returns nothing.
+- [ ] `git log --all -S'<OLD_KEY_A>' --oneline` returns nothing.
+- [ ] `git log --all -S'<OLD_KEY_B>' --oneline` returns nothing.
+- [ ] `git log --all -S'<OLD_KEY_C>' --oneline` returns nothing.
 - [ ] A production build scans clean for keys, `x-apisports-key`, `X-RapidAPI-Key`,
-      `api-sports.io`, and `REACT_APP_API_KEY`.
-- [ ] The old key is rejected by the provider.
+      `REACT_APP_API_KEY`, and **`v3.football.api-sports.io`** (the data host).
+      Note: `media.api-sports.io` (the logo CDN in `src/mock-data.ts`) and the public
+      Firebase web `AIzaSy…` key are *expected* to match and are not leaks — scope the
+      scan accordingly so a real hit is never masked by these benign ones.
+- [ ] All three old keys are rejected by the provider.
 - [ ] The new key exists only in the backend environment.
 - [ ] `backend/.env.example` and `.env.example` contain placeholders only.
 
