@@ -114,3 +114,22 @@ if FIREBASE_CREDENTIALS_FILE:
     FIREBASE_CREDENTIALS_FILE = str(credentials_path)
 
 API_FOOTBALL_KEY = env("API_FOOTBALL_KEY", default="")
+
+# ---------------------------------------------------------------------------
+# Voucher access-pass providers (Phase 5)
+#
+# Every provider integration is INDEPENDENT and defaults to DISABLED. Three
+# separate flags, one per provider: enabling one never enables another.
+#
+# Do NOT enable any provider until:
+#   1. official merchant redemption documentation has been supplied, and
+#   2. the provider has confirmed IN WRITING that paid football-prediction
+#      analytics is an accepted merchant category.
+#
+# No endpoint, credential, signature scheme or voucher format is configured
+# here, because none has been verified. Supply provider details as separate
+# settings only once documented.
+# ---------------------------------------------------------------------------
+PAYMENT_PROVIDER_ONEVOUCHER_ENABLED = env.bool("PAYMENT_PROVIDER_ONEVOUCHER_ENABLED", default=False)
+PAYMENT_PROVIDER_OTT_ENABLED = env.bool("PAYMENT_PROVIDER_OTT_ENABLED", default=False)
+PAYMENT_PROVIDER_BLU_ENABLED = env.bool("PAYMENT_PROVIDER_BLU_ENABLED", default=False)

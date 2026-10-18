@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from django.utils import timezone
+from decimal import Decimal
 
-from api.models import Fixture, LeagueCatalog, OddsSnapshot, Prediction, StandingsSnapshot
+from api.models import AccessProduct, Fixture, LeagueCatalog, OddsSnapshot, Prediction, PurchaseAttempt, StandingsSnapshot
 
 
 class ProviderFixtureSerializer(serializers.ModelSerializer):
@@ -120,4 +121,55 @@ class PredictionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Prediction
         fields = ["id", "fixture", "engine_version", "config_hash", "generated_at", "as_of", "valid_until", "is_actionable", "output"]
+        read_only_fields = fields
+
+
+class AccessProductSerializer(serializers.ModelSerializer):
+    """Server-owned pricing/duration. Read-only to clients."""
+
+    class Meta:
+        model = AccessProduct
+        fields = ["code", "name", "price_amount", "currency", "duration_days"]
+        read_only_fields = fields
+
+
+class PurchaseCreateSerializer(serializers.Serializer):
+    """Customer input for starting a purchase.
+
+    Deliberately accepts ONLY a product code, a provider name and a voucher PIN.
+    Price, duration, status and access are never accepted from the client. The
+    PIN is `write_only` so it can never be serialised back out.
+    """
+
+    product_code = serializers.CharField(max_length=60)
+    provider = serializers.ChoiceField(choices=PurchaseAttempt.Provider.choices)
+    voucher_pin = serializers.CharField(max_length=64, write_only=True, trim_whitespace=False)
+
+    def validate_voucher_pin(self, value):
+        # Bounded, non-empty; never echoed or logged.
+        if not value or len(value) > 64:
+            raise serializers.ValidationError("Voucher PIN is not in an acceptable format.")
+        return value
+
+
+class PurchaseStatusSerializer(serializers.ModelSerializer):
+    """Owner-scoped purchase status. Never exposes the voucher PIN."""
+
+    product_code = serializers.CharField(source="product.code", read_only=True)
+    access_starts_at = serializers.SerializerMethodField()
+    access_ends_at = serializers.SerializerMethodField()
+
+    def get_access_starts_at(self, attempt):
+        grant = getattr(attempt, "grant", None)
+        return grant.starts_at.isoformat() if grant else None
+
+    def get_access_ends_at(self, attempt):
+        grant = getattr(attempt, "grant", None)
+        return grant.ends_at.isoformat() if grant else None
+
+    class Meta:
+        model = PurchaseAttempt
+        fields = ["id", "product_code", "provider", "status", "amount_expected", "amount_confirmed",
+                  "currency", "provider_reference", "failure_code", "created_at", "updated_at",
+                  "access_starts_at", "access_ends_at"]
         read_only_fields = fields

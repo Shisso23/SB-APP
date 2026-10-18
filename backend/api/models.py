@@ -199,6 +199,148 @@ class SourceObservation(SnapshotModel):
         indexes = [models.Index(fields=["kind", "scope", "observed_at"], name="observation_scope_time")]
 
 
+# ---------------------------------------------------------------------------
+# Access passes (Phase 5A)
+#
+# Provider-independent purchase/entitlement foundation. Customers redeem a
+# voucher they already own; the backend alone decides price, duration, payment
+# outcome and access. Voucher PINs are NEVER stored on any of these models.
+# ---------------------------------------------------------------------------
+
+class AccessProduct(models.Model):
+    """A server-owned access pass definition. Price and duration live in data so
+    changing them is a data change, not a code change."""
+
+    code = models.CharField(max_length=60, unique=True)
+    name = models.CharField(max_length=120)
+    scope = models.CharField(max_length=40, choices=AccessEntitlement.Scope.choices,
+                             default=AccessEntitlement.Scope.PREDICTIONS)
+    price_amount = models.DecimalField(max_digits=14, decimal_places=2)
+    currency = models.CharField(max_length=3, default="ZAR")
+    duration_days = models.PositiveSmallIntegerField()
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(price_amount__gte=0), name="product_price_nonnegative"),
+            models.CheckConstraint(condition=Q(duration_days__gt=0), name="product_duration_positive"),
+        ]
+
+
+class PurchaseAttempt(models.Model):
+    """One customer attempt to buy an access pass with a voucher.
+
+    Holds no voucher PIN. Status is written only by server-side orchestration;
+    there is no API route that lets a customer set it.
+    """
+
+    class Status(models.TextChoices):
+        CREATED = "created", "Created"
+        PENDING = "pending", "Pending provider confirmation"
+        PROVIDER_CONFIRMED = "provider_confirmed", "Provider confirmed"
+        GRANTED = "granted", "Access granted"
+        DECLINED = "declined", "Declined"
+        EXPIRED = "expired", "Expired"
+        NEEDS_REVIEW = "needs_review", "Needs manual review"
+
+    class Provider(models.TextChoices):
+        ONEVOUCHER = "1voucher", "1Voucher"
+        OTT = "ott", "OTT Voucher"
+        BLU = "blu", "Blu Voucher"
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="purchase_attempts")
+    product = models.ForeignKey(AccessProduct, on_delete=models.PROTECT, related_name="purchase_attempts")
+    provider = models.CharField(max_length=20, choices=Provider.choices)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.CREATED)
+    idempotency_key = models.CharField(max_length=128, unique=True)
+    amount_expected = models.DecimalField(max_digits=14, decimal_places=2)
+    amount_confirmed = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    currency = models.CharField(max_length=3, default="ZAR")
+    provider_reference = models.CharField(max_length=200, null=True, blank=True)
+    failure_code = models.CharField(max_length=80, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["user", "status"], name="attempt_user_status"),
+            models.Index(fields=["provider", "provider_reference"], name="attempt_provider_ref"),
+        ]
+        constraints = [
+            models.CheckConstraint(condition=Q(amount_expected__gte=0), name="attempt_amount_expected_nonnegative"),
+        ]
+
+
+class PurchaseEvent(models.Model):
+    """Append-only record of every provider event for an attempt.
+
+    Unique per (provider, provider_event_id) so duplicate or out-of-order
+    callbacks collapse to a single row.
+    """
+
+    attempt = models.ForeignKey(PurchaseAttempt, on_delete=models.PROTECT, related_name="events")
+    provider = models.CharField(max_length=20, choices=PurchaseAttempt.Provider.choices)
+    provider_event_id = models.CharField(max_length=200)
+    status = models.CharField(max_length=40)
+    raw_status_code = models.CharField(max_length=40, blank=True)
+    metadata = models.JSONField(default=dict, validators=[validate_payment_metadata])
+    received_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["provider", "provider_event_id"], name="purchase_event_provider_event_unique"),
+        ]
+
+
+class PassGrant(models.Model):
+    """Durable link proving an entitlement was granted for exactly one attempt.
+
+    `attempt` is OneToOne: that is what makes "grant once per verified purchase"
+    a database guarantee rather than a code convention, and it is what prevents a
+    replayed/duplicated provider event from double-granting.
+
+    `entitlement` is a plain FK, NOT OneToOne, because repeat purchases extend an
+    existing entitlement: several grants legitimately point at one entitlement.
+    """
+
+    attempt = models.OneToOneField(PurchaseAttempt, on_delete=models.PROTECT, related_name="grant")
+    entitlement = models.ForeignKey(AccessEntitlement, on_delete=models.PROTECT, related_name="grants")
+    granted_at = models.DateTimeField(default=timezone.now)
+    starts_at = models.DateTimeField()
+    ends_at = models.DateTimeField()
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(ends_at__gt=F("starts_at")), name="grant_positive_window"),
+        ]
+
+
+class RefundRecord(models.Model):
+    """Reversal or correction against a purchase. Audit only; never grants access."""
+
+    attempt = models.ForeignKey(PurchaseAttempt, on_delete=models.PROTECT, related_name="refunds")
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    reason_code = models.CharField(max_length=80)
+    provider_reference = models.CharField(max_length=200)
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["provider_reference"], name="refund_provider_reference_unique"),
+        ]
+
+
+class EntitlementRevocation(models.Model):
+    """Auditable record of why an entitlement was revoked. Access itself is
+    denied by `AccessEntitlement.revoked_at`."""
+
+    entitlement = models.ForeignKey(AccessEntitlement, on_delete=models.PROTECT, related_name="revocations")
+    reason_code = models.CharField(max_length=80)
+    revoked_at = models.DateTimeField(default=timezone.now)
+
+
 class StandingsSnapshot(SnapshotModel):
     league_id = models.PositiveIntegerField(db_index=True)
     season = models.PositiveSmallIntegerField()
