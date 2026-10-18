@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 from urllib.parse import urlsplit
 
 import environ
@@ -11,9 +12,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 #
 # This is backend/.env (NOT the frontend root .env) and is optional: real
 # environments should inject variables directly. Existing variables always win, so
-# a deployed environment is never overridden by a stray local file.
+# a deployed environment is never overridden by a stray local file. Set
+# DJANGO_IGNORE_LOCAL_ENV_FILE=1 to skip it entirely (used by configuration tests
+# so a developer's local file cannot change their outcome).
 _local_env = BASE_DIR / ".env"
-if _local_env.is_file():
+_ignore_local_env = os.environ.get("DJANGO_IGNORE_LOCAL_ENV_FILE", "").strip().lower() in {"1", "true", "yes", "on"}
+if _local_env.is_file() and not _ignore_local_env:
     environ.Env.read_env(str(_local_env))
 
 env = environ.Env()

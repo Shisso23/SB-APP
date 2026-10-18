@@ -15,6 +15,9 @@ class SettingsTests(unittest.TestCase):
         environment.update({
             "DJANGO_SECRET_KEY": "unit-test-only-not-a-production-secret-" * 2,
             "DATABASE_URL": "postgresql://localhost/predictxi_configuration_test",
+            # Point settings at a non-existent env file so a developer's local
+            # backend/.env cannot change the values under test.
+            "DJANGO_IGNORE_LOCAL_ENV_FILE": "1",
             **changes,
         })
         return environment
@@ -68,8 +71,10 @@ class SettingsTests(unittest.TestCase):
         result = self.load_settings({"REACT_APP_API_KEY": "frontend-placeholder", "X_API_SPORTS_KEY": "frontend-placeholder"})
         self.assertEqual(result.returncode, 0, result.stderr)
         code = (BACKEND / "predictxi" / "settings.py").read_text()
-        self.assertNotIn("read_env", code)
+        # The backend may read its own backend/.env, but never the frontend root .env
+        # or any React variable.
         self.assertNotIn("REACT_APP_", code)
+        self.assertIn('BASE_DIR / ".env"', code)
 
     def test_firebase_credentials_resolve_from_relative_path(self):
         result = self.load_firebase_project_id({

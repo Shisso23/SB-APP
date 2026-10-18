@@ -1,3 +1,4 @@
+import logging
 import os
 from threading import Lock
 
@@ -13,12 +14,30 @@ from rest_framework.authentication import BaseAuthentication, get_authorization_
 from rest_framework.exceptions import APIException, AuthenticationFailed
 
 
+logger = logging.getLogger(__name__)
 _app_lock = Lock()
 
 
 class AuthenticationUnavailable(APIException):
     status_code = 503
     default_detail = "Authentication verification is unavailable."
+
+
+def _log_unavailable(reason, error):
+    """Record a sanitized cause server-side.
+
+    The client always receives a generic message so no internal detail leaks, but
+    operators need to distinguish a TLS trust failure from a bad credential or a
+    network outage.
+    """
+    hint = ""
+    text = str(error)
+    if "CERTIFICATE_VERIFY_FAILED" in text or "certificate verify failed" in text.lower():
+        hint = (
+            " TLS certificate verification failed. If this host inspects TLS, point "
+            "SSL_CERT_FILE at the corporate CA bundle (or set REQUESTS_CA_BUNDLE)."
+        )
+    logger.error("Firebase authentication unavailable (%s): %s.%s", reason, type(error).__name__, hint)
 
 
 def get_firebase_app():
@@ -50,11 +69,13 @@ class FirebaseAuthentication(BaseAuthentication):
             raise AuthenticationFailed("A valid Bearer ID token is required.") from None
         try:
             app = get_firebase_app()
-        except (ImproperlyConfigured, ValueError, OSError, FirebaseError, GoogleAuthError):
+        except (ImproperlyConfigured, ValueError, OSError, FirebaseError, GoogleAuthError) as error:
+            _log_unavailable("initialisation", error)
             raise AuthenticationUnavailable() from None
         try:
             claims = auth.verify_id_token(token, app=app, check_revoked=True, clock_skew_seconds=0)
-        except (auth.CertificateFetchError, GoogleAuthError):
+        except (auth.CertificateFetchError, GoogleAuthError) as error:
+            _log_unavailable("token verification", error)
             raise AuthenticationUnavailable() from None
         except (FirebaseError, ValueError):
             raise AuthenticationFailed("Invalid or expired ID token.") from None

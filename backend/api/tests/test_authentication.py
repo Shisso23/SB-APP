@@ -75,6 +75,19 @@ class AuthenticationTests(APITestCase):
         self.assertNotIn("private credential", response.content.decode())
         self.assertFalse(User.objects.exists())
 
+    def test_tls_trust_failure_is_logged_but_never_returned_to_client(self):
+        ssl_error = DefaultCredentialsError('certificate verify failed: Missing Authority Key Identifier')
+        self.verify.side_effect = ssl_error
+        with self.assertLogs("api.authentication", level="ERROR") as captured:
+            response = self.client.get("/api/v1/me/", HTTP_AUTHORIZATION="Bearer test-token")
+        self.assertEqual(response.status_code, 503)
+        body = response.content.decode()
+        self.assertNotIn("certificate", body.lower())
+        self.assertNotIn("SSL_CERT_FILE", body)
+        logged = " ".join(captured.output)
+        self.assertIn("TLS certificate verification failed", logged)
+        self.assertIn("SSL_CERT_FILE", logged)
+
     def test_local_account_disable_is_enforced(self):
         User.objects.create_user("verified-user", is_active=False)
         self.assertEqual(self.client.get("/api/v1/me/", HTTP_AUTHORIZATION="Bearer test-token").status_code, 401)
