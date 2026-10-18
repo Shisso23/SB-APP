@@ -12,24 +12,33 @@
 /build
 
 # misc
-.env
 .DS_Store
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
 
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-#env
-.env
+# ---------------------------------------------------------------------------
+# Secrets and credentials. Never commit these.
+#
+# Patterns match at any depth (**/) so a stray copy in a subfolder is still
+# ignored. Placeholders belong in *.example files, which stay tracked.
+# ---------------------------------------------------------------------------
+**/.env
+**/.env.*
+!**/.env.example
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/service-account*.json
+**/*firebase-adminsdk*.json
+**/*credentials*.json
+**/secrets/**
+**/.secrets/**
 
 # backend
 /backend/.venv/
 __pycache__/
 *.py[cod]
-/backend/.secrets/
-/backend/*firebase*.json
 /backend/.prediction-build/
