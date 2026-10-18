@@ -49,6 +49,8 @@ import {
 } from '../../prediction-engine';
 import type { MarketOdds, MarketValue, PaperSelection } from '../../prediction-engine';
 import { PremiumRequiredError, SessionExpiredError, SignInRequiredError } from '../../services/api/client';
+import { describeFailure } from '../../services/api/failures';
+import { useAuth } from '../../services/auth/AuthProvider';
 import { rankDirectPicks, rankUnpricedForecasts } from '../../prediction-engine/selection';
 
 Modal.setAppElement('#root');
@@ -660,6 +662,10 @@ const EnginePredictionPanel: React.FC<{
 const BetAndFixturesScreen: React.FC = () => {
   const { leagues, isLoadingLeagues }: LeaguesState = useSelector(leaguesSelector);
   const dispatch = useDispatch() as (action: unknown) => unknown;
+  // Reads and predictions require a signed-in Firebase user. Signing in is handled
+  // by the navbar control; this screen only reflects the resulting state.
+  const { user, initialising } = useAuth();
+  const signedIn = Boolean(user);
 
   const [leaguesFilters] = useState<LeaguesFilterModel>({ current: true, type: 'League' });
   const [allLeagues, setAllLeagues] = useState<LeagueDataModel[] | null>(null);
@@ -914,6 +920,13 @@ const BetAndFixturesScreen: React.FC = () => {
 
   // <<< CHANGE: allow bets during countdown if batch < 7
   const canBet = selectedBatch.length > 0 && (selectedBatch.length < MAX_BATCH || msLeft === 0);
+
+  // Do not attempt work that must fail: sign-in is authoritative server-side.
+  const betDisabledReason = initialising
+    ? 'Checking your session…'
+    : !signedIn
+      ? 'Sign in to run predictions.'
+      : null;
 
 
   useEffect(() => {
@@ -1215,6 +1228,10 @@ const BetAndFixturesScreen: React.FC = () => {
 
   const handleBet = async (refreshCurrentSeason = false) => {
     if (loadingBatch) return;
+    if (initialising || !signedIn) {
+      setFixtureLoadWarnings([betDisabledReason || 'Sign in to run predictions.']);
+      return;
+    }
     setLoadingBatch(true);
     setFixtureLoadWarnings([]);
 
@@ -1443,7 +1460,7 @@ const BetAndFixturesScreen: React.FC = () => {
 
     } catch (error) {
       setEnginePredictions({});
-      setFixtureLoadWarnings([`Prediction run failed: ${error instanceof Error ? error.message : 'Network or provider error'}`]);
+      setFixtureLoadWarnings([describeFailure(error)]);
     } finally {
       setLoadingBatch(false);
     }
@@ -1794,9 +1811,9 @@ const BetAndFixturesScreen: React.FC = () => {
                 <div className="text-xs text-slate-400">{msLeft > 0 ? `Cooldown: ${Math.ceil(msLeft / 1000)}s` : 'Ready'}</div>
                 <button
                   onClick={() => handleBet(true)}
-                  disabled={!canBet || loadingBatch}
+                  disabled={!canBet || loadingBatch || !signedIn || initialising}
                   className={`rounded-xl px-5 py-2.5 text-sm font-semibold transition ${
-                    !canBet || loadingBatch
+                    !canBet || loadingBatch || !signedIn || initialising
                       ? 'cursor-not-allowed bg-slate-800 text-slate-400'
                       : 'bg-cyan-600 text-white shadow-lg hover:bg-cyan-500'
                   }`}
@@ -2157,9 +2174,9 @@ const BetAndFixturesScreen: React.FC = () => {
 
       <button
         onClick={() => handleBet(true)}
-        disabled={!canBet || loadingBatch}
+        disabled={!canBet || loadingBatch || !signedIn || initialising}
         className={`fixed bottom-5 right-4 z-30 rounded-full px-5 py-3 text-sm font-semibold shadow-xl transition lg:hidden ${
-          !canBet || loadingBatch
+          !canBet || loadingBatch || !signedIn || initialising
             ? 'cursor-not-allowed bg-slate-800/90 text-slate-400'
             : 'bg-cyan-600 text-white hover:bg-cyan-500'
         }`}

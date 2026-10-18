@@ -22,6 +22,14 @@ jest.mock('react-redux', () => ({
   useSelector: () => mockLeaguesState,
 }));
 
+// The screen requires a signed-in user; default the test to signed-in.
+const mockAuth = { user: { email: 'test@example.com' } as unknown, initialising: false, markSignedOut: jest.fn() };
+jest.mock('../../services/auth/AuthProvider', () => ({
+  __esModule: true,
+  useAuth: () => mockAuth,
+  AuthProvider: ({ children }: { children: unknown }) => children,
+}));
+
 const mockDispatch = jest.fn();
 const currentYear = new Date().getFullYear();
 const mockLeaguesState = {
@@ -113,4 +121,15 @@ it('reports a failed explicit refresh without inventing a settled result', async
   await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Fixture refresh unavailable'));
   await waitFor(() => expect(screen.getByRole('button', { name: 'Bet (run predictions)' })).not.toBeDisabled());
   expect(readPaperRecord().selections[0].settled).toBeUndefined();
+});
+
+it('does not run predictions when signed out', async () => {
+  mockAuth.user = null;
+  render(<BetAndFixturesScreen />);
+  fireEvent.click((await screen.findAllByRole('button', { name: /Premier League/ }))[0]);
+  const run = screen.getByRole('button', { name: 'Bet (run predictions)' });
+  await waitFor(() => expect(run).toBeDisabled());
+  // No fixtures request should be issued while signed out.
+  expect(get.mock.calls.filter(([endpoint]) => endpoint === '/fixtures')).toHaveLength(0);
+  mockAuth.user = { email: 'test@example.com' };
 });

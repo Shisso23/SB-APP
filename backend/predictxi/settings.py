@@ -6,6 +6,16 @@ from django.core.exceptions import ImproperlyConfigured
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load the git-ignored local backend env file when present.
+#
+# This is backend/.env (NOT the frontend root .env) and is optional: real
+# environments should inject variables directly. Existing variables always win, so
+# a deployed environment is never overridden by a stray local file.
+_local_env = BASE_DIR / ".env"
+if _local_env.is_file():
+    environ.Env.read_env(str(_local_env))
+
 env = environ.Env()
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")
@@ -75,6 +85,28 @@ SECURE_HSTS_SECONDS = 0 if DEBUG else 31_536_000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
 SECURE_HSTS_PRELOAD = False
 
-FIREBASE_PROJECT_ID = env("FIREBASE_PROJECT_ID", default="")
-FIREBASE_CREDENTIALS_FILE = env("FIREBASE_CREDENTIALS_FILE", default="")
+FIREBASE_PROJECT_ID = env("FIREBASE_PROJECT_ID", default="predcitz-backend")
+
+# Where the Firebase Admin service-account JSON lives.
+#
+# Resolution order (first non-empty wins):
+#   1. FIREBASE_CREDENTIALS_FILE  - explicit project setting (preferred)
+#   2. GOOGLE_APPLICATION_CREDENTIALS - the standard Google SDK variable
+# The file is PRIVATE. Keep it under backend/.secrets/ (git-ignored, mode 600) and
+# never commit it. An empty value means "use Application Default Credentials".
+FIREBASE_CREDENTIALS_FILE = (
+    env("FIREBASE_CREDENTIALS_FILE", default="")
+    or env("GOOGLE_APPLICATION_CREDENTIALS", default="")
+)
+
+if FIREBASE_CREDENTIALS_FILE:
+    credentials_path = Path(FIREBASE_CREDENTIALS_FILE).expanduser()
+    if not credentials_path.is_absolute():
+        credentials_path = (BASE_DIR / credentials_path).resolve()
+    if not credentials_path.is_file():
+        raise ImproperlyConfigured(
+            "FIREBASE_CREDENTIALS_FILE does not point to a readable service-account file."
+        )
+    FIREBASE_CREDENTIALS_FILE = str(credentials_path)
+
 API_FOOTBALL_KEY = env("API_FOOTBALL_KEY", default="")

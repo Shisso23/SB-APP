@@ -13,7 +13,7 @@ import axios, { AxiosError, AxiosRequestConfig } from 'axios';
 
 import { apiConfig } from '../../config/api';
 import { EnvelopeResponse } from './types';
-import { notifySessionExpired, requireIdToken, SessionExpiredError, SignInRequiredError } from './session';
+import { forceRefreshIdToken, notifySessionExpired, requireIdToken, SessionExpiredError, SignInRequiredError } from './session';
 
 /** Caller lacks an active entitlement for premium data. */
 export class PremiumRequiredError extends Error {
@@ -68,6 +68,8 @@ apiClient.interceptors.response.use(
     }
     const status = error.response?.status;
     if (status === 401) {
+      // A cached ID token can be stale; refresh so the next attempt uses a fresh one.
+      void forceRefreshIdToken();
       notifySessionExpired();
       return Promise.reject(new SessionExpiredError());
     }

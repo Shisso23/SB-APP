@@ -55,16 +55,25 @@ describe('api client failure mapping', () => {
 
   beforeEach(() => {
     jest.resetModules();
+    jest.doMock('../auth/firebase', () => ({
+      __esModule: true,
+      currentIdToken: jest.fn().mockResolvedValue('test-token'),
+      refreshIdToken: jest.fn().mockResolvedValue('test-token'),
+    }));
     localStorage.clear();
   });
 
   it('fails closed when no ID token is available', async () => {
+    jest.doMock('../auth/firebase', () => ({
+      __esModule: true,
+      currentIdToken: jest.fn().mockResolvedValue(null),
+      refreshIdToken: jest.fn().mockResolvedValue(null),
+    }));
     const { apiGet, SignInRequiredError } = await load();
     await expect(apiGet('/fixtures')).rejects.toBeInstanceOf(SignInRequiredError);
   });
 
   it('maps 401 to an expired session', async () => {
-    window.__PREDICTXI_ID_TOKEN_PROVIDER__ = () => 'test-token';
     const client = await load();
     const adapters = (client.apiClient.interceptors.response as unknown as { handlers: Array<{ rejected: (error: unknown) => Promise<never> }> }).handlers;
     const rejected = adapters[0].rejected;
@@ -84,7 +93,6 @@ describe('api client failure mapping', () => {
   });
 
   it('maps 403 to a premium error and 5xx to a service error', async () => {
-    window.__PREDICTXI_ID_TOKEN_PROVIDER__ = () => 'test-token';
     const client = await load();
     const adapters = (client.apiClient.interceptors.response as unknown as { handlers: Array<{ rejected: (error: unknown) => Promise<never> }> }).handlers;
     const rejected = adapters[0].rejected;
@@ -98,7 +106,6 @@ describe('api client failure mapping', () => {
   });
 
   it('does not echo server details in error messages', async () => {
-    window.__PREDICTXI_ID_TOKEN_PROVIDER__ = () => 'test-token';
     const client = await load();
     const adapters = (client.apiClient.interceptors.response as unknown as { handlers: Array<{ rejected: (error: unknown) => Promise<never> }> }).handlers;
     const error = await adapters[0].rejected({

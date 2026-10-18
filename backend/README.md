@@ -30,6 +30,39 @@ an explicitly provisioned PostgreSQL database via `DATABASE_URL`; SQLite is reje
 For local HTTP development only, set `DJANGO_DEBUG=True`. Production defaults require
 HTTPS and explicit allowed hosts. CORS is not authentication or a paywall.
 
+### Firebase Admin credentials
+
+Download the service-account JSON from the Firebase console
+(**Project settings → Service accounts → Generate new private key**) and place it at:
+
+```
+backend/.secrets/firebase-service-account.json
+```
+
+That directory is git-ignored. Restrict the file to your user only:
+
+```sh
+chmod 600 backend/.secrets/firebase-service-account.json
+```
+
+Then configure **either** variable (the first takes precedence):
+
+```sh
+FIREBASE_PROJECT_ID=predcitz-backend
+FIREBASE_CREDENTIALS_FILE=.secrets/firebase-service-account.json
+# or the standard Google SDK variable:
+# GOOGLE_APPLICATION_CREDENTIALS=.secrets/firebase-service-account.json
+```
+
+Relative paths resolve against `backend/`. Leaving both unset falls back to
+Application Default Credentials. A configured path that does not exist fails at
+startup rather than silently running unauthenticated. `FIREBASE_PROJECT_ID` must
+match the frontend's `projectId`, or every token is rejected.
+
+**Never** commit the service-account JSON, paste it into chat, or put it in
+`.env.example`. The example file is committed and must hold placeholders only; a
+test enforces that it contains no provider key.
+
 Configuration tests require no database:
 
 ```sh
