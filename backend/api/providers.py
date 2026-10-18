@@ -29,12 +29,15 @@ class ApiFootballProvider:
     MAX_RESPONSE_BYTES = 2 * 1024 * 1024
     ENDPOINTS = frozenset({"fixtures", "fixtures/headtohead", "leagues", "standings", "odds", "odds/bookmakers", "odds/live"})
 
-    def __init__(self, *, session=None):
+    def __init__(self, *, session=None, before_request=None, on_quota=None, check_deadline=None):
         self._key = settings.API_FOOTBALL_KEY
         if not self._key or self._key.startswith("replace-"):
             raise ProviderConfigurationError("Server-only API-Football credentials are not configured.")
         self._session = session if session is not None else requests.Session()
         self._session.trust_env = False
+        self._before_request = before_request
+        self._on_quota = on_quota
+        self._check_deadline = check_deadline
 
     def close(self):
         self._session.close()
@@ -71,14 +74,22 @@ class ApiFootballProvider:
         if endpoint not in self.ENDPOINTS:
             raise ProviderError("Unsupported provider endpoint.")
         for attempt in range(self.MAX_RETRIES + 1):
+            if self._before_request:
+                self._before_request()
+            timeout = self.TIMEOUT
+            if self._check_deadline:
+                remaining = self._check_deadline()
+                timeout = tuple(min(value, remaining) for value in self.TIMEOUT)
             try:
                 response = self._session.get(
                     self.BASE_URL + endpoint, params=params,
                     headers={"x-apisports-key": self._key, "Accept": "application/json"},
-                    timeout=self.TIMEOUT, allow_redirects=False, stream=True,
+                    timeout=timeout, allow_redirects=False, stream=True,
                 )
                 try:
                     if response.status_code == 429:
+                        if self._on_quota:
+                            self._on_quota()
                         raise ProviderQuotaExceeded("Provider request quota reached.")
                     if 500 <= response.status_code < 600 and attempt < self.MAX_RETRIES:
                         continue
@@ -87,6 +98,8 @@ class ApiFootballProvider:
                     chunks = []
                     size = 0
                     for chunk in response.iter_content(chunk_size=64 * 1024):
+                        if self._check_deadline:
+                            self._check_deadline()
                         size += len(chunk)
                         if size > self.MAX_RESPONSE_BYTES:
                             raise ProviderError("Provider response exceeds the allowed size.")

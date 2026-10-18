@@ -32,3 +32,4 @@ __pycache__/
 *.py[cod]
 /backend/.secrets/
 /backend/*firebase*.json
+/backend/.prediction-build/

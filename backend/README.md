@@ -97,10 +97,10 @@ processing or entitlement-granting signal. Raw voucher secrets must never be sto
 Metadata has a small allowlist validated by `full_clean()`; future trusted ingestion
 must call validation and perform authoritative payment verification.
 
-Global ingestion scheduling, distributed quota management, audit-log retention,
-backups/restore monitoring and a private Node runner are not implemented. Django
-does not currently execute the TypeScript engine or import predictions automatically.
-Choose database/runtime regions and privacy retention before any paid pilot.
+The bounded Phase 3 management pipeline and private runner are described below.
+No scheduler is installed and no ingestion is enabled automatically. Audit-log
+retention and backups/restore monitoring still need operational setup. Choose
+database/runtime regions and privacy retention before any paid pilot.
 
 ## Private provider adapter
 
@@ -118,13 +118,117 @@ partial result. Provider bodies, authentication headers and raw exceptions are
 not logged or returned in errors. Sessions ignore environment proxy/netrc settings.
 Close the adapter's session when the future ingestion job finishes.
 
+## Phase 3: private bounded jobs
+
+Ingestion and job execution are disabled unless `PREDICTXI_INGESTION_ENABLED=True`
+and `PREDICTXI_LEAGUES` explicitly allows the requested league. The provider key
+remains empty. Only mock HTTP responses were used in verification. Do not enable
+live access, rotate credentials, deploy or install a scheduler without approval.
+
+Compile from the repository root using existing Node dependencies:
+
+```sh
+node_modules/.bin/tsc --project backend/prediction_runner/tsconfig.json
+node -e 'const path=require("path"),webpack=require("webpack"); webpack({mode:"production",target:"node",entry:path.resolve("backend/.prediction-build/backend/prediction_runner/run.js"),output:{path:path.resolve("backend/.prediction-build/runtime"),filename:"runner.cjs"},optimization:{minimize:false},devtool:false},(error,stats)=>{if(error||stats.hasErrors()){console.error("Private runner bundling failed.");process.exitCode=1;}});'
+```
+
+Only `backend/.prediction-build/runtime/runner.cjs` is the executable artifact.
+Type-only dependencies cause TypeScript to emit unused frontend configuration into
+the parent scratch tree, which can contain the compromised frontend credential.
+**Never package or publish the parent `.prediction-build` directory or the client
+build.** Webpack bundles only runtime-reachable pure modules; the executable bundle
+was scanned without printing secret values and contains no provider credential or
+browser networking module. No existing source or frontend dependency was changed.
+Artifact scanning must be repeated after future dependency/import changes.
+
+The runner supports fixed-clock prediction, odds mapping and settlement using the
+existing TypeScript functions. It has 4 MiB input/output limits and a maximum
+10-second execution timeout. Django invokes a fixed argument list without a shell,
+discards stderr and supplies only `TZ`/`LANG` to the child environment. Application
+credentials and database configuration are never forwarded. The bundle digest and
+full engine configuration hash identify each stored prediction version.
+
+After approved environment/database setup, the private command is:
+
+```sh
+backend/.venv/bin/python backend/manage.py run_prediction_job --mode refresh --league 39 --season 2026
+```
+
+Modes are deliberately separate:
+
+- `bootstrap`: fetch the configured three-season fixture history in bounded pages;
+	store the actual observation time, never a retroactive availability claim.
+- `refresh`: fetch active-season fixtures/results, standings and odds. It does not
+	generate predictions or settle selections. Quote mapping is limited to the next
+	two days' capped upcoming candidates.
+- `predict`: run the private engine for capped upcoming fixtures using a persisted
+	clock, engine/config hashes and only source observations known by that clock.
+- `settle`: use observed final results to settle priced markets from pre-kickoff
+	prediction snapshots. No prediction generation or provider requests occur here.
+
+An eventual scheduler should run `refresh`, then `predict` as separate invocations,
+and run `settle` independently. No cron entry or deployment was created. The default
+idempotency slot is the current five-minute slot; `--slot` accepts an explicit
+aware ISO schedule time no later than the server clock. Bootstrap is a separately
+scheduled/offline operation, not something every customer request triggers.
+
+A dedicated PostgreSQL connection holds a global session advisory lock. **Use a
+direct/session-pooled endpoint, not transaction pooling.** A unique job-slot row,
+bounded attempts, persisted checkpoints and a changed claim token allow recovery.
+Lock liveness and claim ownership are checked before writes. Completed slots skip;
+transient failed slots have exponential retry delays and at most three attempts.
+No raw exception or provider body is stored in job error status.
+
+Request budgets are shared PostgreSQL counters and reserve before every physical
+request/retry. Defaults are 100 requests per job, 20/minute and 500/UTC day; these
+are conservative operational limits, not model thresholds or claims about provider
+plan capacity. HTTP 429 creates a 15-minute shared cooldown. Node/HTTP calls have
+their own bounds; the job's cooperative deadline is checked between steps, before
+writes and during streamed reads. An in-flight socket read may finish after the
+deadline up to its bounded read timeout; late prediction output is never published.
+
+Fixture upserts retain canonical data; immutable source observations retain
+capture times and content hashes. Inputs use completed matches before the frozen
+clock, correct-league/season standings observed by then, and timestamped pre-match
+quotes. Target/standings/quote observations must be within the 15-minute source
+freshness window; quotes must additionally pass the unchanged engine odds-age rule.
+Missing or stale optional standings/quotes are omitted rather than invented.
+Current tables or newly backfilled data cannot be used as historical observations.
+Input snapshots and provenance IDs allow exact replay. Generation rechecks kickoff,
+current fixture status, build digest and validity before committing.
+
+Current premium reads return only the latest still-valid pre-match version per
+fixture. `?history=true` exposes historical versions under the same Firebase and
+entitlement checks; `is_actionable` and `valid_until` distinguish them from current
+picks. Neither route exposes raw inputs or a public execution endpoint.
+
+Settlement stores one immutable outcome per prediction/market, with its result
+observation and the original quote retained in the prediction snapshot. Repeated
+settlement is a no-op. A changed final score sets correction metadata and retains
+the original outcome/profit for manual reconciliation; it never silently rewrites
+performance history. Unpriced forecasts are not assigned hypothetical betting ROI.
+
+## Verification
+
+Compile the private bundle first, configure a dedicated local/test PostgreSQL
+connection and a unique `DJANGO_TEST_DATABASE_NAME`, then run the documented Django
+test command. PostgreSQL tests cover competing workers, lock loss, crash recovery,
+duplicate slots, budgets, provider failures, stale inputs, UTC conversion, kickoff
+changes, duplicate execution and correction-aware settlement. Private runner tests
+cover fixed golden outputs, repeatability, timeouts, bounds and environment isolation.
+All Firebase/provider traffic in tests is mocked. No SQLite substitution is used.
+
+No production migration has been applied. No runner sandbox beyond the fixed code,
+filtered environment and process bounds is provided; server filesystem/process
+permissions and credential-free packaging must be enforced at deployment.
+
 ## Next phase: complete cutover, not a partial proxy
 
 1. Obtain separate approval for credential rotation/revocation, accounting for
 	the downtime caused by revoking the key still used by the current browser.
-2. Add trusted ingestion and a private compiled Node batch runner. Pass validated
-	JSON and an explicit clock to the unchanged TypeScript engine; reuse its golden
-	outputs for parity. Do not rewrite the formulas in Python or expose a runner URL.
+2. Approve real-provider staging verification for this ingestion/runner pipeline
+	with a replacement backend-only credential. Keep the existing engine golden
+	outputs as the parity gate; do not expose a runner URL.
 3. Store fixtures, standings/history, quote timestamps and versioned model snapshots
 	centrally. Add application API contracts for the remaining screen workflows,
 	server-side rate limiting, monitoring and provider quota budgets.

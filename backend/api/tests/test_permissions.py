@@ -16,7 +16,7 @@ class PermissionTests(APITestCase):
                                               home_team_name="Home", away_team_name="Away", kickoff=self.now + timedelta(days=1), status="NS",
                                               source_payload={"private_source": "not public"})
         self.prediction = Prediction.objects.create(fixture=self.fixture, engine_version="v1", input_hash="a" * 64,
-                                                    config_hash="b" * 64, as_of=self.now, inputs={"private_inputs": True}, output={"homeWin": 0.6})
+                                                    config_hash="b" * 64, as_of=self.now, valid_until=self.now + timedelta(minutes=15), inputs={"private_inputs": True}, output={"homeWin": 0.6})
         patch("api.authentication.get_firebase_app", return_value=object()).start()
         patch("api.authentication.auth.verify_id_token", return_value={"uid": "verified-user", "subscription_status": "active", "is_staff": True}).start()
         patch("api.permissions.timezone.now", return_value=self.now).start()
@@ -62,3 +62,20 @@ class PermissionTests(APITestCase):
     def test_no_customer_write_routes_for_entitlements_or_payments(self):
         for path in ["/api/v1/entitlements/", "/api/v1/payment-events/", "/api/v1/provider/odds/"]:
             self.assertEqual(self.client.post(path, {"status": "completed"}).status_code, 404)
+
+    def test_historical_versions_remain_premium_and_are_not_current_picks(self):
+        self.entitlement()
+        Prediction.objects.filter(pk=self.prediction.pk).update(valid_until=self.now - timedelta(seconds=1))
+        current = self.client.get("/api/v1/predictions/")
+        self.assertEqual(current.data["results"], [])
+        history = self.client.get("/api/v1/predictions/?history=true")
+        self.assertEqual(len(history.data["results"]), 1)
+        self.assertFalse(history.data["results"][0]["is_actionable"])
+        self.client.credentials()
+        self.assertEqual(self.client.get("/api/v1/predictions/?history=true").status_code, 401)
+
+    def test_old_version_is_not_used_when_latest_has_expired(self):
+        self.entitlement()
+        Prediction.objects.create(fixture=self.fixture, engine_version="v2", input_hash="c" * 64,
+                                  config_hash="b" * 64, as_of=self.now, valid_until=self.now - timedelta(seconds=1), output={})
+        self.assertEqual(self.client.get("/api/v1/predictions/").data["results"], [])

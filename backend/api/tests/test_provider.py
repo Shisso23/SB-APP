@@ -73,6 +73,26 @@ class ProviderTests(SimpleTestCase):
         self.assertNotIn("synthetic-backend-test-key", str(caught.exception))
         self.assertTrue(caught.exception.__suppress_context__)
 
+    def test_every_physical_retry_is_charged_and_budget_can_stop_network(self):
+        charge = Mock()
+        provider = ApiFootballProvider(session=self.session, before_request=charge)
+        self.session.get.side_effect = requests.Timeout("synthetic failure")
+        with self.assertRaises(ProviderUnavailable):
+            provider.bookmakers()
+        self.assertEqual(charge.call_count, 3)
+        self.session.get.reset_mock()
+        charge.side_effect = ProviderError("budget exhausted")
+        with self.assertRaises(ProviderError):
+            provider.bookmakers()
+        self.session.get.assert_not_called()
+
+    def test_job_deadline_is_checked_while_streaming(self):
+        check = Mock(side_effect=[1, ProviderError("deadline exhausted")])
+        provider = ApiFootballProvider(session=self.session, check_deadline=check)
+        with self.assertRaises(ProviderError):
+            provider.bookmakers()
+        self.assertEqual(self.session.get.call_args.kwargs["timeout"], (1, 1))
+
     def test_server_errors_retry_but_quota_and_redirects_do_not(self):
         self.session.get.side_effect = [response(status=503), response(status=503), response([{"id": 1}])]
         self.assertEqual(self.provider.bookmakers()["results"], 1)

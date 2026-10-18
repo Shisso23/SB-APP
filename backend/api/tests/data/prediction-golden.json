@@ -1,0 +1,15 @@
+{
+  "now": 1696114800000,
+  "fixture": {
+    "fixture": {"id": 9999, "timestamp": 1696118400, "date": "2023-10-01T00:00:00.000Z", "timezone": "UTC", "status": {"short": "NS", "long": "Not Started", "elapsed": null}},
+    "league": {"id": 1, "name": "League 1", "country": "Testland", "season": 2023},
+    "teams": {"home": {"id": 1, "name": "Alpha", "logo": ""}, "away": {"id": 2, "name": "Beta", "logo": ""}},
+    "goals": {"home": null, "away": null},
+    "score": {"halftime": {"home": null, "away": null}, "fulltime": {"home": null, "away": null}}
+  },
+  "expected": {
+    "homeWin": 0.3699, "draw": 0.2601, "awayWin": 0.3699,
+    "homeScores": 0.7408, "awayScores": 0.7408,
+    "bttsYes": 0.5475, "over1_5": 0.7477, "over2_5": 0.5035, "over3_5": 0.2857
+  }
+}

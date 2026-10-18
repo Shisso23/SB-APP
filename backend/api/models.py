@@ -1,4 +1,5 @@
 from decimal import Decimal
+import uuid
 
 from django.conf import settings
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
@@ -75,10 +76,15 @@ class OddsSnapshot(SnapshotModel):
     decimal_odds = models.DecimalField(max_digits=18, decimal_places=8)
     provider_updated_at = models.DateTimeField(null=True, blank=True)
     captured_at = models.DateTimeField(default=timezone.now)
+    source = models.ForeignKey("SourceObservation", null=True, blank=True, on_delete=models.PROTECT)
+    margin_adjusted_probability = models.DecimalField(max_digits=12, decimal_places=10, null=True, blank=True)
 
     class Meta:
         indexes = [models.Index(fields=["fixture", "market_id", "captured_at"], name="odds_fixture_market_time")]
-        constraints = [models.CheckConstraint(condition=Q(decimal_odds__gt=Decimal("1")), name="odds_greater_than_one")]
+        constraints = [
+            models.CheckConstraint(condition=Q(decimal_odds__gt=Decimal("1")), name="odds_greater_than_one"),
+            models.UniqueConstraint(fields=["source", "fixture", "bookmaker", "market_id"], name="quote_source_market_unique"),
+        ]
 
 
 hash_validator = RegexValidator(r"^[0-9a-f]{64}$", "A SHA-256 hex digest is required.")
@@ -93,6 +99,9 @@ class Prediction(SnapshotModel):
     as_of = models.DateTimeField()
     inputs = models.JSONField(default=dict)
     output = models.JSONField(default=dict)
+    valid_until = models.DateTimeField(null=True, blank=True)
+    provenance = models.JSONField(default=list)
+    configuration = models.JSONField(default=dict)
 
     class Meta:
         ordering = ["-generated_at", "-id"]
@@ -147,3 +156,60 @@ class PaymentEvent(models.Model):
             models.UniqueConstraint(fields=["provider", "event_id"], name="payment_provider_event_unique"),
             models.CheckConstraint(condition=Q(amount__gte=0), name="payment_amount_nonnegative"),
         ]
+
+
+class JobRun(models.Model):
+    kind = models.CharField(max_length=20)
+    scope = models.CharField(max_length=80)
+    slot = models.DateTimeField()
+    status = models.CharField(max_length=20, default="running")
+    claim_token = models.UUIDField(default=uuid.uuid4)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    requests = models.PositiveIntegerField(default=0)
+    checkpoint = models.JSONField(default=dict)
+    started_at = models.DateTimeField(default=timezone.now)
+    finished_at = models.DateTimeField(null=True)
+    retry_after = models.DateTimeField(null=True)
+    error_code = models.CharField(max_length=80, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["kind", "scope", "slot"], name="job_slot_unique")]
+
+
+class ProviderBudget(models.Model):
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1)
+    day = models.DateField()
+    minute = models.DateTimeField()
+    daily_requests = models.PositiveIntegerField(default=0)
+    minute_requests = models.PositiveIntegerField(default=0)
+    blocked_until = models.DateTimeField(null=True)
+
+
+class SourceObservation(SnapshotModel):
+    job = models.ForeignKey(JobRun, on_delete=models.PROTECT)
+    kind = models.CharField(max_length=20)
+    scope = models.CharField(max_length=100)
+    observed_at = models.DateTimeField(default=timezone.now, db_index=True)
+    provider_updated_at = models.DateTimeField(null=True, blank=True)
+    content_hash = models.CharField(max_length=64, validators=[hash_validator])
+    payload = models.JSONField()
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["job", "kind", "scope", "content_hash"], name="observation_job_payload_unique")]
+        indexes = [models.Index(fields=["kind", "scope", "observed_at"], name="observation_scope_time")]
+
+
+class Settlement(SnapshotModel):
+    prediction = models.ForeignKey(Prediction, on_delete=models.PROTECT, related_name="settlements")
+    market_id = models.CharField(max_length=60)
+    result_observation = models.ForeignKey(SourceObservation, on_delete=models.PROTECT)
+    home_goals = models.PositiveSmallIntegerField()
+    away_goals = models.PositiveSmallIntegerField()
+    outcome = models.BooleanField(null=True)
+    profit = models.DecimalField(max_digits=18, decimal_places=8)
+    settled_at = models.DateTimeField(default=timezone.now)
+    correction_flagged_at = models.DateTimeField(null=True, blank=True)
+    correction_observation = models.ForeignKey(SourceObservation, null=True, blank=True, on_delete=models.PROTECT, related_name="flagged_settlements")
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["prediction", "market_id"], name="settlement_prediction_market_unique")]
