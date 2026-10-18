@@ -124,6 +124,9 @@ class JobTests(TransactionTestCase):
         original = fixture_payload(self.slot)
         session = Mock()
         def request(url, **kwargs):
+            if url.endswith("/leagues"):
+                return response([{"league": {"id": 39, "name": "Test League", "type": "League"}, "country": {"name": "England"},
+                                  "seasons": [{"year": 2026, "current": True}]}])
             if url.endswith("/fixtures"):
                 return response([original])
             if url.endswith("/standings"):
@@ -140,7 +143,7 @@ class JobTests(TransactionTestCase):
                         call_command("run_prediction_job", mode=mode, league=39, season=2026, stdout=StringIO())
                     self.assertEqual(Prediction.objects.count(), 1)
                     self.assertFalse(Settlement.objects.exists())
-                    self.assertEqual(ProviderBudget.objects.get().daily_requests, 3)
+                    self.assertEqual(ProviderBudget.objects.get().daily_requests, 4)
                     original["fixture"]["status"]["short"] = "FT"
                     original["goals"] = {"home": 2, "away": 1}
                     later = Fixture.objects.get().kickoff + timedelta(hours=2)

@@ -18,5 +18,7 @@ class ApiTests(APITestCase):
         with patch("api.authentication.get_firebase_app", return_value=object()), patch("api.authentication.auth.verify_id_token", return_value={"uid": "verified-user"}):
             response = self.client.get("/api/v1/fixtures/", HTTP_AUTHORIZATION="Bearer test-token")
             self.assertEqual(response.status_code, 200)
-            self.assertNotIn("source_payload", response.data["results"][0])
+            self.assertEqual(response.data["results"], 1)
+            self.assertEqual(len(response.data["response"]), 1)
+            self.assertNotIn("source_payload", response.data["response"][0])
             self.assertEqual(self.client.post("/api/v1/fixtures/", {}, HTTP_AUTHORIZATION="Bearer test-token").status_code, 405)

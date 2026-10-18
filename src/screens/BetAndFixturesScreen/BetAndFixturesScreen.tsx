@@ -40,8 +40,6 @@ import {
   predictFixture,
   FixturePrediction,
   MarketId,
-  mapApiFootballOdds,
-  mapApiFootballOddsPayload,
   buildPaperSelections,
   readPaperRecord,
   writePaperRecord,
@@ -49,10 +47,45 @@ import {
   settlePaperRecord,
   summariseBy,
 } from '../../prediction-engine';
-import type { MarketValue, PaperSelection } from '../../prediction-engine';
+import type { MarketOdds, MarketValue, PaperSelection } from '../../prediction-engine';
+import { PremiumRequiredError, SessionExpiredError, SignInRequiredError } from '../../services/api/client';
 import { rankDirectPicks, rankUnpricedForecasts } from '../../prediction-engine/selection';
 
 Modal.setAppElement('#root');
+
+// ======= Stored odds helpers =======
+// Django serves stored, pre-kickoff canonical quotes. The browser converts them into
+// engine `MarketOdds` locally; it never fetches or maps raw provider payloads.
+const storedQuotesToMarkets = (payload: unknown, fixtureId: number): MarketOdds[] => {
+  const rows = (payload as { response?: unknown })?.response;
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === 'object')
+    .filter((row) => Number(row.fixture_id) === fixtureId)
+    .map((row) => {
+      const updated = row.provider_updated_at ? Date.parse(String(row.provider_updated_at)) : NaN;
+      const market: MarketOdds = {
+        marketId: row.market_id as MarketOdds['marketId'],
+        decimalOdds: Number(row.decimal_odds),
+        bookmaker: row.bookmaker ? String(row.bookmaker) : undefined,
+      };
+      if (Number.isFinite(updated)) market.timestamp = updated;
+      const adjusted = row.margin_adjusted_probability;
+      if (adjusted !== null && adjusted !== undefined && Number.isFinite(Number(adjusted))) {
+        market.marginAdjustedProbability = Number(adjusted);
+      }
+      return market;
+    })
+    .filter((market) => Number.isFinite(market.decimalOdds) && market.decimalOdds > 1);
+};
+
+/** Turn an API failure into an explicit, non-misleading message. */
+const describeOddsFailure = (error: unknown) => {
+  if (error instanceof SignInRequiredError) return 'Sign in is required to view odds.';
+  if (error instanceof SessionExpiredError) return 'Your session has expired. Please sign in again.';
+  if (error instanceof PremiumRequiredError) return 'An active prediction subscription is required to view odds.';
+  return error instanceof Error ? error.message : 'Odds could not be loaded.';
+};
 
 // ======= Config =======
 const MAX_BATCH = 7;
@@ -1041,7 +1074,7 @@ const BetAndFixturesScreen: React.FC = () => {
             try {
               const resFast: FixturesModel = (await getFilteredFixtures(
                 new FixturesFilterModel({ league: league.league.id, season })
-              )).data;
+              )).data as FixturesModel;
               didNetwork = true;
               errors.push(...readApiErrors(resFast));
               const fixturesFast = resFast?.response ?? [];
@@ -1053,7 +1086,7 @@ const BetAndFixturesScreen: React.FC = () => {
               const { from, to } = seasonWindow(season);
               const resRanged: FixturesModel = (await getFilteredFixtures(
                 new FixturesFilterModel({ league: league.league.id, season, from, to })
-              )).data;
+              )).data as FixturesModel;
               didNetwork = true;
               errors.push(...readApiErrors(resRanged));
               return resRanged?.response ?? [];
@@ -1063,7 +1096,7 @@ const BetAndFixturesScreen: React.FC = () => {
                 const { from, to } = seasonWindow(season);
                 const resRanged: FixturesModel = (await getFilteredFixtures(
                   new FixturesFilterModel({ league: league.league.id, season, from, to })
-                )).data;
+                )).data as FixturesModel;
                 didNetwork = true;
                 errors.push(...readApiErrors(resRanged));
                 return resRanged?.response ?? [];
@@ -1131,20 +1164,24 @@ const BetAndFixturesScreen: React.FC = () => {
       throw new Error('Pre-match odds can only be captured before kickoff.');
     }
 
-    const response = await getOddsByFixture(fixture.fixture.id);
-    const mapped = mapApiFootballOddsPayload(response.data);
-    if (mapped.fixtureId !== fixture.fixture.id || mapped.markets.length === 0) {
-      throw new Error('No pre-match odds returned for this fixture.');
+    // Django returns stored, pre-kickoff canonical quotes. The browser no longer
+    // fetches or maps raw provider payloads.
+    let markets: ReturnType<typeof storedQuotesToMarkets>;
+    try {
+      const response = await getOddsByFixture(fixture.fixture.id);
+      markets = storedQuotesToMarkets(response.data, fixture.fixture.id);
+    } catch (error) {
+      throw new Error(describeOddsFailure(error));
     }
-    if (mapped.markets.some((market) => market.timestamp !== undefined && market.timestamp >= kickoff)) {
-      throw new Error('Odds timestamp is not before kickoff; snapshot rejected.');
+    if (markets.length === 0) {
+      throw new Error('No stored pre-match odds are available for this fixture.');
     }
 
     const withOdds = predictFixture({
       fixture,
       allFixtures,
       leaguesStandings,
-      odds: mapped.markets,
+      odds: markets,
       standingsAreCurrent: true,
       now: capturedAt,
     });
@@ -1156,7 +1193,7 @@ const BetAndFixturesScreen: React.FC = () => {
       homeTeam: fixture.teams.home.name,
       awayTeam: fixture.teams.away.name,
       markets: withOdds.markets,
-      odds: mapped.markets,
+      odds: markets,
       qualifiedMarketIds: withOdds.selections.map((market) => market.marketId),
       capturedAt,
     });
@@ -1171,9 +1208,9 @@ const BetAndFixturesScreen: React.FC = () => {
       ...previous,
       [fixture.fixture.id]: withOdds,
     }));
-    setOddsLoadMessages((previous) => ({ ...previous, [fixture.fixture.id]: 'Odds refreshed from the provider.' }));
+    setOddsLoadMessages((previous) => ({ ...previous, [fixture.fixture.id]: 'Odds refreshed from the prediction service.' }));
 
-    return `Captured ${paperSelections.length} priced markets from ${mapped.bookmakers.length} bookmakers.`;
+    return `Captured ${paperSelections.length} priced markets from stored quotes.`;
   };
 
   const handleBet = async (refreshCurrentSeason = false) => {
@@ -1257,58 +1294,44 @@ const BetAndFixturesScreen: React.FC = () => {
       leaguesStandingsLocal: standingsForPrediction
     });
 
-    // In Statistical mode, fetch odds in date batches (not one request per fixture).
+    // Statistical mode loads stored, pre-kickoff canonical quotes from Django.
     // Odds failure never blocks the prediction calculation; those fixtures simply have
     // probabilities without a verified value assessment.
-    const oddsByFixtureId = new Map<number, ReturnType<typeof mapApiFootballOdds>['markets']>();
+    const oddsByFixtureId = new Map<number, MarketOdds[]>();
     const oddsMessages: Record<number, string> = {};
     if (predictionMode === 'statistical') {
       const now = Date.now();
-      const acceptOdds = (oddsResponse: Parameters<typeof mapApiFootballOdds>[0]) => {
-        const mapped = mapApiFootballOdds(oddsResponse);
-        const target = currentWindow.find((fixture) => fixture.fixture.id === mapped.fixtureId);
-        if (!target || target.fixture.timestamp * 1000 <= now) return;
-        if (!mapped.markets.length) {
-          oddsMessages[target.fixture.id] = 'The provider returned odds, but no supported full-time markets could be mapped.';
-        } else if (mapped.markets.some((market) => market.timestamp !== undefined && market.timestamp >= target.fixture.timestamp * 1000)) {
-          oddsMessages[target.fixture.id] = 'Provider timestamps were not pre-match; those prices were rejected.';
-        } else {
-          oddsByFixtureId.set(target.fixture.id, mapped.markets);
-          oddsMessages[target.fixture.id] = `Prices available for ${mapped.markets.length} supported markets; other markets may have no bookmaker coverage.`;
-        }
-      };
-      const dates = Array.from(new Set(
-        currentWindow
-          .filter((fixture) => fixture.fixture.timestamp * 1000 > now)
-          .map((fixture) => fixture.fixture.date.slice(0, 10))
-      ));
+      const upcoming = currentWindow.filter((fixture) => fixture.fixture.timestamp * 1000 > now);
+      const dates = Array.from(new Set(upcoming.map((fixture) => fixture.fixture.date.slice(0, 10))));
       for (const date of dates) {
+        const dayFixtures = upcoming.filter((fixture) => fixture.fixture.date.slice(0, 10) === date);
         try {
           const response = await getOddsByDate(date);
-          const payload = response.data;
-          (payload?.response ?? []).forEach(acceptOdds);
-        } catch (error) {
-          currentWindow.filter((fixture) => fixture.fixture.date.slice(0, 10) === date).forEach((fixture) => {
-            oddsMessages[fixture.fixture.id] = error instanceof Error ? error.message : 'Date odds request failed.';
+          dayFixtures.forEach((fixture) => {
+            const markets = storedQuotesToMarkets(response.data, fixture.fixture.id);
+            if (markets.length > 0) {
+              oddsByFixtureId.set(fixture.fixture.id, markets);
+              oddsMessages[fixture.fixture.id] = `Stored quotes available for ${markets.length} supported markets.`;
+            }
           });
-        }
-      }
-      for (const fixture of currentWindow) {
-        if (fixture.fixture.timestamp * 1000 <= Date.now()) {
-          oddsMessages[fixture.fixture.id] = 'Kickoff has passed; pre-match recommendations are closed.';
-          continue;
-        }
-        if (oddsByFixtureId.has(fixture.fixture.id)) continue;
-        try {
-          const response = await getOddsByFixture(fixture.fixture.id);
-          (response.data.response ?? []).forEach(acceptOdds);
-          if (!oddsByFixtureId.has(fixture.fixture.id) && !response.data.response.length) {
-            oddsMessages[fixture.fixture.id] = 'No bookmaker odds returned after date and fixture lookups. The provider may not cover this match or may not have published prices yet; its response does not specify which.';
-          }
         } catch (error) {
-          oddsMessages[fixture.fixture.id] = `Odds request failed: ${error instanceof Error ? error.message : 'Network or provider error'}`;
+          const message = describeOddsFailure(error);
+          dayFixtures.forEach((fixture) => { oddsMessages[fixture.fixture.id] = message; });
+          // A premium/session failure applies to every fixture; stop retrying.
+          if (error instanceof PremiumRequiredError || error instanceof SessionExpiredError || error instanceof SignInRequiredError) {
+            upcoming.forEach((fixture) => { oddsMessages[fixture.fixture.id] = message; });
+            break;
+          }
         }
       }
+      upcoming.forEach((fixture) => {
+        if (!oddsMessages[fixture.fixture.id]) {
+          oddsMessages[fixture.fixture.id] = 'No stored pre-match quotes are available for this fixture yet.';
+        }
+      });
+      currentWindow
+        .filter((fixture) => fixture.fixture.timestamp * 1000 <= now)
+        .forEach((fixture) => { oddsMessages[fixture.fixture.id] = 'Kickoff has passed; pre-match recommendations are closed.'; });
     }
     setOddsLoadMessages(oddsMessages);
 

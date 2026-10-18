@@ -1,49 +1,38 @@
-import authNetworkService from '../auth-network-service/auth-network.service';
+/**
+ * Odds reads from the PredictXI Django API.
+ *
+ * PREMIUM: these endpoints require an active entitlement. A missing entitlement
+ * surfaces as `PremiumRequiredError` from the API client, so callers can show an
+ * upgrade path instead of an empty list.
+ *
+ * Odds are stored canonical quotes selected by the server. The browser never sees
+ * raw provider payloads and never requests API-Football directly.
+ */
+import { apiGet } from '../api/client';
 
-const endpoint = 'odds';
-
-const getAllOddsPages = async (params: Record<string, string | number>) => {
-  const first = await authNetworkService.get<ApiFootballOddsPayload>(endpoint, { params });
-  const entries: ApiFootballOddsResponse[] = [];
-  const append = (payload: ApiFootballOddsPayload) => {
-    const errors = payload.errors;
-    const messages = typeof errors === 'string' ? [errors]
-      : errors && typeof errors === 'object' ? Object.values(errors).map(String) : [];
-    if (messages.some(Boolean)) throw new Error(`Odds provider: ${messages.filter(Boolean).join(' ')}`);
-    entries.push(...(payload.response ?? []));
-  };
-  append(first.data);
-  const totalPages = first.data.paging?.total ?? 1;
-  for (let page = 2; page <= totalPages; page += 1) {
-    const next = await authNetworkService.get<ApiFootballOddsPayload>(endpoint, { params: { ...params, page } });
-    append(next.data);
-  }
-  return { ...first, data: { ...first.data, response: entries, results: entries.length } };
-};
+const endpoint = '/odds';
 
 export const getOddsByFixture = async (fixtureId: number) => {
-  return getAllOddsPages({ fixture: fixtureId });
+  return apiGet(endpoint, { params: { fixture: fixtureId } });
 };
 
 export const getOddsByDate = async (date: string) => {
-  return getAllOddsPages({ date });
+  return apiGet(endpoint, { params: { date } });
 };
 
 export const getOddsByLeagueSeason = async ({ leagueId, season }: { leagueId: number; season: number }) => {
-  return authNetworkService.get(endpoint, {
-    params: { league: leagueId, season },
-  });
+  return apiGet(endpoint, { params: { league: leagueId, season } });
 };
 
 export const getBookmakers = async () => {
-  return authNetworkService.get(`${endpoint}/bookmakers`);
+  return apiGet(`${endpoint}/bookmakers`);
 };
 
 export const getLiveOdds = async () => {
-  return authNetworkService.get(`${endpoint}/live`);
+  return apiGet(`${endpoint}/live`);
 };
 
-/** Raw payload shape (loosely typed; only the fields we read are named). */
+/** Stored-quote envelope returned by Django, matching the previous shape. */
 export interface ApiFootballOddsPayload {
   paging?: { current?: number; total?: number };
   results?: number;

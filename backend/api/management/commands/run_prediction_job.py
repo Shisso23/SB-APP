@@ -5,7 +5,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from api.execution import ExecutionError, engine_version, generate_prediction, run_engine, settle_fixture
-from api.ingestion import IngestionError, milliseconds, store_fixtures, store_odds, store_standings, utc
+from api.ingestion import IngestionError, milliseconds, store_fixtures, store_leagues, store_odds, store_standings, utc
 from api.jobs import JobError, JobPolicy, claim_job, digest
 from api.models import Fixture
 from api.providers import ApiFootballProvider, ProviderError
@@ -55,6 +55,8 @@ class Command(BaseCommand):
                 if step not in context.run.checkpoint:
                     store_fixtures(context, provider.fixtures(league=league, season=year), league, year)
             if mode == "refresh":
+                if "leagues" not in context.run.checkpoint:
+                    store_leagues(context, provider.leagues(current=True, type="League"))
                 if f"standings:{league}:{season}" not in context.run.checkpoint:
                     store_standings(context, provider.standings(league=league, season=season), league, season)
                 if f"odds:{league}:{season}" not in context.run.checkpoint:

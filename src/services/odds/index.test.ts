@@ -1,35 +1,48 @@
-import authNetworkService from '../auth-network-service/auth-network.service';
-import { getOddsByDate, getOddsByFixture } from './index';
+import { apiGet } from '../api/client';
+import { getOddsByDate, getOddsByFixture, getOddsByLeagueSeason, getBookmakers, getLiveOdds } from './index';
 
-jest.mock('../auth-network-service/auth-network.service', () => ({
-  __esModule: true, default: { get: jest.fn() },
+jest.mock('../api/client', () => ({
+  __esModule: true,
+  apiGet: jest.fn(),
+  PremiumRequiredError: class PremiumRequiredError extends Error {},
+  SessionExpiredError: class SessionExpiredError extends Error {},
+  SignInRequiredError: class SignInRequiredError extends Error {},
 }));
 
-const get = authNetworkService.get as jest.Mock;
+const get = apiGet as jest.Mock;
 
 beforeEach(() => get.mockReset());
 
-it('collects fixtures from all date pages', async () => {
-  get.mockResolvedValueOnce({ data: { paging: { total: 2 }, response: [{ fixture: { id: 1 } }] } });
-  get.mockResolvedValueOnce({ data: { response: [{ fixture: { id: 2 } }] } });
-  const result = await getOddsByDate('2026-10-17');
-  expect(result.data.response.map((entry) => entry.fixture?.id)).toEqual([1, 2]);
-  expect(get).toHaveBeenLastCalledWith('odds', { params: { date: '2026-10-17', page: 2 } });
+it('requests odds for a fixture from the Django endpoint', async () => {
+  get.mockResolvedValue({ data: { errors: [], results: 1, paging: { current: 1, total: 1 }, response: [{ market_id: 'home_win' }] } });
+  const result = await getOddsByFixture(10);
+  expect(get).toHaveBeenCalledWith('/odds', { params: { fixture: 10 } });
+  expect(result.data.response).toHaveLength(1);
 });
 
-it('surfaces provider errors instead of returning an empty odds list', async () => {
-  get.mockResolvedValue({ data: { errors: { requests: 'Request limit reached' }, response: [] } });
-  await expect(getOddsByFixture(1)).rejects.toThrow('Request limit reached');
+it('requests odds by date through Django', async () => {
+  get.mockResolvedValue({ data: { errors: [], results: 0, paging: { current: 1, total: 1 }, response: [] } });
+  await getOddsByDate('2026-10-18');
+  expect(get).toHaveBeenCalledWith('/odds', { params: { date: '2026-10-18' } });
 });
 
-it('does not present an incomplete page set as successful', async () => {
-  get.mockResolvedValueOnce({ data: { paging: { total: 2 }, response: [{ fixture: { id: 1 } }] } });
-  get.mockRejectedValueOnce(new Error('Network unavailable'));
-  await expect(getOddsByDate('2026-10-17')).rejects.toThrow('Network unavailable');
+it('requests odds by league and season through Django', async () => {
+  get.mockResolvedValue({ data: { errors: [], results: 0, paging: { current: 1, total: 1 }, response: [] } });
+  await getOddsByLeagueSeason({ leagueId: 39, season: 2026 });
+  expect(get).toHaveBeenCalledWith('/odds', { params: { league: 39, season: 2026 } });
 });
 
-it('returns an empty list when the provider has no fixture coverage', async () => {
-  get.mockResolvedValue({ data: { errors: [], response: [] } });
-  expect((await getOddsByFixture(1)).data.response).toEqual([]);
+it('requests bookmaker and live odds helpers through Django', async () => {
+  get.mockResolvedValue({ data: { errors: [], results: 0, paging: { current: 1, total: 1 }, response: [] } });
+  await getBookmakers();
+  await getLiveOdds();
+  expect(get).toHaveBeenNthCalledWith(1, '/odds/bookmakers');
+  expect(get).toHaveBeenNthCalledWith(2, '/odds/live');
+});
+
+it('never falls back to an unauthenticated call when premium access is denied', async () => {
+  const { PremiumRequiredError } = jest.requireMock('../api/client');
+  get.mockRejectedValue(new PremiumRequiredError());
+  await expect(getOddsByFixture(10)).rejects.toBeInstanceOf(PremiumRequiredError);
   expect(get).toHaveBeenCalledTimes(1);
 });

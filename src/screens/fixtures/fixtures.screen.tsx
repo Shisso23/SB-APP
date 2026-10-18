@@ -240,7 +240,7 @@ const FixturesScreen: React.FC = () => {
               await getFilteredFixtures(
                 new FixturesFilterModel({ league: league?.league.id, season })
               )
-            ).data;
+            ).data as FixturesModel;
             return getLeagueFixturesResponse.response;
           })
         ).then((response) => {

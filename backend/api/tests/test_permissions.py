@@ -38,8 +38,8 @@ class PermissionTests(APITestCase):
         self.entitlement(starts_at=self.now)
         response = self.client.get("/api/v1/predictions/")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["results"][0]["output"], {"homeWin": 0.6})
-        self.assertNotIn("inputs", response.data["results"][0])
+        self.assertEqual(response.data["response"][0]["output"], {"homeWin": 0.6})
+        self.assertNotIn("inputs", response.data["response"][0])
         self.assertEqual(self.client.post("/api/v1/predictions/", {}).status_code, 405)
         self.assertEqual(self.client.patch(f"/api/v1/predictions/{self.prediction.pk}/", {"output": {}}, format="json").status_code, 405)
 
@@ -67,10 +67,10 @@ class PermissionTests(APITestCase):
         self.entitlement()
         Prediction.objects.filter(pk=self.prediction.pk).update(valid_until=self.now - timedelta(seconds=1))
         current = self.client.get("/api/v1/predictions/")
-        self.assertEqual(current.data["results"], [])
+        self.assertEqual(current.data["response"], [])
         history = self.client.get("/api/v1/predictions/?history=true")
-        self.assertEqual(len(history.data["results"]), 1)
-        self.assertFalse(history.data["results"][0]["is_actionable"])
+        self.assertEqual(len(history.data["response"]), 1)
+        self.assertFalse(history.data["response"][0]["is_actionable"])
         self.client.credentials()
         self.assertEqual(self.client.get("/api/v1/predictions/?history=true").status_code, 401)
 
@@ -78,4 +78,4 @@ class PermissionTests(APITestCase):
         self.entitlement()
         Prediction.objects.create(fixture=self.fixture, engine_version="v2", input_hash="c" * 64,
                                   config_hash="b" * 64, as_of=self.now, valid_until=self.now - timedelta(seconds=1), output={})
-        self.assertEqual(self.client.get("/api/v1/predictions/").data["results"], [])
+        self.assertEqual(self.client.get("/api/v1/predictions/").data["response"], [])

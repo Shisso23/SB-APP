@@ -1,13 +1,18 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import BetAndFixturesScreen from './BetAndFixturesScreen';
-import authNetworkService from '../../services/auth-network-service/auth-network.service';
+import { apiGet } from '../../services/api/client';
 import { makeFixture } from '../../prediction-engine/test-support/fixture-builders';
 import { readPaperRecord, writePaperRecord } from '../../prediction-engine/paper-store';
 import { createEmptyPaperRecord } from '../../prediction-engine/paper-tracking';
 
-jest.mock('../../services/auth-network-service/auth-network.service', () => ({
-  __esModule: true, default: { get: jest.fn() },
+jest.mock('../../services/api/client', () => ({
+  __esModule: true,
+  apiGet: jest.fn(),
+  PremiumRequiredError: class PremiumRequiredError extends Error {},
+  SessionExpiredError: class SessionExpiredError extends Error {},
+  SignInRequiredError: class SignInRequiredError extends Error {},
+  ApiRequestError: class ApiRequestError extends Error {},
 }));
 jest.mock('react-modal', () => ({
   __esModule: true, default: Object.assign(() => null, { setAppElement: jest.fn() }),
@@ -27,7 +32,7 @@ const mockLeaguesState = {
   }] },
   isLoadingLeagues: false,
 };
-const get = authNetworkService.get as jest.Mock;
+const get = apiGet as jest.Mock;
 let resultFinished: boolean;
 let failRefresh: boolean;
 let activeSeasonRequests: number;
@@ -48,7 +53,7 @@ beforeEach(() => {
   failRefresh = false;
   activeSeasonRequests = 0;
   get.mockImplementation((endpoint, options) => {
-    if (endpoint === 'fixtures') {
+    if (endpoint === '/fixtures') {
       const season = options.params.season;
       if (season === currentYear) {
         activeSeasonRequests += 1;
@@ -61,10 +66,10 @@ beforeEach(() => {
         response.push(makeApiFixture(900, Date.now() - 3_600_000, season, resultFinished));
         response.push(makeApiFixture(9999, Date.now() + 3_600_000, season, false));
       }
-      return Promise.resolve({ data: { response, errors: [] } });
+      return Promise.resolve({ data: { response, errors: [], results: response.length } });
     }
-    if (endpoint === 'standings' || endpoint === 'odds') {
-      return Promise.resolve({ data: { response: [], errors: [] } });
+    if (endpoint === '/standings' || endpoint === '/odds') {
+      return Promise.resolve({ data: { response: [], errors: [], results: 0 } });
     }
     throw new Error(`Unexpected test request: ${endpoint}`);
   });
@@ -90,12 +95,11 @@ const runInitialBatch = async () => {
 
 it('refreshes the active season through both caches and settles the latest result', async () => {
   const run = await runInitialBatch();
-  expect(localStorage.getItem('leaguePredictions_v3')).toBeTruthy();
   resultFinished = true;
   fireEvent.click(run);
   await waitFor(() => expect(readPaperRecord().selections[0].settled?.won).toBe(true));
   expect(activeSeasonRequests).toBe(2);
-  const requestedSeasons = get.mock.calls.filter(([endpoint]) => endpoint === 'fixtures')
+  const requestedSeasons = get.mock.calls.filter(([endpoint]) => endpoint === '/fixtures')
     .map(([, options]) => options.params.season);
   expect(requestedSeasons.filter((season) => season === currentYear - 1)).toHaveLength(1);
   expect(requestedSeasons.filter((season) => season === currentYear - 2)).toHaveLength(1);

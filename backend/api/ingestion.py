@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from api.execution import run_engine
 from api.jobs import digest
-from api.models import Fixture, OddsSnapshot, SourceObservation
+from api.models import Fixture, LeagueCatalog, OddsSnapshot, SourceObservation, StandingsSnapshot
 
 
 SOURCE_MAX_AGE = timedelta(minutes=15)
@@ -98,12 +98,45 @@ def store_fixtures(context, payload, league_id, season):
 
 
 def store_standings(context, payload, league_id, season):
-    for row in entries(payload):
+    rows = entries(payload)
+    for row in rows:
         if not isinstance(row, dict) or row.get("league", {}).get("id") != league_id or row.get("league", {}).get("season") != season:
             raise IngestionError("Standings scope does not match the requested competition/season.")
     with transaction.atomic():
         source = observation(context, "standings", f"{league_id}:{season}", payload, timezone.now())
+        snapshot, _created = StandingsSnapshot.objects.get_or_create(
+            source=source, defaults={"league_id": league_id, "season": season, "observed_at": source.observed_at,
+                                     "payload": rows[0] if rows else {"league": {"id": league_id, "season": season, "standings": []}}},
+        )
         context.checkpoint(**{f"standings:{league_id}:{season}": source.pk})
+    return snapshot
+
+
+def store_leagues(context, payload):
+    """Store the canonical league/country/season catalogue used by the league picker."""
+    allowlisted = []
+    for row in entries(payload):
+        league = row.get("league") if isinstance(row, dict) else None
+        country = row.get("country") if isinstance(row, dict) else None
+        seasons = row.get("seasons") if isinstance(row, dict) else None
+        if not isinstance(league, dict) or not isinstance(country, dict) or not isinstance(seasons, list):
+            raise IngestionError("Invalid league payload.")
+        try:
+            provider_id = positive_integer(league["id"])
+        except (KeyError, IngestionError):
+            raise IngestionError("Invalid league identifier.") from None
+        allowlisted.append({
+            "league": {"id": provider_id, "name": league.get("name"), "type": league.get("type"), "logo": league.get("logo")},
+            "country": {"name": country.get("name"), "code": country.get("code"), "flag": country.get("flag")},
+            "seasons": [{"year": season.get("year"), "start": season.get("start"), "end": season.get("end"),
+                         "current": bool(season.get("current"))} for season in seasons[:20]],
+        })
+    with transaction.atomic():
+        source = observation(context, "leagues", "catalog", payload, timezone.now())
+        for row in allowlisted:
+            LeagueCatalog.objects.update_or_create(provider_id=row["league"]["id"],
+                                                   defaults={"payload": row, "observed_at": source.observed_at})
+        context.checkpoint(leagues=source.pk)
     return source
 
 

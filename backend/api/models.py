@@ -199,6 +199,27 @@ class SourceObservation(SnapshotModel):
         indexes = [models.Index(fields=["kind", "scope", "observed_at"], name="observation_scope_time")]
 
 
+class StandingsSnapshot(SnapshotModel):
+    league_id = models.PositiveIntegerField(db_index=True)
+    season = models.PositiveSmallIntegerField()
+    observed_at = models.DateTimeField(default=timezone.now, db_index=True)
+    source = models.ForeignKey(SourceObservation, on_delete=models.PROTECT)
+    payload = models.JSONField()
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["source"], name="standings_source_unique")]
+        indexes = [models.Index(fields=["league_id", "season", "observed_at"], name="standings_league_season_time")]
+
+
+class LeagueCatalog(models.Model):
+    provider_id = models.PositiveIntegerField(unique=True)
+    payload = models.JSONField()
+    observed_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [models.CheckConstraint(condition=Q(provider_id__gt=0), name="league_provider_positive")]
+
+
 class Settlement(SnapshotModel):
     prediction = models.ForeignKey(Prediction, on_delete=models.PROTECT, related_name="settlements")
     market_id = models.CharField(max_length=60)
