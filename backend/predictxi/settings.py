@@ -133,3 +133,46 @@ API_FOOTBALL_KEY = env("API_FOOTBALL_KEY", default="")
 PAYMENT_PROVIDER_ONEVOUCHER_ENABLED = env.bool("PAYMENT_PROVIDER_ONEVOUCHER_ENABLED", default=False)
 PAYMENT_PROVIDER_OTT_ENABLED = env.bool("PAYMENT_PROVIDER_OTT_ENABLED", default=False)
 PAYMENT_PROVIDER_BLU_ENABLED = env.bool("PAYMENT_PROVIDER_BLU_ENABLED", default=False)
+
+# ---------------------------------------------------------------------------
+# PayFast (Phase 6)
+#
+# CREDENTIALS ARE BACKEND-ONLY. merchant_id, merchant_key and passphrase are
+# never sent to, stored in, or read by the frontend. The frontend only receives
+# a server-built, signed checkout payload and the process URL.
+#
+# Everything is DISABLED/UNCONFIGURED by default: the integration must be
+# explicitly turned on AND given credentials before it can start a checkout.
+# There is no hardcoded fallback merchant id/key/passphrase - unlike some
+# reference implementations, this project never ships credentials in source.
+#
+# Sandbox vs live differ ONLY by these values (credentials + the two URLs).
+# ---------------------------------------------------------------------------
+PAYFAST_ENABLED = env.bool("PAYFAST_ENABLED", default=False)
+PAYFAST_MERCHANT_ID = env("PAYFAST_MERCHANT_ID", default="")
+PAYFAST_MERCHANT_KEY = env("PAYFAST_MERCHANT_KEY", default="")
+# The passphrase is the "salt" appended to the signature parameter string. It is
+# optional per PayFast, but when set it MUST be appended (both at checkout and
+# when verifying an ITN) or every signature comparison fails.
+PAYFAST_PASSPHRASE = env("PAYFAST_PASSPHRASE", default="")
+# Checkout form POST target.
+PAYFAST_PROCESS_URL = env("PAYFAST_PROCESS_URL", default="https://sandbox.payfast.co.za/eng/process")
+# Server-to-server ITN confirmation endpoint; a POST must return exactly "VALID".
+PAYFAST_VALIDATE_URL = env("PAYFAST_VALIDATE_URL", default="https://sandbox.payfast.co.za/eng/query/validate")
+# Public base URL of THIS backend. PayFast posts the ITN here and redirects the
+# customer to return/cancel here, so it must be reachable from the internet.
+# Empty means "not configured": checkout initiation is refused rather than
+# silently emitting an unreachable notify_url.
+PREDICTXI_SITE_URL = env("PREDICTXI_SITE_URL", default="").rstrip("/")
+# PayFast posts ITNs from these source ranges (documented under "Ports and IP
+# addresses"). Request IPs outside them are rejected before any state change.
+PAYFAST_NOTIFY_NETWORKS = env.list("PAYFAST_NOTIFY_NETWORKS", default=[
+    "197.97.145.144/28",
+    "41.74.179.192/27",
+    "102.216.36.0/28",
+    "102.216.36.128/28",
+    "144.126.193.139/32",
+])
+# Refuse values below PayFast's documented live minimum of ZAR 5.00 so a
+# misconfigured product cannot produce a checkout the gateway will reject.
+PAYFAST_MIN_AMOUNT = env("PAYFAST_MIN_AMOUNT", default="5.00")

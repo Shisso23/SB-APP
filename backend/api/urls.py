@@ -3,11 +3,15 @@ from rest_framework.routers import SimpleRouter
 
 from api.views import (
     AccessProductsView,
+    CheckoutView,
     FixtureViewSet,
     HealthView,
     LeagueViewSet,
     MeView,
     OddsViewSet,
+    PayFastCancelView,
+    PayFastITNView,
+    PayFastReturnView,
     PredictionViewSet,
     PurchaseStartView,
     PurchaseStatusView,
@@ -28,5 +32,11 @@ urlpatterns = [
     path("access/products/", AccessProductsView.as_view()),
     path("access/purchases/", PurchaseStartView.as_view()),
     path("access/purchases/<int:attempt_id>/", PurchaseStatusView.as_view()),
+    # PayFast checkout initiation. Server-owned price; grants nothing by itself.
+    path("access/checkout/", CheckoutView.as_view()),
+    # PayFast ITN (server-to-server) and browser return/cancel redirects.
+    path("payments/payfast/itn/", PayFastITNView.as_view()),
+    path("payments/payfast/return/", PayFastReturnView.as_view()),
+    path("payments/payfast/cancel/", PayFastCancelView.as_view()),
     path("", include(router.urls)),
 ]

@@ -229,10 +229,12 @@ class AccessProduct(models.Model):
 
 
 class PurchaseAttempt(models.Model):
-    """One customer attempt to buy an access pass with a voucher.
+    """One customer attempt to buy an access pass.
 
-    Holds no voucher PIN. Status is written only by server-side orchestration;
-    there is no API route that lets a customer set it.
+    A single lifecycle record for every provider (PayFast today; voucher
+    providers were never enabled). Holds no credential or voucher PIN. Status is
+    written only by server-side orchestration; there is no API route that lets a
+    customer set it.
     """
 
     class Status(models.TextChoices):
@@ -242,9 +244,11 @@ class PurchaseAttempt(models.Model):
         GRANTED = "granted", "Access granted"
         DECLINED = "declined", "Declined"
         EXPIRED = "expired", "Expired"
+        REFUNDED = "refunded", "Refunded"
         NEEDS_REVIEW = "needs_review", "Needs manual review"
 
     class Provider(models.TextChoices):
+        PAYFAST = "payfast", "PayFast"
         ONEVOUCHER = "1voucher", "1Voucher"
         OTT = "ott", "OTT Voucher"
         BLU = "blu", "Blu Voucher"
@@ -258,6 +262,17 @@ class PurchaseAttempt(models.Model):
     amount_confirmed = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
     currency = models.CharField(max_length=3, default="ZAR")
     provider_reference = models.CharField(max_length=200, null=True, blank=True)
+    # PayFast-specific fields. `merchant_reference` is our m_payment_id and is
+    # echoed back on every ITN, so it is the anchor that ties a notification to
+    # exactly this attempt. It is unique so a duplicate cannot collide.
+    merchant_reference = models.CharField(max_length=100, unique=True, null=True, blank=True)
+    pf_payment_id = models.CharField(max_length=100, null=True, blank=True)
+    amount_gross = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    amount_fee = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    amount_net = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    provider_status = models.CharField(max_length=40, blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    failed_at = models.DateTimeField(null=True, blank=True)
     failure_code = models.CharField(max_length=80, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

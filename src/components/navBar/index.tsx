@@ -33,6 +33,14 @@ export default function Navbar() {
           >
             <ul className="flex flex-col lg:flex-row list-none lg:ml-auto">
               <li className="nav-item flex items-center">
+                <Link
+                  to="/access"
+                  className="mr-4 text-sm font-semibold text-white hover:text-teal-300"
+                >
+                  Premium
+                </Link>
+              </li>
+              <li className="nav-item flex items-center">
                 <SignInScreen />
               </li>
             </ul>

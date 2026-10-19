@@ -8,6 +8,8 @@
 import fs from 'fs';
 import path from 'path';
 
+import * as session from './session';
+
 const readSource = (relative: string) => fs.readFileSync(path.resolve(process.cwd(), relative), 'utf8');
 
 const walk = (dir: string): string[] =>
@@ -82,7 +84,6 @@ describe('api client failure mapping', () => {
   });
 
   it('notifies registered listeners when a session expires', () => {
-    const session = require('./session');
     const onExpired = jest.fn();
     session.onSessionExpired(onExpired);
     session.notifySessionExpired();

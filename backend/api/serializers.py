@@ -172,4 +172,15 @@ class PurchaseStatusSerializer(serializers.ModelSerializer):
         fields = ["id", "product_code", "provider", "status", "amount_expected", "amount_confirmed",
                   "currency", "provider_reference", "failure_code", "created_at", "updated_at",
                   "access_starts_at", "access_ends_at"]
-        read_only_fields = fields
+
+
+class CheckoutSerializer(serializers.Serializer):
+    """Customer input for starting a PayFast checkout.
+
+    Accepts ONLY a product code. The amount, currency, user identity, merchant
+    reference and all PayFast parameters are server-owned. Any extra field a
+    client sends (e.g. a forged `amount`) is simply ignored, and `amount` is
+    never read from the request anywhere in the checkout path.
+    """
+
+    product_code = serializers.CharField(max_length=60)
