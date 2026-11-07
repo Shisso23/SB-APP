@@ -29,7 +29,7 @@ export const SuggestedBetList: React.FC<{
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
         <h2 className="text-lg font-semibold text-white">Suggested bet list <span className="text-cyan-200">· {suggestions.length}</span></h2>
-        <p className="mt-1 text-xs text-slate-300">One qualifying market per upcoming match, ranked by relative margin above its own threshold, then forecast probability.</p>
+        <p className="mt-1 text-xs text-slate-300">Only forecast options meeting our market-specific percentage thresholds qualify. One qualifying option per upcoming match; matches with none are left out.</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <label className="text-xs text-slate-300">Up to{' '}
@@ -44,14 +44,14 @@ export const SuggestedBetList: React.FC<{
     {copyMessage && <p role="status" className="mt-2 text-xs text-slate-200">{copyMessage}</p>}
     {loading && <p className="mt-3 text-sm text-cyan-100">Updating the suggested list with the current prediction batch…</p>}
     {!statistical ? <p className="mt-3 text-sm text-slate-300">Switch to Statistical to generate this list. Legacy rules do not supply forecast probabilities.</p>
-      : !suggestions.length ? <p className="mt-3 text-sm text-slate-300">{loading ? 'Your suggested list will appear when forecasts are ready.' : 'No upcoming matches with sufficient team history meet your suggestion thresholds. The list stays empty until qualifying forecasts are available.'}</p>
+      : !suggestions.length ? <p className="mt-3 text-sm text-slate-300">{loading ? 'Your suggested list will appear when forecasts are ready.' : 'No upcoming matches meet your suggestion thresholds. The list stays empty until qualifying forecasts are available.'}</p>
       : <>
         <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-300">
           <span>{suggestions.length} of up to {limit} matches</span><span>·</span><span>{checkedCount} with price checks passed</span><span>·</span><span>{suggestions.length - checkedCount} need price review</span>
         </div>
         <ol className="mt-3 space-y-3">
           {suggestions.map((suggestion, index) => {
-            const { key, prediction, preference, probability, forecastId, market, priceStatus } = suggestion;
+            const { key, prediction, preference, probability, forecastId, market, priceStatus, historyLimited } = suggestion;
             const fixture = prediction.fixture;
             const picked = selectedPickKeys.includes(key);
             return <li key={key} className="rounded-xl border border-slate-700 bg-slate-950/60 p-3">
@@ -68,6 +68,7 @@ export const SuggestedBetList: React.FC<{
               {preference.range && <p className="mt-1 text-xs text-slate-400">Base scoreline model; separate from prior-blended totals. This range model is unvalidated.</p>}
               {!preference.range && market && prediction.dataQuality.weakMarkets.includes(market.marketId) && <p className="mt-1 text-xs text-amber-200">Weak or unvalidated market model.</p>}
               <p className="mt-1 text-xs text-slate-400">Team history: home {prediction.homeTeam.overallSampleSize}, away {prediction.awayTeam.overallSampleSize} matches.</p>
+              {historyLimited && <p className="mt-1 text-xs text-amber-200">Limited team history; inspect the statistics before deciding.</p>}
               {priceStatus !== 'unpriced' && market && <p className="mt-2 text-xs text-slate-200">Odds {market.decimalOdds?.toFixed(2)}{market.bookmaker ? ` · ${market.bookmaker}` : ''}
                 {priceStatus === 'checked' && market.expectedValue !== undefined ? ` · model-estimated EV ${(market.expectedValue * 100).toFixed(1)}%` : ''}</p>}
               {priceStatus === 'unqualified' && <p className="mt-1 text-xs text-amber-200">{market?.rejectReasons.slice(0, 2).join(' ') || 'The forecast qualifies for highlighting, but does not pass the existing probability, edge and positive-EV price checks.'}</p>}

@@ -112,16 +112,15 @@ it('reports a failed explicit refresh without inventing a settled result', async
   await waitFor(() => expect(screen.getByRole('button', { name: 'Bet (run predictions)' })).not.toBeDisabled());
   expect(readPaperRecord().selections[0].settled).toBeUndefined();
 });
-it('keeps all forecasts first and open, retains collapsible picks, and updates on model and filter changes', async () => {
+it('keeps forecasts first, removes model-pick sections, and updates the threshold bet list on model and filter changes', async () => {
   await runInitialBatch();
   const forecasts = screen.getByText(/All forecasts and market details/).closest('details')!;
-  const picks = screen.getByText('Model picks, rankings and explanations').closest('details')!;
+  expect(screen.queryByText('Model picks, rankings and explanations')).not.toBeInTheDocument();
+  expect(screen.queryByText('Model picks and explanations')).not.toBeInTheDocument();
+  expect(screen.queryByRole('region', { name: 'Best available options' })).not.toBeInTheDocument();
   expect(forecasts).toHaveAttribute('open');
-  expect(picks).not.toHaveAttribute('open');
-  expect(forecasts.compareDocumentPosition(picks) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   const betList = screen.getByRole('region', { name: 'Suggested bet list' });
   expect(forecasts.compareDocumentPosition(betList) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(betList.compareDocumentPosition(picks) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(within(betList).getAllByRole('listitem')).toHaveLength(1);
   expect(forecasts.querySelector('[data-highlight]')).toBeTruthy();
   expect(forecasts).toHaveTextContent('2–5 total goals');
@@ -156,12 +155,12 @@ it('keeps every forecast visible with an honest empty suggestion state when prob
   prediction.selections = [...prediction.markets];
   prediction.headline = 'BTTS No is leading';
   prediction.probabilities.baseScorelines = undefined;
-  render(<EnginePredictionPanel prediction={prediction} selectedPickKeys={[]} onTogglePick={jest.fn()} onCaptureOdds={jest.fn()} />);
+  render(<EnginePredictionPanel prediction={prediction} onCaptureOdds={jest.fn()} />);
   expect(screen.getByRole('status')).toHaveTextContent('No forecasts meet the configured suggestion thresholds.');
   expect(screen.getAllByText('Probability unavailable')).toHaveLength(25);
   expect(screen.queryByText(/BTTS No/)).not.toBeInTheDocument();
   expect(screen.getByText('Both teams to score')).toBeInTheDocument();
-  expect(screen.getByText('Model picks and explanations').closest('details')).not.toHaveAttribute('open');
+  expect(screen.queryByText('Model picks and explanations')).not.toBeInTheDocument();
 });
 
 
@@ -201,7 +200,6 @@ it('restores a saved date range and legacy results, and clearing removes both ca
   await waitFor(() => expect(screen.getByText(/Legacy fixture results/).textContent).not.toContain('0 fixtures'));
   expect(screen.getByDisplayValue('01/01/2020')).toBeInTheDocument();
   expect(screen.getByDisplayValue('01/01/2099')).toBeInTheDocument();
-  fireEvent.click(screen.getByText('Model picks, rankings and explanations'));
   fireEvent.click(screen.getByRole('button', { name: 'Clear predictions' }));
   expect(localStorage.getItem('leaguePredictions_v3')).toBeNull();
   expect(localStorage.getItem('predictionView_v1')).toBeNull();

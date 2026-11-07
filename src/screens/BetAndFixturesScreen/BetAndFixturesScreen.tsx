@@ -47,14 +47,12 @@ import {
   writePaperRecord,
   appendPaperSelections,
   settlePaperRecord,
-  summariseBy,
 } from '../../prediction-engine';
 import type { MarketValue, PaperSelection } from '../../prediction-engine';
 import { FORECAST_HIGHLIGHTS, ForecastId, ForecastPreference, forecastProbability, highlightLevel, LEGACY_FORECAST_IDS, visibleForecastPrediction } from '../../config/forecast-highlights';
 import { ForecastHighlight } from './ForecastHighlight';
 import { PredictionLoader, PredictionLoadingStage } from './PredictionLoader';
 import { SuggestedBetList } from './SuggestedBetList';
-import { rankDirectPicks, rankUnpricedForecasts } from '../../prediction-engine/selection';
 
 Modal.setAppElement('#root');
 
@@ -471,20 +469,15 @@ export const EnginePredictionPanel: React.FC<{
   prediction: FixturePrediction;
   oddsMessage?: string;
   onCaptureOdds: (prediction: FixturePrediction) => Promise<string>;
-  selectedPickKeys: string[];
-  onTogglePick: (market: MarketValue) => void;
-}> = ({ prediction: sourcePrediction, oddsMessage, onCaptureOdds, selectedPickKeys, onTogglePick }) => {
+}> = ({ prediction: sourcePrediction, oddsMessage, onCaptureOdds }) => {
   const prediction = visibleForecastPrediction(sourcePrediction);
   const [capturingOdds, setCapturingOdds] = useState(false);
   const [captureMessage, setCaptureMessage] = useState('');
-  const { probabilities, markets, selections, dataQuality, headline } = prediction;
-  const best = selections[0];
+  const { probabilities, dataQuality } = prediction;
 
   const firstMarkets: ForecastId[] = ['home_win', 'draw', 'away_win', 'btts_yes', 'over_2_5', 'home_over_0_5', 'away_over_0_5'];
   const forecastIds = [...firstMarkets, ...(Object.keys(FORECAST_HIGHLIGHTS) as ForecastId[]).filter(id => !firstMarkets.includes(id))];
   const hasSuggestions = forecastIds.some(id => highlightLevel(forecastProbability(prediction, id), FORECAST_HIGHLIGHTS[id] as ForecastPreference) !== 'none');
-  const selectedMarketIds = new Set(selections.map((market) => market.marketId));
-  const rejectedMarkets = markets.filter((market) => !selectedMarketIds.has(market.marketId));
 
   return (
     <div className="mb-3 rounded-lg border border-indigo-400/30 bg-indigo-500/5 p-2">
@@ -526,7 +519,7 @@ export const EnginePredictionPanel: React.FC<{
         })}
       </div>
 
-      <div className="mt-2 text-[10px] text-slate-400">Threshold-based suggestions use configurable preferences, independently of model picks. They do not establish accuracy or betting value.</div>
+      <div className="mt-2 text-[10px] text-slate-400">Threshold-based suggestions compare forecasts with your configured market percentages. They do not establish accuracy or betting value.</div>
       {!hasSuggestions && <div role="status" className="mt-1 text-[10px] text-slate-300">No forecasts meet the configured suggestion thresholds.</div>}
       <div className="mt-1 text-[9px] text-slate-400">
         ✓ earlier baseline study only · ~ weak/unvalidated · goal model: {dataQuality.goalModel}
@@ -560,88 +553,7 @@ export const EnginePredictionPanel: React.FC<{
         {captureMessage && <span className="text-[10px] text-slate-300">{captureMessage}</span>}
       </div>
 
-      <details className="mt-2">
-        <summary className="cursor-pointer text-[10px] font-semibold text-slate-300">Model picks and explanations</summary>
-      {best && <div className="mt-2 text-[10px] leading-snug text-slate-300">{headline}</div>}
-
-      {best ? (
-        <div className="mt-2 rounded border border-emerald-400/30 bg-emerald-500/10 p-1.5 text-[10px] text-emerald-50">
-          <div className="font-semibold">
-            Leading model selection: {best.label} — model {pct(best.modelProbability)}
-            {best.decimalOdds ? `, odds ${best.decimalOdds.toFixed(2)}` : ''}
-            {typeof best.edge === 'number' && best.edge !== 0 ? `, edge ${pct(best.edge, 1)}` : ''}
-          </div>
-          {best.evidence.slice(0, 2).map((line, index) => (
-            <div key={index} className="text-emerald-100/80">• {line}</div>
-          ))}
-        </div>
-      ) : (
-        <div className="mt-2 text-[10px] text-amber-200/90">
-          {!dataQuality.oddsAvailable
-            ? 'Unpriced forecast: betting value is unknown.'
-            : dataQuality.homeSampleSize < 3 && prediction.homeTeam.overallSampleSize < 3 || dataQuality.awaySampleSize < 3 && prediction.awayTeam.overallSampleSize < 3
-              ? 'Insufficient team history: no recommendation.'
-              : markets.some((market) => market.oddsStale)
-                ? 'No eligible pick. Some prices are stale; refresh odds to reassess.'
-                : 'No priced option meets the probability, edge and positive-EV rules.'}
-          {oddsMessage && <div className="mt-1">{oddsMessage}</div>}
-        </div>
-      )}
-
-      {selections.length > 0 && (
-        <div className="mt-2 rounded border border-emerald-400/20 bg-slate-950/70 p-2">
-          <div className="mb-1 text-[10px] font-semibold text-emerald-100">Eligible picks · ranked by estimated EV</div>
-          <div className="space-y-1.5">
-            {selections.map((market) => {
-              const pickKey = `${prediction.fixture.fixture.id}:${market.marketId}`;
-              const picked = selectedPickKeys.includes(pickKey);
-              return (
-                <div key={market.marketId} className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800 pt-1.5 first:border-0 first:pt-0">
-                  <div className="text-[10px] text-slate-200">
-                    <span className="font-semibold">{market.label}</span>
-                    {' · '}model {pct(market.modelProbability)}
-                    {market.decimalOdds ? ` · ${market.decimalOdds.toFixed(2)}${market.bookmaker ? ` ${market.bookmaker}` : ''}` : ''}
-                    {market.marginAdjustedProbability !== undefined ? ` · market ${pct(market.marginAdjustedProbability)}` : ''}
-                    {market.edge !== 0 ? ` · edge ${pct(market.edge, 1)}` : ''}
-                    {market.expectedValue !== undefined ? ` · EV ${pct(market.expectedValue, 1)}` : ''}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => onTogglePick(market)}
-                    className={`rounded border px-2 py-1 text-[10px] font-semibold ${picked ? 'border-emerald-400/50 bg-emerald-500/20 text-emerald-100' : 'border-slate-600 bg-slate-800 text-slate-200 hover:border-emerald-400/40'}`}
-                  >
-                    {picked ? 'Remove from pick list' : 'Add to pick list'}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-1 text-[9px] text-slate-500">Pick list only; no bet is placed by the app.</div>
-        </div>
-      )}
-
-      {rejectedMarkets.length > 0 && (
-        <details className="mt-2 rounded border border-slate-700/70 px-2 py-1.5">
-          <summary className="cursor-pointer text-[10px] font-semibold text-slate-300">
-            Why other markets were rejected ({rejectedMarkets.length})
-          </summary>
-          <div className="mt-2 space-y-1.5">
-            {rejectedMarkets.map((market) => (
-              <div key={market.marketId} className="border-t border-slate-800 pt-1.5 text-[10px] first:border-0 first:pt-0">
-                <span className="font-semibold text-slate-200">{market.label}</span>
-                {' · '}model {pct(market.modelProbability)}
-                <div className="text-slate-400">
-                  {market.rejectReasons.length > 0
-                    ? market.rejectReasons.join(' ')
-                    : 'Passed market thresholds but was omitted by the sample-quality or ranking limit.'}
-                </div>
-              </div>
-            ))}
-          </div>
-        </details>
-      )}
-
-      </details>
+      {oddsMessage && <p className="mt-1 text-[10px] text-slate-400">{oddsMessage}</p>}
 
       {dataQuality.warnings.length > 0 && (
         <div className="mt-1 text-[10px] text-amber-200/80">
@@ -1583,9 +1495,6 @@ const BetAndFixturesScreen: React.FC = () => {
     toggleModal();
   };
 
-  const settledPaperSelections = paperSelections.filter((selection) => selection.settled && selection.marketId !== 'btts_no');
-  const paperSummaries = summariseBy(settledPaperSelections, (selection) => selection.marketId);
-  const pendingPaperCount = paperSelections.filter((selection) => !selection.settled && selection.marketId !== 'btts_no').length;
   const paperSelectionsByKey = new Map(
     paperSelections.map((selection) => [`${selection.fixtureId}:${selection.marketId}`, selection])
   );
@@ -1598,9 +1507,6 @@ const BetAndFixturesScreen: React.FC = () => {
   const visibleEnginePredictions = Object.values(enginePredictions).filter((prediction) =>
     currentFixtures.some((fixture) => fixture.fixture.id === prediction.fixture.fixture.id)
   ).map(visibleForecastPrediction);
-  const directPicks = rankDirectPicks(visibleEnginePredictions, nowTick);
-  const unpricedPredictions = visibleEnginePredictions.filter((prediction) => !prediction.dataQuality.oddsAvailable);
-  const unpricedForecasts = rankUnpricedForecasts(visibleEnginePredictions, nowTick);
 
   // ===== Render =====
   return (
@@ -1870,10 +1776,18 @@ const BetAndFixturesScreen: React.FC = () => {
             {loadingBatch && <div ref={predictionLoaderRef} className="scroll-mt-48">
               <PredictionLoader {...predictionLoading} hasPreviousForecasts={displayedFixtureIds.length > 0} />
             </div>}
+            {!loadingBatch && displayedFixtureIds.length > 0 && fixtureLoadWarnings.length > 0 && (
+              <div role="alert" className="rounded-xl border border-amber-400/30 bg-amber-500/5 p-3 text-xs text-amber-200">{Array.from(new Set(fixtureLoadWarnings)).join(' ')}</div>
+            )}
             <details open aria-busy={loadingBatch} className="border-t border-slate-700 p-2">
               <summary className="cursor-pointer py-2 text-sm font-semibold text-slate-300">
                 {predictionMode === 'statistical' ? 'All forecasts and market details' : 'Legacy fixture results'} · {displayedFixtureIds.length} fixtures
               </summary>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs text-slate-400">{predictionRangeLabel}</span>
+                <button type="button" onClick={clearPredictions} disabled={loadingBatch}
+                  className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-2 py-1 text-[11px] font-semibold text-rose-200 hover:bg-rose-500/20 disabled:opacity-50">Clear predictions</button>
+              </div>
               {displayedFixtureIds.length > 0 && (
                 <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label="Forecast expansion controls">
                   <button type="button" onClick={() => setExpandedForecasts(previous => ({ ...previous, ...Object.fromEntries(displayedFixtureIds.map(id => [id, true])) }))}
@@ -1892,7 +1806,7 @@ const BetAndFixturesScreen: React.FC = () => {
               ) : displayedFixtureIds.length === 0 ? (
                 <div className="grid place-items-center py-16 text-sm text-slate-400">
                   {fixtureLoadWarnings.length > 0 ? (
-                    <div className="max-w-2xl space-y-2 text-left">
+                    <div role="alert" className="max-w-2xl space-y-2 text-left">
                       <div className="font-semibold text-amber-200">Fixture data unavailable</div>
                       {Array.from(new Set(fixtureLoadWarnings)).map((warning) => (
                         <div key={warning} className="text-xs text-amber-100/80">{warning}</div>
@@ -1945,10 +1859,6 @@ const BetAndFixturesScreen: React.FC = () => {
                             prediction={enginePrediction}
                             oddsMessage={oddsLoadMessages[currentFixture.fixture.id]}
                             onCaptureOdds={capturePaperOdds}
-                            selectedPickKeys={selectedStatisticalPickKeys}
-                            onTogglePick={(market) =>
-                              toggleStatisticalPick(enginePrediction.fixture.fixture.id, market)
-                            }
                           />
                         )}
 
@@ -2004,109 +1914,11 @@ const BetAndFixturesScreen: React.FC = () => {
               onReview={prediction => onFixtureClick(prediction.fixture)()}
               onTogglePick={toggleStatisticalPick}
             />
-            <details className="rounded-2xl border border-slate-700/60 bg-slate-900/80 p-4">
-              <summary className="cursor-pointer text-sm font-semibold text-slate-200">Model picks, rankings and explanations</summary>
-              <div className="mb-2 flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-100">Predictions</h2>
-                  <div className="text-xs text-slate-400">Fixtures matched in current range: {displayedFixtureIds.length}</div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-[11px] text-slate-300">{predictionRangeLabel}</div>
-                  <button
-                    onClick={clearPredictions}
-                    className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-2 py-1 text-[11px] font-semibold text-rose-200 hover:bg-rose-500/20"
-                  >
-                    Clear predictions
-                  </button>
-                </div>
-              </div>
-              {predictionMode === 'statistical' && (
-                <section aria-label="Best available options" className="mb-4 border-t border-slate-700 py-3">
-                  <h3 className="text-base font-semibold text-white">Best available options · {directPicks.length}</h3>
-                  <div className="mt-1 text-xs text-amber-200">Model-ranked candidates, not proven profitable bets. Prices can change.</div>
-                  {!loadingBatch && fixtureLoadWarnings.length > 0 && (
-                    <div role="alert" className="mt-2 text-xs text-amber-200">{fixtureLoadWarnings.join(' ')}</div>
-                  )}
-                  {loadingBatch ? <div className="py-4 text-sm text-slate-300">Your forecasts are being prepared above.</div>
-                    : directPicks.length === 0 ? (
-                      <div className="py-3 text-sm text-slate-300">
-                        {visibleEnginePredictions.length === 0 ? 'No upcoming fixtures assessed in this window.'
-                          : unpricedPredictions.length === visibleEnginePredictions.length ? 'Awaiting bookmaker prices. Forecasts are available below; no priced recommendation yet.'
-                            : 'No eligible priced picks in this batch. Remaining forecasts and rejection reasons are below.'}
-                      </div>
-                    ) : (
-                      <ol className="mt-3 divide-y divide-slate-700">
-                        {directPicks.map(({ prediction, market }, index) => {
-                          const fixture = prediction.fixture;
-                          const key = `${fixture.fixture.id}:${market.marketId}`;
-                          const picked = selectedStatisticalPickKeys.includes(key);
-                          return (
-                            <li key={key} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                              <div className="min-w-0 flex-1 text-xs text-slate-300">
-                                <div className="break-words text-sm font-semibold text-white">{index + 1}. {fixture.teams.home.name} vs {fixture.teams.away.name}</div>
-                                <div className="mt-1 font-semibold text-emerald-200">{market.label} · {market.decimalOdds?.toFixed(2)} {market.bookmaker}</div>
-                                <div className="mt-1">{fixture.league.name} · {toMomentDate(fixture.fixture.date).format('DD MMM HH:mm')}</div>
-                                <div>Model {pct(market.modelProbability)} · estimated EV {pct(market.expectedValue ?? 0, 1)} · edge {pct(market.edge, 1)}</div>
-                                <div className="text-slate-400">{prediction.dataQuality.homeSampleSize}/{prediction.dataQuality.awaySampleSize} venue samples · {prediction.dataQuality.standingsAvailable ? 'standings available' : 'opponent strength unknown'}</div>
-                                {prediction.dataQuality.weakMarkets.includes(market.marketId) && <div className="text-amber-200">Weak or unvalidated market model.</div>}
-                              </div>
-                              <button type="button" onClick={() => toggleStatisticalPick(fixture.fixture.id, market)}
-                                className={`shrink-0 rounded border px-3 py-2 text-xs font-semibold ${picked ? 'border-emerald-400 bg-emerald-500/20 text-emerald-100' : 'border-cyan-400 bg-cyan-600 text-white'}`}>
-                                {picked ? 'Remove pick' : 'Add pick'}
-                              </button>
-                            </li>
-                          );
-                        })}
-                      </ol>
-                    )}
-                </section>
-              )}
-              {predictionMode === 'statistical' && !loadingBatch && unpricedForecasts.length > 0 && (
-                <section aria-label="Forecasts without odds" className="mb-4 border-t border-slate-700 py-3">
-                  <h3 className="text-base font-semibold text-white">Forecasts without odds · {unpricedForecasts.length}</h3>
-                  <div className="mt-1 text-xs text-amber-200">Ranked by model likelihood, not betting value. No bookmaker price or EV verified.</div>
-                  <ol className="mt-2 divide-y divide-slate-700">
-                    {unpricedForecasts.map(({ prediction, market, enoughHistory }) => {
-                      const fixture = prediction.fixture;
-                      return (
-                        <li key={fixture.fixture.id} className="py-3 text-xs text-slate-300">
-                          <div className="break-words text-sm font-semibold text-white">{fixture.teams.home.name} vs {fixture.teams.away.name}</div>
-                          <div className="mt-1 text-slate-400">{fixture.league.name} · {toMomentDate(fixture.fixture.date).format('DD MMM HH:mm')}</div>
-                          {market ? (
-                            <>
-                              <div className="mt-1 font-semibold text-cyan-200">Leading forecast: {market.label} · model {pct(market.modelProbability)}</div>
-                              <div className="mt-1">Highest estimated likelihood among standard win, scoring and goals outcomes; not necessarily the best-priced bet.</div>
-                              <div className="mt-1">Model break-even odds: ~{(1 / market.modelProbability).toFixed(2)} · not a bookmaker quote.</div>
-                              {!market.passedProbabilityThreshold && <div className="mt-1 text-amber-200">Below the preferred probability cutoff; forecast only.</div>}
-                              {prediction.dataQuality.weakMarkets.includes(market.marketId) && <div className="mt-1 text-amber-200">Weak or unvalidated market model.</div>}
-                              <div className="mt-2 font-semibold text-slate-200">Evidence</div>
-                              {market.evidence.slice(0, 2).map((line, index) => <div key={index} className="mt-1 break-words">{line}</div>)}
-                              {prediction.dataQuality.goalModel === 'prior-blended' && /^(btts|over_|under_)/.test(market.marketId) && (
-                                <div className="mt-1 text-slate-400">This goal-market forecast uses a league-prior model; sample frequencies are context, not the forecast itself.</div>
-                              )}
-                            </>
-                          ) : <div className="mt-2 text-amber-200">{enoughHistory ? 'No usable standard-market estimate available.' : 'Insufficient team history; no leading forecast.'}</div>}
-                          <div className="mt-2 text-slate-400">Venue samples {prediction.dataQuality.homeSampleSize}/{prediction.dataQuality.awaySampleSize} · overall samples {prediction.homeTeam.overallSampleSize}/{prediction.awayTeam.overallSampleSize}</div>
-                          {prediction.dataQuality.warnings.filter((warning) => !/odds/i.test(warning)).slice(0, 2).map((warning, index) => (
-                            <div key={index} className="mt-1 break-words text-amber-200">{warning}</div>
-                          ))}
-                          <div className="mt-2 break-words text-slate-400">Odds status: {oddsLoadMessages[fixture.fixture.id] || 'No supported bookmaker prices available.'}</div>
-                        </li>
-                      );
-                    })}
-                  </ol>
-                </section>
-              )}
+            {selectedPaperPicks.length > 0 && (
               <details className="mb-2 border-t border-slate-700/60 pt-2">
                 <summary className="cursor-pointer text-xs font-semibold text-slate-300">
-                  My Statistical pick list · {selectedPaperPicks.length} selected
+                  My saved picks · {selectedPaperPicks.length} selected
                 </summary>
-                {selectedPaperPicks.length === 0 ? (
-                  <div className="mt-2 text-[11px] text-slate-400">
-                    Add a qualified market from a Statistical fixture card. This is a shortlist only; no bet is placed.
-                  </div>
-                ) : (
                   <div className="mt-2 space-y-1.5">
                     {selectedPaperPicks.map((pick) => {
                       const key = `${pick.fixtureId}:${pick.marketId}`;
@@ -2136,52 +1948,8 @@ const BetAndFixturesScreen: React.FC = () => {
                     })}
                     <div className="text-[9px] text-slate-500">Selections from the same match are correlated; this list does not account for combined stake or portfolio risk.</div>
                   </div>
-                )}
               </details>
-              <details className="mt-3 border-t border-slate-700/60 pt-2">
-                <summary className="cursor-pointer text-xs font-semibold text-slate-300">
-                  Prospective odds tracking · {pendingPaperCount} pending · {settledPaperSelections.length} settled
-                </summary>
-                {settledPaperSelections.length === 0 ? (
-                  <div className="mt-2 text-[11px] text-slate-400">
-                    Capture pre-match odds on a fixture card. Results are settled when completed fixtures are refreshed.
-                    No historical odds are available, so this report accumulates prospectively.
-                  </div>
-                ) : (
-                  <div className="mt-2 overflow-x-auto">
-                    <table className="w-full min-w-[620px] text-left text-[10px] text-slate-300">
-                      <thead className="text-slate-500">
-                        <tr>
-                          <th className="py-1 pr-3">Market</th>
-                          <th className="py-1 pr-3">N</th>
-                          <th className="py-1 pr-3">Hit rate</th>
-                          <th className="py-1 pr-3">Brier</th>
-                          <th className="py-1 pr-3">Log loss</th>
-                          <th className="py-1 pr-3">ROI/unit</th>
-                          <th className="py-1">95% ROI half-width</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {Object.values(paperSummaries).map((summary) => (
-                          <tr key={summary.scope} className="border-t border-slate-800">
-                            <td className="py-1 pr-3">{summary.scope}</td>
-                            <td className="py-1 pr-3">{summary.n}</td>
-                            <td className="py-1 pr-3">{pct(summary.hitRate)}</td>
-                            <td className="py-1 pr-3">{summary.brierScore.toFixed(3)}</td>
-                            <td className="py-1 pr-3">{summary.logLoss.toFixed(3)}</td>
-                            <td className="py-1 pr-3">{summary.roi.toFixed(3)}</td>
-                            <td className="py-1">±{summary.roiConfidence95.toFixed(3)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <div className="mt-1 text-[9px] text-slate-500">
-                      Flat-stake descriptive results only; correlated selections and small samples make ROI uncertainty substantial.
-                    </div>
-                  </div>
-                )}
-              </details>
-            </details>
+            )}
 
             <div className="rounded-2xl border border-slate-700/60 bg-slate-900/80 p-3">
               <div className="mb-2 flex items-center justify-between">

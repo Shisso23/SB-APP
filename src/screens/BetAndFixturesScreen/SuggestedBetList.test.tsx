@@ -40,11 +40,23 @@ test('empty, legacy, loading and changed forecasts do not manufacture entries', 
   expect(screen.getAllByRole('listitem')).toHaveLength(1);
   rerender(<SuggestedBetList {...props} predictions={[]} />);
   expect(screen.queryByRole('listitem')).not.toBeInTheDocument();
-  expect(screen.getByText(/No upcoming matches with sufficient team history/)).toBeInTheDocument();
+  expect(screen.getByText(/No upcoming matches meet your suggestion thresholds/)).toBeInTheDocument();
   rerender(<SuggestedBetList {...props} predictions={[prediction]} statistical={false} />);
   expect(screen.getByText(/Legacy rules do not supply forecast probabilities/)).toBeInTheDocument();
   expect(screen.queryByRole('listitem')).not.toBeInTheDocument();
   rerender(<SuggestedBetList {...props} predictions={[prediction]} loading />);
   expect(screen.getByRole('button', { name: 'Copy list' })).toBeDisabled();
   expect(screen.getByText(/Updating the suggested list/)).toBeInTheDocument();
+});
+
+
+test('a qualifying forecast remains listed with limited history and no model selection', () => {
+  const prediction = makeForecastBetPrediction({ now, markets: { home_win: .6 } });
+  prediction.selections = [];
+  prediction.homeTeam.overallSampleSize = 1;
+  prediction.awayTeam.overallSampleSize = 1;
+  render(<SuggestedBetList {...props} predictions={[prediction]} />);
+  expect(screen.getAllByRole('listitem')).toHaveLength(1);
+  expect(screen.getByText(/Limited team history/)).toBeInTheDocument();
+  expect(screen.getByText(/meets the 60% suggestion threshold/)).toBeInTheDocument();
 });

@@ -16,6 +16,7 @@ export interface ForecastBetSuggestion {
   level: 'suggested' | 'strong';
   market?: MarketValue;
   priceStatus: ForecastPriceStatus;
+  historyLimited: boolean;
 }
 
 const compare = (a: ForecastBetSuggestion, b: ForecastBetSuggestion) =>
@@ -35,8 +36,9 @@ export const buildForecastBetList = (predictions: FixturePrediction[], now: numb
     if (!Number.isFinite(fixture.timestamp) || fixture.timestamp * 1000 <= now || !['NS', 'TBD'].includes(fixture.status.short)) return;
     const homeSample = Math.max(prediction.dataQuality.homeSampleSize, prediction.homeTeam.overallSampleSize);
     const awaySample = Math.max(prediction.dataQuality.awaySampleSize, prediction.awayTeam.overallSampleSize);
-    if (!Number.isFinite(homeSample) || !Number.isFinite(awaySample) ||
-      homeSample < DEFAULT_PREDICTION_CONFIG.minTeamMatches || awaySample < DEFAULT_PREDICTION_CONFIG.minTeamMatches) return;
+    // History is context, not a second qualification gate: use the exact displayed thresholds.
+    const historyLimited = !Number.isFinite(homeSample) || !Number.isFinite(awaySample) ||
+      homeSample < DEFAULT_PREDICTION_CONFIG.minTeamMatches || awaySample < DEFAULT_PREDICTION_CONFIG.minTeamMatches;
 
     (Object.keys(FORECAST_HIGHLIGHTS) as ForecastId[]).forEach(forecastId => {
       const preference: ForecastPreference = FORECAST_HIGHLIGHTS[forecastId];
@@ -51,7 +53,7 @@ export const buildForecastBetList = (predictions: FixturePrediction[], now: numb
       const candidate: ForecastBetSuggestion = {
         key: `${fixture.id}:${forecastId}`, prediction, forecastId, preference, probability,
         relativeSurplus: (probability - preference.suggest) / (1 - preference.suggest),
-        level, market,
+        level, market, historyLimited,
         priceStatus: !hasQuote ? 'unpriced' : !fresh ? 'stale' : checked ? 'checked' : 'unqualified',
       };
       const previous = bestByFixture.get(fixture.id);
@@ -75,6 +77,6 @@ export const formatForecastBetList = (suggestions: ForecastBetSuggestion[]) => [
     const { prediction, preference, probability, market, priceStatus } = suggestion;
     const fixture = prediction.fixture;
     const quote = priceStatus === 'unpriced' ? 'No available odds' : `Odds ${market?.decimalOdds?.toFixed(2)}${market?.bookmaker ? ` (${market.bookmaker})` : ''}`;
-    return `${index + 1}. ${fixture.teams.home.name} vs ${fixture.teams.away.name} | ${fixture.league.name} | ${fixture.fixture.date}\n${preference.label} | Forecast ${(probability * 100).toFixed(2)}% | Threshold ${(preference.suggest * 100).toFixed(0)}%\n${preference.meaning}\n${quote} | ${PRICE_STATUS_LABELS[priceStatus]}${preference.range ? '\nSource: base scoreline model, separate from prior-blended totals.' : ''}`;
+    return `${index + 1}. ${fixture.teams.home.name} vs ${fixture.teams.away.name} | ${fixture.league.name} | ${fixture.fixture.date}\n${preference.label} | Forecast ${(probability * 100).toFixed(2)}% | Threshold ${(preference.suggest * 100).toFixed(0)}%\n${preference.meaning}\n${quote} | ${PRICE_STATUS_LABELS[priceStatus]}${preference.range ? '\nSource: base scoreline model, separate from prior-blended totals.' : ''}${suggestion.historyLimited ? '\nLimited team history; inspect the statistics.' : ''}`;
   }),
 ].join('\n\n');

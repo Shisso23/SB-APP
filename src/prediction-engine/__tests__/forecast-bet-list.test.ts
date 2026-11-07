@@ -16,7 +16,7 @@ test('compares relative surplus instead of simply choosing the highest raw proba
   expect(list[0].relativeSurplus).toBeCloseTo(.5);
 });
 
-test('excludes started, finished, postponed and insufficient-history matches', () => {
+test('excludes started, finished and postponed matches while keeping threshold qualifiers with limited history', () => {
   const started = makeForecastBetPrediction({ now, id: 1, kickoff: now });
   const finished = makeForecastBetPrediction({ now, id: 2 });
   finished.fixture.fixture.status.short = 'FT';
@@ -25,7 +25,8 @@ test('excludes started, finished, postponed and insufficient-history matches', (
   const insufficient = makeForecastBetPrediction({ now, id: 4 });
   insufficient.homeTeam.overallSampleSize = 2;
   const eligible = makeForecastBetPrediction({ now, id: 5 });
-  expect(buildForecastBetList([started, finished, postponed, insufficient, eligible], now).map(entry => entry.prediction.fixture.fixture.id)).toEqual([5]);
+  expect(buildForecastBetList([started, finished, postponed, insufficient, eligible], now).map(entry => entry.prediction.fixture.fixture.id)).toEqual([4, 5]);
+  expect(buildForecastBetList([insufficient], now)[0].historyLimited).toBe(true);
 });
 
 test('never includes BTTS No, missing markets, invalid probabilities or incomplete grids', () => {
@@ -72,4 +73,20 @@ test('keeps order deterministic, removes duplicate fixtures and drops entries at
   const later = makeForecastBetPrediction({ now, id: 2, kickoff: now + 20_000 });
   expect(buildForecastBetList([later, early, early], now).map(entry => entry.key)).toEqual(['1:home_win', '2:home_win']);
   expect(buildForecastBetList([later, early], now + 10_000).map(entry => entry.key)).toEqual(['2:home_win']);
+});
+
+
+test('threshold membership is independent of model selections and price qualification', () => {
+  const prediction = makeForecastBetPrediction({ now, markets: { home_win: .6 } });
+  prediction.selections = [];
+  prediction.markets[0].qualifies = false;
+  prediction.markets[0].passedProbabilityThreshold = false;
+  prediction.markets[0].passedEdgeThreshold = false;
+  prediction.markets[0].rejectReasons = ['Rejected by the separate model-pick policy'];
+  const list = buildForecastBetList([prediction], now);
+  expect(list).toHaveLength(1);
+  expect(list[0].forecastId).toBe('home_win');
+  expect(list[0].priceStatus).toBe('unpriced');
+  prediction.markets[0].modelProbability = .59999;
+  expect(buildForecastBetList([prediction], now)).toHaveLength(0);
 });
