@@ -118,7 +118,7 @@ const readPredictionMode = (): PredictionMode => {
 
 const MIN_SEASON_EXISTING_THRESHOLD = 10;
 
-const DEFAULT_POPULAR_LEAGUE_IDS = [140, 135, 203, 88, 144, 179, 40, 79, 136, 218, 94];
+const DEFAULT_POPULAR_LEAGUE_IDS = [39, 140, 135, 203, 88, 144, 179, 40, 79, 136, 218, 94];
 
 const PRIORITY_COUNTRIES = [
   'england',
