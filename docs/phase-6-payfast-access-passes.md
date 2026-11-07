@@ -1,10 +1,16 @@
 # Phase 6 — PayFast paid access passes
 
-Status: **implemented, disabled by default, not yet run against the PayFast sandbox.**
+Status: **implemented; local sandbox prepared; no real sandbox payment completed yet.**
 
 PayFast is the first payment provider for PredictXI premium access. Ozow is not
 implemented and is deliberately out of scope for this phase. No voucher system is
 part of this work; the earlier voucher foundation remains present but unused.
+
+**No real PayFast round-trip has been executed.** Every automated check in this
+repository mocks the PayFast boundary, so those results evidence our *handling* of
+ITNs — signature reconstruction, state transitions, idempotency — and are **not**
+evidence that a live sandbox payment succeeds. See §11 for the verification ledger,
+which separates mocked checks from real-round-trip evidence.
 
 Nothing in this document has been run against a live payment service. No credential
 appears here, and no credential may ever appear in source, in the frontend bundle, in
@@ -304,11 +310,109 @@ Each is addressed in §3.
 3. **Refunds and revocation.** This phase records refunds for audit only. Automatic
    revocation on refund is **not** implemented; revocation is a manual/admin action
    setting `AccessEntitlement.revoked_at`.
-4. **Frontend lint.** `react-scripts build` currently fails on **pre-existing** lint
-   errors in untouched files (`navBar` unused vars, `reducers` explicit `any`,
-   `home.screen` unused vars, `predictions.tsx` unused imports). None originate from the
-   PayFast work, and all new files are lint-clean. The underlying code bundles
-   successfully. Decide whether to clean these up.
+4. **Frontend lint.** Resolved. `react-scripts build` previously failed on two ESLint
+   *errors* in untouched files; the remaining 157 findings were warnings and never
+   blocked the build. Both errors are fixed (`ThunkDispatch` replacing the bare
+   `Function` type in `reducers/fixtures/fixtures.actions.ts`; an inline `require`
+   hoisted to a static import in `services/api/index.test.ts`). A plain build now
+   succeeds without `DISABLE_ESLINT_PLUGIN`.
 5. **Reconciliation tooling.** There is no automated reconciliation job for an ITN that
    never arrived. If the sandbox negative check in §6 shows this matters in practice, add
    a management command then; do not add scheduled infrastructure speculatively.
+
+---
+
+## 11. Verification ledger (local sandbox preparation)
+
+Recorded 2026-11-07. This section distinguishes **what was actually run** from **what
+was only inspected**, because a passing test suite does not prove a payment works.
+
+### 11.1 Checks actually executed, and their results
+
+| Check | Command | Result |
+|---|---|---|
+| Backend suite | `manage.py test api.tests` | **188 passed** |
+| Migrations pending? | `makemigrations --check --dry-run` | no changes |
+| Migrations applied? | `showmigrations api` | `0001`–`0005` all applied |
+| Frontend suite | `react-scripts test --watchAll=false` | **261 passed / 35 suites** |
+| Type check | `tsc --noEmit` | exit 0 |
+| Backend listening | `lsof -iTCP:8000 -sTCP:LISTEN` | listening |
+| `GET /api/v1/access/products/` | unauthenticated | `401` (route mounted, auth enforced) |
+| `POST /api/v1/payments/payfast/itn/` | synthetic body | `200` (handler reached, no grant) |
+| `GET /api/v1/payments/payfast/return/` | no session | `302` (redirect only) |
+
+**All of the above is mocked or config-level evidence.** In particular, the ITN `200`
+above was produced by a synthetic request that could not pass verification, so it is
+**not** evidence that PayFast can deliver an ITN.
+
+### 11.2 Properties verified by reading the implementation
+
+Established by code inspection, not by a live round-trip:
+
+- Price and currency come only from the `AccessProduct` row; the client sends a product
+  code and nothing else.
+- `return_url` and `cancel_url` handlers grant nothing; entitlement is reachable only
+  through the verified-ITN path.
+- All four documented PayFast checks are implemented (signature with constant-time
+  comparison, source-IP allowlist, amount match within 0.01, server-side
+  `/eng/query/validate` requiring exactly `VALID`).
+- Exactly-once granting under concurrent retries rests on a row lock, a one-to-one
+  grant record, and a short-circuit for an already-granted attempt.
+- A repeat purchase extends an active pass from its existing end date.
+
+### 11.3 Local sandbox state
+
+- Endpoints are **sandbox** (`sandbox.payfast.co.za`). No production endpoint is
+  configured.
+- `backend/.env` and its `.env.bak.*` backup are both git-ignored and untracked.
+- One sandbox product exists, created idempotently (creating it twice leaves exactly one
+  row):
+
+  | Field | Value |
+  |---|---|
+  | `code` | `predictxi_test_7_days` |
+  | `name` | PredictXI 7-Day Test Pass |
+  | `price_amount` | `5.00` |
+  | `currency` | `ZAR` |
+  | `duration_days` | `7` |
+  | `scope` | `predictions` |
+
+  This is **sandbox test data**. It does not establish production pricing and must not be
+  treated as an approved commercial price.
+
+### 11.4 Outstanding blockers
+
+1. **No working public tunnel.** No `ngrok`/`cloudflared` process and nothing listening
+   on a forwarded port. PayFast cannot deliver an ITN without one.
+2. **`PREDICTXI_SITE_URL` is set to an offline host.** It currently answers with
+   `ERR_NGROK_3200` (“endpoint offline”). This is the most misleading possible state:
+   the readiness gate passes while callbacks are unreachable. It must be replaced with the
+   live tunnel host before any payment is attempted.
+3. **Ownership of the configured sandbox credentials is unconfirmed.** The values
+   currently in `backend/.env` were not created for PredictXI. Transactions under them
+   would be attributed to another merchant account, so a “success” would not validate
+   PredictXI's own setup. PredictXI's own sandbox credentials must replace them.
+4. **Merchant category approval (open item #2 above) remains unwritten.**
+5. **No real sandbox payment has been attempted**, for the reasons above.
+
+### 11.5 Local sandbox test steps
+
+1. Ensure `backend/.env` holds PredictXI's own sandbox merchant id, key and passphrase,
+   the sandbox `*_URL` values, and `PAYFAST_ENABLED=True`.
+2. Start the backend: `manage.py runserver 0.0.0.0:8000`.
+3. Expose it: `ngrok http 8000`. Confirmed the tunnel forwards to the correct port
+   **before** trusting it.
+4. Set `PREDICTXI_SITE_URL` to the `https://` host ngrok prints (no trailing slash) and
+   restart the backend.
+5. Sign in, open **Premium**, select the 7-day test pass, continue to PayFast, and pay
+   with the sandbox wallet.
+6. Confirm the ITN reached `notify_url`, passed all four checks, and granted access
+   **exactly once** to the purchasing user for the correct product and amount.
+7. Re-send the same ITN and confirm no second grant is created.
+8. Buy again and confirm the pass extends from its existing end date.
+
+### 11.6 Real-payment outcome
+
+**Not yet recorded.** To be added only after a real sandbox payment has been completed
+and its callback observed. Until then, no part of this document claims a successful
+payment.
