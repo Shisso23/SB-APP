@@ -53,6 +53,7 @@ import { FORECAST_HIGHLIGHTS, ForecastId, ForecastPreference, forecastProbabilit
 import { ForecastHighlight } from './ForecastHighlight';
 import { PredictionLoader, PredictionLoadingStage } from './PredictionLoader';
 import { SuggestedBetList } from './SuggestedBetList';
+import { LeagueLoadErrors, LeagueLoadFailure } from './LeagueLoadErrors';
 
 Modal.setAppElement('#root');
 
@@ -600,6 +601,8 @@ const BetAndFixturesScreen: React.FC = () => {
   const [paperSelections, setPaperSelections] = useState<PaperSelection[]>(() => readPaperRecord().selections);
   const [selectedStatisticalPickKeys, setSelectedStatisticalPickKeys] = useState<string[]>(readStatisticalPickKeys);
   const [fixtureLoadWarnings, setFixtureLoadWarnings] = useState<string[]>([]);
+  const [failedLeagueLoads, setFailedLeagueLoads] = useState<Record<number, LeagueLoadFailure>>({});
+  const [retryingLeagueIds, setRetryingLeagueIds] = useState<number[]>([]);
   const [favoritePredictions, setFavoritePredictions] = useState<FavoritePredictionItem[]>(() => readFavoritesCache());
   const [isLeaguesByCountryCollapsed, setIsLeaguesByCountryCollapsed] = useState(false);
   const [isBetOptionsCollapsed, setIsBetOptionsCollapsed] = useState(true);
@@ -817,6 +820,8 @@ const BetAndFixturesScreen: React.FC = () => {
     setFutureFixtures([]);
     setCurrentFixtures([]);
     setLastBetAt(null);
+    setFailedLeagueLoads({});
+    setFixtureLoadWarnings([]);
     try { localStorage.removeItem(PREDICTIONS_CACHE_KEY); localStorage.removeItem(PREDICTION_VIEW_KEY); } catch {}
   };
 
@@ -950,9 +955,10 @@ const BetAndFixturesScreen: React.FC = () => {
     fixtures: FixtureDataModel[];
     didNetwork: boolean;
     errors: string[];
+    failedSeasons: number[];
   };
 
-  const readApiErrors = (response: FixturesModel | undefined) => {
+  const readApiErrors = (response: { errors?: unknown } | undefined) => {
     const errors = response?.errors as unknown;
     if (Array.isArray(errors)) return errors.map(String).filter(Boolean);
     if (errors && typeof errors === 'object') {
@@ -967,112 +973,91 @@ const BetAndFixturesScreen: React.FC = () => {
     return apiErrors.length > 0 ? apiErrors : [requestError?.message || 'Fixture request failed.'];
   };
 
-  const getLeaguesSeasonsFixtures = async (leaguesInput: LeagueDataModel[], refreshCurrentSeason = false): Promise<LeagueFixturesResult[]> => {
+  const getLeaguesSeasonsFixtures = async (
+    leaguesInput: LeagueDataModel[], refreshCurrentSeason = false,
+    retrySeasons?: Map<number, number[]>
+  ): Promise<LeagueFixturesResult[]> => {
     const seasonsCount = Math.max(1, Number(numberOfSeasonsBack || 1));
-
-    return Promise.all(
-      leaguesInput.map(async (league: LeagueDataModel) => {
-        const currentSeason =
-          league.seasons.find((s) => s.current === true)?.year ??
-          league.seasons[0]?.year;
-
-        const seasons: number[] = Array.from({ length: seasonsCount }, (_, i) => currentSeason - i);
-
-        let didNetwork = false;
+    return Promise.all(leaguesInput.map(async league => {
+      const currentSeason = league.seasons.find(season => season.current)?.year ?? league.seasons[0]?.year;
+      const targeted = retrySeasons?.get(league.league.id);
+      const seasons = targeted ?? Array.from({ length: seasonsCount }, (_, index) => currentSeason - index);
+      let didNetwork = false;
+      const perSeason = await Promise.all(seasons.map(async season => {
+        const existing = allFixtures.filter(fixture => fixture.league.id === league.league.id && fixture.league.season === season);
+        const force = targeted !== undefined || refreshCurrentSeason && season === currentSeason || failedLeagueLoads[league.league.id]?.fixtureSeasons.includes(season);
+        if (!force && countFinished(existing) >= MIN_SEASON_EXISTING_THRESHOLD) return { season, fixtures: existing, errors: [] as string[] };
         const errors: string[] = [];
-
-        const perSeason = await Promise.all(
-          seasons.map(async (season) => {
-            const existing = allFixtures.filter(f => f.league.id === league.league.id && f.league.season === season);
-            if (!(refreshCurrentSeason && season === currentSeason) && countFinished(existing) >= MIN_SEASON_EXISTING_THRESHOLD) {
-              return existing; // no network
-            }
-
-            // try fast path
-            try {
-              const resFast: FixturesModel = (await getFilteredFixtures(
-                new FixturesFilterModel({ league: league.league.id, season })
-              )).data;
-              didNetwork = true;
-              errors.push(...readApiErrors(resFast));
-              const fixturesFast = resFast?.response ?? [];
-              if (countFinished(fixturesFast) > 0) {
-                return fixturesFast;
-              }
-
-              // retry ranged
-              const { from, to } = seasonWindow(season);
-              const resRanged: FixturesModel = (await getFilteredFixtures(
-                new FixturesFilterModel({ league: league.league.id, season, from, to })
-              )).data;
-              didNetwork = true;
-              errors.push(...readApiErrors(resRanged));
-              return resRanged?.response ?? [];
-            } catch (error) {
-              errors.push(...describeRequestError(error));
-              try {
-                const { from, to } = seasonWindow(season);
-                const resRanged: FixturesModel = (await getFilteredFixtures(
-                  new FixturesFilterModel({ league: league.league.id, season, from, to })
-                )).data;
-                didNetwork = true;
-                errors.push(...readApiErrors(resRanged));
-                return resRanged?.response ?? [];
-              } catch (retryError) {
-                errors.push(...describeRequestError(retryError));
-                return [];
-              }
-            }
-          })
-        );
-
-        return {
-          leagueId: league.league.id,
-          fixtures: dedupeFixtures(perSeason.flat()),
-          didNetwork,
-          errors: Array.from(new Set(errors)),
-        };
-      })
-    );
+        let fastFixtures: FixtureDataModel[] = [];
+        try {
+          didNetwork = true;
+          const data = (await getFilteredFixtures(new FixturesFilterModel({ league: league.league.id, season }))).data;
+          errors.push(...readApiErrors(data));
+          fastFixtures = data?.response ?? [];
+          if (!errors.length && countFinished(fastFixtures) > 0) return { season, fixtures: fastFixtures, errors: [] as string[] };
+        } catch (error) { errors.push(...describeRequestError(error)); }
+        try {
+          didNetwork = true;
+          const { from, to } = seasonWindow(season);
+          const data = (await getFilteredFixtures(new FixturesFilterModel({ league: league.league.id, season, from, to }))).data;
+          const rangedErrors = readApiErrors(data);
+          if (!rangedErrors.length) {
+            // A successful fallback resolves the fast-request error.
+            return { season, fixtures: dedupeFixtures([...fastFixtures, ...(data?.response ?? [])]), errors: [] as string[] };
+          }
+          errors.push(...rangedErrors);
+          return { season, fixtures: dedupeFixtures([...existing, ...fastFixtures, ...(data?.response ?? [])]), errors };
+        } catch (error) {
+          errors.push(...describeRequestError(error));
+          return { season, fixtures: dedupeFixtures([...existing, ...fastFixtures]), errors };
+        }
+      }));
+      return {
+        leagueId: league.league.id,
+        fixtures: dedupeFixtures(perSeason.flatMap(result => result.fixtures)),
+        didNetwork,
+        failedSeasons: perSeason.filter(result => result.errors.length > 0).map(result => result.season),
+        errors: Array.from(new Set(perSeason.flatMap(result => result.errors.map(error => `Season ${result.season}: ${error}`)))),
+      };
+    }));
   };
 
-  // Standings ensure (unchanged)
-  const ensureStandingsFor = async (leaguesInput: LeagueDataModel[]): Promise<StandingsModel[]> => {
-    if (!leaguesInput || leaguesInput.length === 0) return [];
+  const ensureStandingsFor = async (leaguesInput: LeagueDataModel[], forceIds: Set<number>) => {
     const cache = readStandingsCache();
-
-    const results: StandingsModel[] = [];
-    const toFetch: { league: LeagueDataModel; season: number }[] = [];
-
-    for (const lg of leaguesInput) {
-      const season = lg.seasons.find(s => s.current === true)?.year || lg.seasons[0]?.year;
-      const hit = cache.items.find(it => it.leagueId === lg.league.id && it.season === season && (Date.now() - it.ts <= STANDINGS_CACHE_TTL));
-      if (hit) {
-        results.push(hit.data);
-      } else if (!leaguesStandings.find(s => s.response?.[0]?.league?.id === lg.league.id)) {
-        toFetch.push({ league: lg, season });
+    const fetched = await Promise.all(leaguesInput.map(async league => {
+      const id = league.league.id;
+      const season = league.seasons.find(entry => entry.current)?.year ?? league.seasons[0]?.year;
+      const cached = cache.items.find(item => item.leagueId === id && item.season === season && Date.now() - item.ts < STANDINGS_CACHE_TTL);
+      if (cached && !forceIds.has(id) && !readApiErrors(cached.data).length) return { league, season, data: cached.data, errors: [] as string[], fetched: false };
+      const existing = leaguesStandings.find(entry => entry.response?.[0]?.league?.id === id && entry.response[0].league.season === season);
+      if (existing && !forceIds.has(id) && !readApiErrors(existing).length) return { league, season, data: existing, errors: [] as string[], fetched: false };
+      try {
+        const data = await getStandingsByLeagueId({ leagueId: id, season });
+        const errors = readApiErrors(data);
+        return { league, season, data: errors.length ? undefined : data, errors, fetched: true };
+      } catch (error) {
+        return { league, season, data: undefined, errors: describeRequestError(error), fetched: true };
       }
-    }
-
-    if (toFetch.length > 0) {
-      const fetched = await Promise.all(
-        toFetch.map(({ league, season }) => getStandingsByLeagueId({ leagueId: league.league.id, season }))
-      );
-      const freshCache = readStandingsCache();
-      toFetch.forEach((entry, idx) => {
-        freshCache.items = freshCache.items.filter(it => !(it.leagueId === entry.league.league.id && it.season === entry.season));
-        freshCache.items.push({ leagueId: entry.league.league.id, season: entry.season, data: fetched[idx], ts: Date.now() });
+    }));
+    const fresh = fetched.filter(result => result.fetched && result.data);
+    if (fresh.length) {
+      const updated = readStandingsCache();
+      fresh.forEach(result => {
+        updated.items = updated.items.filter(item => !(item.leagueId === result.league.league.id && item.season === result.season));
+        if (result.data) updated.items.push({ leagueId: result.league.league.id, season: result.season, data: result.data, ts: Date.now() });
       });
-      writeStandingsCache(freshCache);
-      setLeaguesStandings(prev => [...prev, ...fetched]);
-      results.push(...fetched);
+      writeStandingsCache(updated);
+      setLeaguesStandings(previous => [...previous.filter(entry => !fresh.some(result => result.league.league.id === entry.response?.[0]?.league?.id)), ...fresh.flatMap(result => result.data ? [result.data] : [])]);
     }
-
-    return results;
+    return {
+      standings: fetched.flatMap(result => result.data ? [result.data] : []),
+      failures: fetched.filter(result => result.errors.length),
+    };
   };
 
   // ===== BET flow =====
   const [loadingBatch, setLoadingBatch] = useState(false);
+  const predictionRunInFlight = useRef(false);
   const [predictionLoading, setPredictionLoading] = useState<{ stage: PredictionLoadingStage; leagueCount: number; includeOdds: boolean }>({
     stage: 'fixtures', leagueCount: 0, includeOdds: true,
   });
@@ -1147,9 +1132,14 @@ const BetAndFixturesScreen: React.FC = () => {
     return `Captured ${paperSelections.length} priced markets from ${mapped.bookmakers.length} bookmakers.`;
   };
 
-  const handleBet = async (refreshCurrentSeason = false) => {
-    if (loadingBatch) return;
-    setPredictionLoading({ stage: 'fixtures', leagueCount: selectedBatch.length, includeOdds: predictionMode === 'statistical' });
+  const handleBet = async (refreshCurrentSeason = false, retryFailures?: LeagueLoadFailure[]) => {
+    const runLeagues = retryFailures ? retryFailures.map(failure => failure.league) : selectedBatch;
+    if (predictionRunInFlight.current || !runLeagues.length) return;
+    predictionRunInFlight.current = true;
+    const runIds = new Set(runLeagues.map(league => league.league.id));
+    const runFailures: Record<number, LeagueLoadFailure> = {};
+    setRetryingLeagueIds(retryFailures ? Array.from(runIds) : []);
+    setPredictionLoading({ stage: 'fixtures', leagueCount: runLeagues.length, includeOdds: predictionMode === 'statistical' });
     setLoadingBatch(true);
     setFixtureLoadWarnings([]);
 
@@ -1163,13 +1153,13 @@ const BetAndFixturesScreen: React.FC = () => {
     const hits: PredictionsCacheItem[] = [];
     const misses: LeagueDataModel[] = [];
 
-    for (const lg of selectedBatch) {
+    for (const lg of runLeagues) {
       const season = lg.seasons.find(s => s.current === true)?.year || lg.seasons[0]?.year;
       const item = predCache.items.find(it =>
         cacheKeyMatch(it, lg.league.id, season, fromStr, toStr, optionIds) &&
         (Date.now() - it.ts <= PREDICTIONS_CACHE_TTL)
       );
-      if (item && !refreshCurrentSeason) hits.push(item); else misses.push(lg);
+      if (item && !refreshCurrentSeason && !retryFailures && !failedLeagueLoads[lg.league.id]) hits.push(item); else misses.push(lg);
     }
 
     // fixtures from cache
@@ -1184,25 +1174,43 @@ const BetAndFixturesScreen: React.FC = () => {
     let fetchedFixtures: FixtureDataModel[] = [];
     let fetchedLeagueCount = 0; // <<< CHANGE: track leagues that actually triggered network
     if (misses.length > 0) {
-      const responses = await getLeaguesSeasonsFixtures(misses, refreshCurrentSeason);
+      const responses = await getLeaguesSeasonsFixtures(misses, refreshCurrentSeason, retryFailures ? new Map(retryFailures.map(failure => [failure.league.league.id, failure.fixtureSeasons])) : undefined);
       fetchedFixtures = responses.flatMap(r => r.fixtures);
       fetchedLeagueCount = responses.filter(r => r.didNetwork).length;
-      setFixtureLoadWarnings(
-        responses.flatMap((response) =>
-          response.errors.map((message) => `League ${response.leagueId}: ${message}`)
-        )
-      );
+      responses.forEach(response => {
+        const league = runLeagues.find(entry => entry.league.id === response.leagueId);
+        if (league && response.errors.length) runFailures[response.leagueId] = {
+          league, fixtureSeasons: response.failedSeasons, standings: false, messages: response.errors,
+        };
+      });
     }
 
     // Stage changes follow actual work; there is no simulated percentage or timer-driven progress.
     setPredictionLoading(previous => ({ ...previous, stage: 'standings' }));
     // ensure standings
-    const freshStandings = await ensureStandingsFor(selectedBatch);
-    const standingsForPrediction = [...leaguesStandings, ...freshStandings];
+    const standingsResult = await ensureStandingsFor(runLeagues, new Set(runLeagues.filter(league =>
+      failedLeagueLoads[league.league.id]?.standings || retryFailures?.some(failure => failure.league.league.id === league.league.id && failure.standings)
+    ).map(league => league.league.id)));
+    standingsResult.failures.forEach(result => {
+      const previous = runFailures[result.league.league.id];
+      runFailures[result.league.league.id] = {
+        league: result.league, fixtureSeasons: previous?.fixtureSeasons ?? [], standings: true,
+        messages: [...(previous?.messages ?? []), ...result.errors.map(error => `Standings: ${error}`)],
+      };
+    });
+    setFailedLeagueLoads(previous => {
+      const updated = { ...previous };
+      runIds.forEach(id => { delete updated[id]; });
+      return { ...updated, ...runFailures };
+    });
+    const standingsForPrediction = [...standingsResult.standings, ...leaguesStandings.filter(entry =>
+      !standingsResult.standings.some(fresh => fresh.response?.[0]?.league?.id === entry.response?.[0]?.league?.id)
+    )];
 
     // predict
     const mergedAll = dedupeFixtures([...allFixtures, ...cachedFixtures, ...fetchedFixtures]);
     const currentWindow = filterBetweenDates(filterFutureFixtures(mergedAll), fromDate, toDate);
+    const predictionWindow = retryFailures ? currentWindow.filter(fixture => runIds.has(fixture.league.id)) : currentWindow;
 
     const knownResults = new Map<number, { homeGoals: number; awayGoals: number }>();
     mergedAll.forEach((fixture) => {
@@ -1230,7 +1238,7 @@ const BetAndFixturesScreen: React.FC = () => {
     await new Promise<void>(resolve => window.setTimeout(resolve, 0));
     const freshPred = runPredict({
       allFixturesLocal: mergedAll,
-      currentFixturesLocal: currentWindow,
+      currentFixturesLocal: predictionWindow,
       leaguesStandingsLocal: standingsForPrediction
     });
 
@@ -1255,8 +1263,8 @@ const BetAndFixturesScreen: React.FC = () => {
           oddsMessages[target.fixture.id] = `Prices available for ${mapped.markets.length} supported markets; other markets may have no bookmaker coverage.`;
         }
       };
-      const dates = Array.from(new Set(
-        currentWindow
+      const dates = retryFailures ? [] : Array.from(new Set(
+        predictionWindow
           .filter((fixture) => fixture.fixture.timestamp * 1000 > now)
           .map((fixture) => fixture.fixture.date.slice(0, 10))
       ));
@@ -1271,7 +1279,7 @@ const BetAndFixturesScreen: React.FC = () => {
           });
         }
       }
-      for (const fixture of currentWindow) {
+      for (const fixture of predictionWindow) {
         if (fixture.fixture.timestamp * 1000 <= Date.now()) {
           oddsMessages[fixture.fixture.id] = 'Kickoff has passed; pre-match recommendations are closed.';
           continue;
@@ -1288,7 +1296,7 @@ const BetAndFixturesScreen: React.FC = () => {
         }
       }
     }
-    setOddsLoadMessages(oddsMessages);
+    setOddsLoadMessages(previous => retryFailures ? { ...previous, ...oddsMessages } : oddsMessages);
 
     setPredictionLoading(previous => ({ ...previous, stage: 'forecasts' }));
     await new Promise<void>(resolve => window.setTimeout(resolve, 0));
@@ -1297,7 +1305,7 @@ const BetAndFixturesScreen: React.FC = () => {
     // Guarded so an unexpected error in the engine cannot break the existing bet flow.
     try {
       const baseEngineResults = predictFixturesWithEngine({
-        currentFixtures: currentWindow,
+        currentFixtures: predictionWindow,
         allFixtures: mergedAll,
         leaguesStandings: standingsForPrediction,
         standingsAreCurrent: true,
@@ -1316,7 +1324,7 @@ const BetAndFixturesScreen: React.FC = () => {
         });
       });
       engineResultsForCache = engineResults;
-      const engineMap: Record<number, FixturePrediction> = {};
+      const engineMap: Record<number, FixturePrediction> = retryFailures ? { ...enginePredictions } : {};
       engineResults.forEach((prediction) => {
         engineMap[Number(prediction.fixture.fixture.id)] = prediction;
       });
@@ -1354,13 +1362,17 @@ const BetAndFixturesScreen: React.FC = () => {
       console.error('Prediction engine failed; existing predictions are unaffected.', error);
     }
 
-    const mergedPred = [...predictedFixtures, ...cachedPred, ...freshPred];
+    const mergedPred = retryFailures ? [
+      ...predictedFixtures.map(entry => ({ ...entry, fixtures: entry.fixtures.filter(fixture => !runIds.has(fixture.league.id)) })).filter(entry => entry.fixtures.length),
+      ...freshPred,
+    ] : [...predictedFixtures, ...cachedPred, ...freshPred];
 
     // Store the actual displayed forecasts, including runs that reused fixture data.
-    if (selectedBatch.length > 0) {
+    if (runLeagues.length > 0) {
       const toWrite = readPredictionsCache();
       toWrite.items = toWrite.items.filter(item => Date.now() >= item.ts && Date.now() - item.ts < PREDICTIONS_CACHE_TTL);
-      for (const lg of selectedBatch) {
+      for (const lg of runLeagues) {
+        if (runFailures[lg.league.id]) continue; // Do not cache incomplete league data as a fresh success.
         const season = lg.seasons.find(s => s.current === true)?.year || lg.seasons[0]?.year;
         const perLeaguePred = freshPred
           .map(p => ({
@@ -1413,9 +1425,15 @@ const BetAndFixturesScreen: React.FC = () => {
     }
 
     } catch (error) {
-      setEnginePredictions({});
-      setFixtureLoadWarnings([`Prediction run failed: ${error instanceof Error ? error.message : 'Network or provider error'}`]);
+      const message = `Prediction run failed: ${error instanceof Error ? error.message : 'Network or provider error'}`;
+      setFailedLeagueLoads(previous => ({ ...previous, ...Object.fromEntries(runLeagues.map(league => [league.league.id, {
+        league,
+        fixtureSeasons: Array.from({ length: Math.max(1, Number(numberOfSeasonsBack || 1)) }, (_, index) => (league.seasons.find(season => season.current)?.year ?? league.seasons[0]?.year) - index),
+        standings: true, messages: [message],
+      }])) }));
     } finally {
+      predictionRunInFlight.current = false;
+      setRetryingLeagueIds([]);
       setLoadingBatch(false);
     }
   };
@@ -1776,9 +1794,8 @@ const BetAndFixturesScreen: React.FC = () => {
             {loadingBatch && <div ref={predictionLoaderRef} className="scroll-mt-48">
               <PredictionLoader {...predictionLoading} hasPreviousForecasts={displayedFixtureIds.length > 0} />
             </div>}
-            {!loadingBatch && displayedFixtureIds.length > 0 && fixtureLoadWarnings.length > 0 && (
-              <div role="alert" className="rounded-xl border border-amber-400/30 bg-amber-500/5 p-3 text-xs text-amber-200">{Array.from(new Set(fixtureLoadWarnings)).join(' ')}</div>
-            )}
+            <LeagueLoadErrors failures={Object.values(failedLeagueLoads)} warnings={fixtureLoadWarnings}
+              loading={loadingBatch} retryingIds={retryingLeagueIds} onRetry={failures => handleBet(true, failures)} />
             <details open aria-busy={loadingBatch} className="border-t border-slate-700 p-2">
               <summary className="cursor-pointer py-2 text-sm font-semibold text-slate-300">
                 {predictionMode === 'statistical' ? 'All forecasts and market details' : 'Legacy fixture results'} · {displayedFixtureIds.length} fixtures
@@ -1805,13 +1822,8 @@ const BetAndFixturesScreen: React.FC = () => {
                 </div>
               ) : displayedFixtureIds.length === 0 ? (
                 <div className="grid place-items-center py-16 text-sm text-slate-400">
-                  {fixtureLoadWarnings.length > 0 ? (
-                    <div role="alert" className="max-w-2xl space-y-2 text-left">
-                      <div className="font-semibold text-amber-200">Fixture data unavailable</div>
-                      {Array.from(new Set(fixtureLoadWarnings)).map((warning) => (
-                        <div key={warning} className="text-xs text-amber-100/80">{warning}</div>
-                      ))}
-                    </div>
+                  {Object.keys(failedLeagueLoads).length > 0 || fixtureLoadWarnings.length > 0 ? (
+                    <p className="max-w-xl text-center text-sm text-slate-200">Some data could not be loaded. See the notice and retry controls above.</p>
                   ) : selectedBatch.length > 0 ? (
                     <div className="max-w-xl text-center text-xs text-slate-300">
                       No fixtures were returned for the selected leagues and date range. Current-season fixture or team-history access may be restricted by the API plan; no model snapshot or paper entry was created.
@@ -1840,9 +1852,12 @@ const BetAndFixturesScreen: React.FC = () => {
                           <div className="flex flex-wrap justify-end gap-2">
                           <button type="button" aria-expanded={expanded} aria-controls={`forecast-content-${fixtureId}`}
                             aria-label={`${expanded ? 'Collapse' : 'Expand'} forecast for ${matchLabel}`}
+                            title={expanded ? 'Collapse forecast' : 'Expand forecast'}
                             onClick={() => setExpandedForecasts(previous => ({ ...previous, [fixtureId]: !expanded }))}
-                            className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-1 text-[11px] font-semibold text-slate-200 hover:bg-slate-700">
-                            {expanded ? 'Collapse forecast' : 'Expand forecast'}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300">
+                            <svg aria-hidden="true" focusable="false" className={`h-5 w-5 ${expanded ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
                           </button>
                           <button
                             onClick={onFixtureClick(currentFixture)}

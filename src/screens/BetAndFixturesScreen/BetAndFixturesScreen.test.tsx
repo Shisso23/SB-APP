@@ -291,3 +291,155 @@ it('keeps existing forecasts visible while refreshing and clears the loader afte
   expect(screen.queryByRole('region', { name: 'Prediction loading' })).not.toBeInTheDocument();
   expect(screen.getByRole('alert')).toHaveTextContent('Fixture refresh unavailable');
 });
+
+const retryLeagueNames: Record<number, string> = { 39: 'Premier League', 78: 'Bundesliga', 140: 'La Liga' };
+const setupLeagueRetryApi = () => {
+  const base = mockLeaguesState.leagues.response[0];
+  mockLeaguesState.leagues.response = [39, 78, 140].map(id => ({
+    ...base,
+    league: { ...base.league, id, name: retryLeagueNames[id] },
+    country: { ...base.country, name: id === 39 ? 'England' : id === 78 ? 'Germany' : 'Spain' },
+  }));
+  localStorage.setItem('popularLeagueIds_v1', JSON.stringify([39, 78, 140]));
+  const fixtureFailures = new Set<string>();
+  const standingsFailures = new Set<number>();
+  const payloadFailures = new Set<string>();
+  const fallbackSuccesses = new Set<string>();
+  const blockers = new Map<string, Promise<void>>();
+  get.mockImplementation(async (endpoint, options) => {
+    const { league, season } = options.params;
+    if (endpoint === 'fixtures') {
+      const key = `${league}:${season}`;
+      if (blockers.has(key)) await blockers.get(key);
+      if (fixtureFailures.has(key) || fallbackSuccesses.has(key) && !options.params.from) throw new Error(`Network unavailable for ${retryLeagueNames[league]}`);
+      if (payloadFailures.has(key)) return { data: { response: [], errors: { access: 'Provider access temporarily unavailable' } } };
+      const fixtureForLeague = (id: number, timestamp: number, finished: boolean) => {
+        const fixture = makeApiFixture(id, timestamp, season, finished);
+        return {
+          ...fixture,
+          league: { ...fixture.league, id: league, name: retryLeagueNames[league] },
+          teams: {
+            home: { ...fixture.teams.home, id: league * 10, name: `Home ${league}` },
+            away: { ...fixture.teams.away, id: league * 10 + 1, name: `Away ${league}` },
+          },
+        };
+      };
+      const response = Array.from({ length: 10 }, (_, index) => fixtureForLeague(league * 1_000_000 + season * 100 + index, Date.UTC(season, 0, index + 1), true));
+      if (season === currentYear) response.push(fixtureForLeague(league * 1_000_000 + 99_999, Date.now() + 3_600_000, false));
+      return { data: { response, errors: [] } };
+    }
+    if (endpoint === 'standings' && standingsFailures.has(league)) return { data: { response: [], errors: { access: 'Standings unavailable from provider' } } };
+    if (endpoint === 'standings' || endpoint === 'odds') return { data: { response: [], errors: [] } };
+    throw new Error(`Unexpected test request: ${endpoint}`);
+  });
+  return { fixtureFailures, standingsFailures, payloadFailures, fallbackSuccesses, blockers };
+};
+afterEach(() => { mockLeaguesState.leagues.response = mockLeaguesState.leagues.response.slice(0, 1); });
+const runRetryBatch = async () => {
+  render(<BetAndFixturesScreen />);
+  for (const id of [39, 78, 140]) fireEvent.click((await screen.findAllByRole('button', { name: new RegExp(retryLeagueNames[id]) }))[0]);
+  fireEvent.click(screen.getByRole('button', { name: 'Bet (run predictions)' }));
+  await screen.findByRole('button', { name: 'Bet (run predictions)' });
+};
+
+it('retries only a failed league and season, preserves successful forecasts, and clears only recovered failures', async () => {
+  const api = setupLeagueRetryApi();
+  api.fixtureFailures.add(`78:${currentYear}`);
+  api.fixtureFailures.add(`140:${currentYear - 1}`);
+  await runRetryBatch();
+  expect(screen.getByRole('alert')).toHaveTextContent('Bundesliga');
+  expect(screen.getByRole('alert')).toHaveTextContent('La Liga');
+  const successfulForecast = document.getElementById('forecast-content-39099999')?.textContent;
+  expect(successfulForecast).toBeTruthy();
+  const successfulCache = JSON.parse(localStorage.getItem('leaguePredictions_v3')!).items.find((item: { leagueId: number }) => item.leagueId === 39);
+  expect(JSON.parse(localStorage.getItem('leaguePredictions_v3')!).items.some((item: { leagueId: number }) => item.leagueId === 78)).toBe(false);
+  api.fixtureFailures.delete(`78:${currentYear}`);
+  let before = get.mock.calls.length;
+  fireEvent.click(screen.getByRole('button', { name: 'Retry Bundesliga', exact: true }));
+  await screen.findByRole('button', { name: 'Bet (run predictions)' });
+  let fixtureRequests = get.mock.calls.slice(before).filter(([endpoint]) => endpoint === 'fixtures');
+  expect(fixtureRequests).toHaveLength(1);
+  expect(fixtureRequests[0][1].params).toMatchObject({ league: 78, season: currentYear });
+  expect(screen.queryByRole('button', { name: 'Retry Bundesliga', exact: true })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Retry La Liga', exact: true })).toBeEnabled();
+  expect(document.getElementById('forecast-content-39099999')?.textContent).toBe(successfulForecast);
+  expect(JSON.parse(localStorage.getItem('leaguePredictions_v3')!).items.find((item: { leagueId: number }) => item.leagueId === 39)).toEqual(successfulCache);
+  api.fixtureFailures.delete(`140:${currentYear - 1}`);
+  before = get.mock.calls.length;
+  fireEvent.click(screen.getByRole('button', { name: 'Retry La Liga', exact: true }));
+  await screen.findByRole('button', { name: 'Bet (run predictions)' });
+  fixtureRequests = get.mock.calls.slice(before).filter(([endpoint]) => endpoint === 'fixtures');
+  expect(fixtureRequests).toHaveLength(1);
+  expect(fixtureRequests[0][1].params).toMatchObject({ league: 140, season: currentYear - 1 });
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});
+
+it('retries all failed leagues, disables duplicate retries, and keeps a failure that still has a network error', async () => {
+  const api = setupLeagueRetryApi();
+  api.fixtureFailures.add(`78:${currentYear}`);
+  api.fixtureFailures.add(`140:${currentYear}`);
+  await runRetryBatch();
+  api.fixtureFailures.delete(`78:${currentYear}`);
+  let release: () => void = () => undefined;
+  api.blockers.set(`78:${currentYear}`, new Promise<void>(resolve => { release = resolve; }));
+  const before = get.mock.calls.length;
+  fireEvent.click(screen.getByRole('button', { name: 'Retry all failed leagues' }));
+  expect(screen.getByRole('button', { name: 'Retrying Bundesliga', exact: true })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Retrying La Liga', exact: true })).toBeDisabled();
+  const pendingCalls = get.mock.calls.length;
+  fireEvent.click(screen.getByRole('button', { name: 'Retry all failed leagues' }));
+  expect(get.mock.calls.length).toBe(pendingCalls);
+  await act(async () => { release(); });
+  await screen.findByRole('button', { name: 'Bet (run predictions)' });
+  const fixtureRequests = get.mock.calls.slice(before).filter(([endpoint]) => endpoint === 'fixtures');
+  expect(new Set(fixtureRequests.map(([, options]) => options.params.league))).toEqual(new Set([78, 140]));
+  expect(fixtureRequests.every(([, options]) => options.params.season === currentYear)).toBe(true);
+  expect(screen.queryByRole('button', { name: 'Retry Bundesliga', exact: true })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Retry La Liga', exact: true })).toBeEnabled();
+  expect(screen.getByRole('alert')).toHaveTextContent('Network unavailable for La Liga');
+});
+
+it('handles a standings provider error per league and retries standings without refetching any fixtures', async () => {
+  const api = setupLeagueRetryApi();
+  api.standingsFailures.add(78);
+  // Older app versions could cache provider errors; those must not count as a healthy hit.
+  localStorage.setItem('standingsCache_v2', JSON.stringify({ items: [{
+    leagueId: 78, season: currentYear, ts: Date.now(), data: { response: [], errors: ['Old provider failure'] },
+  }] }));
+  await runRetryBatch();
+  expect(screen.getByRole('alert')).toHaveTextContent('Standings unavailable from provider');
+  expect(document.getElementById('forecast-content-39099999')).toBeInTheDocument();
+  api.standingsFailures.delete(78);
+  const before = get.mock.calls.length;
+  fireEvent.click(screen.getByRole('button', { name: 'Retry Bundesliga', exact: true }));
+  await screen.findByRole('button', { name: 'Bet (run predictions)' });
+  const requests = get.mock.calls.slice(before);
+  expect(requests.filter(([endpoint]) => endpoint === 'fixtures')).toHaveLength(0);
+  const standings = requests.filter(([endpoint]) => endpoint === 'standings');
+  expect(standings).toHaveLength(1);
+  expect(standings[0][1].params.league).toBe(78);
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});
+
+it('does not report a league failure when the automatic ranged fallback succeeds', async () => {
+  const api = setupLeagueRetryApi();
+  api.fallbackSuccesses.add(`78:${currentYear}`);
+  await runRetryBatch();
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect(get.mock.calls.filter(([endpoint, options]) => endpoint === 'fixtures' && options.params.league === 78 && options.params.season === currentYear)).toHaveLength(2);
+});
+
+it('offers retries for an entirely failed fixture batch even after clearing the league selection', async () => {
+  const api = setupLeagueRetryApi();
+  [39, 78, 140].forEach(id => api.payloadFailures.add(`${id}:${currentYear}`));
+  await runRetryBatch();
+  expect(screen.getByText(/All forecasts and market details/)).toHaveTextContent('0 fixtures');
+  expect(screen.getByRole('alert')).toHaveTextContent('Provider access temporarily unavailable');
+  fireEvent.click(screen.getByRole('button', { name: 'Clear selected leagues' }));
+  api.payloadFailures.delete(`78:${currentYear}`);
+  fireEvent.click(screen.getByRole('button', { name: 'Retry Bundesliga', exact: true }));
+  await screen.findByRole('button', { name: 'Bet (run predictions)' });
+  expect(document.getElementById('forecast-content-78099999')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Retry Bundesliga', exact: true })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Retry Premier League', exact: true })).toBeEnabled();
+});

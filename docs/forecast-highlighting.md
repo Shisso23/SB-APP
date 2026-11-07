@@ -82,3 +82,13 @@ Tests verify user threshold boundaries, relative ranking, one entry per fixture,
 
 
 Diversity tests cover mixed families, balanced repeats within a family, qualifying alternatives exactly at a cutoff, repeated-only matches, constrained/flexible match assignment, requested-size selection, equivalent total-goal outcomes, deterministic ordering, the strongest-only toggle, and copied alternative explanations.
+
+## League loading errors and retries
+
+Unrecovered fixture failures are tracked by league and season, and standings failures are tracked separately. The solid error panel uses an opaque slate background, a strong red border, high-contrast white/readable error text, and white retry buttons. It lists league/country, the affected seasons or standings, and provider/network messages. Generic browser-storage notices share the clear presentation without receiving an unrelated league-retry action.
+
+Each affected league has a Retry league action; multiple failures also offer Retry all failed leagues. Retries use the failure records, so they work even when the league selection has been cleared. Only failed fixture seasons are force-fetched, bypassing their fixture/prediction caches; a standings-only retry fetches no fixtures. Standings requests settle independently so one failure does not discard other leagues' results. A recovered ranged fallback does not leave behind a false failure notice. Failed/incomplete league results are not saved as fresh cache successes.
+
+Retries preserve unaffected forecasts and odds messages and recompute only the retried leagues. Odds lookup during a retry uses those leagues' fixtures rather than repeating the global date lookup or other leagues' fixture lookups. Successful retry notices disappear individually; failures that persist keep their retry control. In-flight buttons and a run guard prevent duplicate concurrent retries. Clear predictions removes the displayed errors as well as cached results; unexpected run failures preserve existing forecasts and retain recovery actions.
+
+Integration tests cover multiple partial failures, current- versus historical-season targeting, successful forecast/cache preservation, retry-all with partial recovery and disabled duplicate clicks, standings provider errors, recovery via automatic fallback, provider errors returned in successful HTTP responses, and retrying an entirely failed fixture batch after clearing the selection. Component checks cover readable solid styling and non-retryable storage notices.
