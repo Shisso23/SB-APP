@@ -10,8 +10,8 @@ const failure: LeagueLoadFailure = {
 test('uses a solid high-contrast panel and exposes a targeted retry action', () => {
   const onRetry = jest.fn();
   const { rerender } = render(<LeagueLoadErrors failures={[failure]} warnings={[]} loading={false} retryingIds={[]} onRetry={onRetry} />);
-  expect(screen.getByRole('alert')).toHaveClass('bg-slate-900', 'border-red-400');
-  expect(screen.getByRole('button', { name: 'Retry Premier League' })).toHaveClass('bg-white', 'text-slate-950');
+  expect(screen.getByRole('alert')).toHaveClass('bg-[#641b2e]', 'border-red-500');
+  expect(screen.getByRole('button', { name: 'Retry Premier League' })).toHaveClass('bg-rose-50', 'text-rose-900');
   fireEvent.click(screen.getByRole('button', { name: 'Retry Premier League' }));
   expect(onRetry).toHaveBeenCalledWith([failure]);
   rerender(<LeagueLoadErrors failures={[failure]} warnings={[]} loading retryingIds={[39]} onRetry={onRetry} />);
