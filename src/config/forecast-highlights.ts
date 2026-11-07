@@ -48,6 +48,28 @@ export const FORECAST_HIGHLIGHTS = {
   away_2_3: range('Away 2–3 goals', .55, .70, 'away', 2, 3),
 };
 export type ForecastId = keyof typeof FORECAST_HIGHLIGHTS;
+
+export const FORECAST_FAMILY_LABELS = {
+  result: 'Match result',
+  team_scoring: 'Team to score',
+  btts: 'Both teams to score',
+  totals: 'Goal totals',
+  total_ranges: 'Total goal ranges',
+  team_goals: 'Team goal totals and ranges',
+};
+export type ForecastFamily = keyof typeof FORECAST_FAMILY_LABELS;
+/** Variety preferences only; these groups never change qualification thresholds. */
+export const FORECAST_FAMILIES: Record<ForecastId, ForecastFamily> = {
+  home_win: 'result', draw: 'result', away_win: 'result',
+  home_over_0_5: 'team_scoring', away_over_0_5: 'team_scoring', btts_yes: 'btts',
+  over_1_5: 'totals', under_1_5: 'totals', over_2_5: 'totals', under_2_5: 'totals',
+  over_3_5: 'totals', under_3_5: 'totals', total_0_3: 'totals',
+  home_or_draw: 'result', away_or_draw: 'result', home_dnb: 'result', away_dnb: 'result',
+  total_2_5: 'total_ranges', total_3_6: 'total_ranges',
+  home_over_1_5: 'team_goals', away_over_1_5: 'team_goals',
+  home_1_2: 'team_goals', home_2_3: 'team_goals', away_1_2: 'team_goals', away_2_3: 'team_goals',
+};
+
 export const validProbability = (p: unknown): p is number => typeof p === 'number' && Number.isFinite(p) && p >= 0 && p <= 1;
 export const highlightLevel = (p: unknown, preference: ForecastPreference): 'strong' | 'suggested' | 'none' => {
   if (!validProbability(p)) return 'none';

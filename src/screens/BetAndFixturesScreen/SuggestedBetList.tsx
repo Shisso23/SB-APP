@@ -3,6 +3,7 @@ import moment from 'moment';
 import { FixturePrediction, MarketValue } from '../../prediction-engine/types';
 import { buildForecastBetList, DEFAULT_BET_LIST_SIZE, formatForecastBetList, PRICE_STATUS_LABELS } from '../../prediction-engine/forecast-bet-list';
 import { ForecastHighlight } from './ForecastHighlight';
+import { FORECAST_FAMILY_LABELS } from '../../config/forecast-highlights';
 
 export const SuggestedBetList: React.FC<{
   predictions: FixturePrediction[];
@@ -14,9 +15,10 @@ export const SuggestedBetList: React.FC<{
   onTogglePick: (fixtureId: number, market: MarketValue) => void;
 }> = ({ predictions, now, loading, statistical, selectedPickKeys, onReview, onTogglePick }) => {
   const [limit, setLimit] = useState(DEFAULT_BET_LIST_SIZE);
+  const [diversify, setDiversify] = useState(true);
   const [copyMessage, setCopyMessage] = useState('');
-  const ranked = useMemo(() => statistical ? buildForecastBetList(predictions, now) : [], [predictions, now, statistical]);
-  const suggestions = ranked.slice(0, limit);
+  const suggestions = useMemo(() => statistical ? buildForecastBetList(predictions, now, { limit, diversify }) : [], [predictions, now, statistical, limit, diversify]);
+  const familyCount = new Set(suggestions.map(suggestion => suggestion.family)).size;
   const checkedCount = suggestions.filter(suggestion => suggestion.priceStatus === 'checked').length;
   const copyList = async () => {
     try {
@@ -32,6 +34,10 @@ export const SuggestedBetList: React.FC<{
         <p className="mt-1 text-xs text-slate-300">Only forecast options meeting our market-specific percentage thresholds qualify. One qualifying option per upcoming match; matches with none are left out.</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
+        <label className="flex items-center gap-2 text-xs text-slate-300">
+          <input type="checkbox" checked={diversify} onChange={event => { setDiversify(event.target.checked); setCopyMessage(''); }} className="accent-cyan-400" />
+          Vary bet options
+        </label>
         <label className="text-xs text-slate-300">Up to{' '}
           <select aria-label="Suggested bet list size" value={limit} onChange={event => { setLimit(Number(event.target.value)); setCopyMessage(''); }} className="rounded-lg border border-slate-600 bg-slate-800 px-2 py-1.5 text-slate-100">
             {[3, 5, 8, 10].map(size => <option key={size} value={size}>{size} matches</option>)}
@@ -40,6 +46,7 @@ export const SuggestedBetList: React.FC<{
         <button type="button" disabled={loading || !suggestions.length} onClick={copyList} className="rounded-lg border border-cyan-400/40 px-3 py-1.5 text-xs font-semibold text-cyan-100 hover:bg-cyan-500/10 disabled:cursor-not-allowed disabled:opacity-50">Copy list</button>
       </div>
     </div>
+    <p className="mt-2 text-xs text-slate-400">{diversify ? 'Repeats are allowed. Within the selected matches, variety uses other options only when they also meet their thresholds.' : 'Uses the strongest qualifying forecast for each match.'} Thresholds stay unchanged.</p>
     <p className="mt-2 text-xs text-amber-200">Suggestions for review; not guaranteed outcomes or proven returns. Each entry shows whether its price checks passed.</p>
     {copyMessage && <p role="status" className="mt-2 text-xs text-slate-200">{copyMessage}</p>}
     {loading && <p className="mt-3 text-sm text-cyan-100">Updating the suggested list with the current prediction batch…</p>}
@@ -47,11 +54,11 @@ export const SuggestedBetList: React.FC<{
       : !suggestions.length ? <p className="mt-3 text-sm text-slate-300">{loading ? 'Your suggested list will appear when forecasts are ready.' : 'No upcoming matches meet your suggestion thresholds. The list stays empty until qualifying forecasts are available.'}</p>
       : <>
         <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-300">
-          <span>{suggestions.length} of up to {limit} matches</span><span>·</span><span>{checkedCount} with price checks passed</span><span>·</span><span>{suggestions.length - checkedCount} need price review</span>
+          <span>{suggestions.length} of up to {limit} matches</span><span>·</span><span>{familyCount} market {familyCount === 1 ? 'type' : 'types'}</span><span>·</span><span>{checkedCount} with price checks passed</span><span>·</span><span>{suggestions.length - checkedCount} need price review</span>
         </div>
         <ol className="mt-3 space-y-3">
           {suggestions.map((suggestion, index) => {
-            const { key, prediction, preference, probability, forecastId, market, priceStatus, historyLimited } = suggestion;
+            const { key, prediction, preference, probability, forecastId, market, priceStatus, historyLimited, diversityAlternative, family } = suggestion;
             const fixture = prediction.fixture;
             const picked = selectedPickKeys.includes(key);
             return <li key={key} className="rounded-xl border border-slate-700 bg-slate-950/60 p-3">
@@ -63,6 +70,8 @@ export const SuggestedBetList: React.FC<{
                 <span className={`rounded-full border px-2 py-1 text-[10px] font-semibold ${priceStatus === 'checked' ? 'border-emerald-400/40 text-emerald-200' : 'border-amber-400/30 text-amber-200'}`}>{PRICE_STATUS_LABELS[priceStatus]}</span>
               </div>
               <div className="mt-2 font-semibold text-cyan-100">{preference.label} · {(probability * 100).toFixed(2)}%</div>
+              <p className="mt-1 text-[10px] text-slate-400">{FORECAST_FAMILY_LABELS[family]}</p>
+              {diversityAlternative && <p className="mt-2 text-xs text-cyan-200">Chosen for variety. Strongest qualifying option for this match: {diversityAlternative.label} ({(diversityAlternative.probability * 100).toFixed(2)}%).</p>}
               <ForecastHighlight probability={probability} preference={preference} progressive={forecastId === 'btts_yes'} />
               <p className="mt-2 text-xs text-slate-300">{preference.meaning}</p>
               {preference.range && <p className="mt-1 text-xs text-slate-400">Base scoreline model; separate from prior-blended totals. This range model is unvalidated.</p>}
