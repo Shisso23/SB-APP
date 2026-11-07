@@ -186,6 +186,8 @@ export interface MatchProbabilities {
   awayOrDraw: number;
   homeDrawNoBet: number;
   awayDrawNoBet: number;
+  /** Complete normalized base grid; optional for older cached predictions. */
+  baseScorelines?: ScorelineProbability[];
   /** Most likely scorelines for transparency. */
   topScorelines: ScorelineProbability[];
 }

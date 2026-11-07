@@ -45,13 +45,17 @@ import {
   writePaperRecord,
   appendPaperSelections,
   settlePaperRecord,
-  summariseBy,
 } from '../../prediction-engine';
 import type { MarketOdds, MarketValue, PaperSelection } from '../../prediction-engine';
 import { PremiumRequiredError, SessionExpiredError, SignInRequiredError } from '../../services/api/client';
 import { describeFailure } from '../../services/api/failures';
 import { useAuth } from '../../services/auth/AuthProvider';
-import { rankDirectPicks, rankUnpricedForecasts } from '../../prediction-engine/selection';
+import { FORECAST_HIGHLIGHTS, ForecastId, ForecastPreference, forecastProbability, highlightLevel, LEGACY_FORECAST_IDS, visibleForecastPrediction } from '../../config/forecast-highlights';
+import { ForecastHighlight } from './ForecastHighlight';
+import { PredictionLoader, PredictionLoadingStage } from './PredictionLoader';
+import { SuggestedBetList } from './SuggestedBetList';
+import { LeagueLoadErrors, LeagueLoadFailure } from './LeagueLoadErrors';
+import { readPredictionsCache, writePredictionsCache, clearPredictionsCache, PREDICTION_CACHE_TTL, PredictionsCacheItem } from '../../services/prediction-cache';
 
 Modal.setAppElement('#root');
 
@@ -93,13 +97,12 @@ const describeOddsFailure = (error: unknown) => {
 const MAX_BATCH = 7;
 const COOLDOWN_MS = 60_000; // 1 minute
 const LEAGUES_CACHE_KEY = 'leaguesCache_v1';
-const PREDICTIONS_CACHE_KEY = 'leaguePredictions_v3';
 const STANDINGS_CACHE_KEY = 'standingsCache_v2';
 const FAVORITES_CACHE_KEY = 'favoritePredictions_v1';
 const STATISTICAL_PICKS_KEY = 'statisticalPicks_v1';
 const POPULAR_LEAGUE_IDS_KEY = 'popularLeagueIds_v1';
 const LEAGUES_CACHE_TTL = 1000 * 60 * 60 * 24 * 7; // 7 days
-const PREDICTIONS_CACHE_TTL = 1000 * 60 * 60 * 6; // 6 hours
+const PREDICTIONS_CACHE_TTL = PREDICTION_CACHE_TTL;
 const STANDINGS_CACHE_TTL = 1000 * 60 * 60 * 6; // 6 hours
 const PREDICTION_MODE_KEY = 'predictionMode_v1';
 
@@ -197,27 +200,6 @@ interface LeaguesCacheShape {
   data: LeagueDataModel[];
 }
 
-interface PredictionsCacheItem {
-  leagueId: number;
-  season: number;
-  from: string;
-  to: string;
-  optionIds: number[];
-  fixtures: FixtureDataModel[];
-  predicted: {
-    fixtures: FixtureDataModel[];
-    option: {
-      id: number;
-      name: string;
-      level: number;
-      shortName: string;
-      description: string;
-    };
-  }[];
-  ts: number;
-}
-interface PredictionsCacheShape { items: PredictionsCacheItem[] }
-
 interface StandingsCacheItem {
   leagueId: number;
   season: number;
@@ -257,12 +239,6 @@ const readLeaguesCache = (): LeaguesCacheShape | null => {
 const writeLeaguesCache = (filters: LeaguesFilterModel, data: LeagueDataModel[]) => {
   const payload: LeaguesCacheShape = { ts: Date.now(), filters, data };
   try { localStorage.setItem(LEAGUES_CACHE_KEY, JSON.stringify(payload)); } catch {}
-};
-
-const readPredictionsCache = (): PredictionsCacheShape =>
-  safeParse<PredictionsCacheShape>(localStorage.getItem(PREDICTIONS_CACHE_KEY)) || { items: [] };
-const writePredictionsCache = (shape: PredictionsCacheShape) => {
-  try { localStorage.setItem(PREDICTIONS_CACHE_KEY, JSON.stringify(shape)); } catch {}
 };
 
 const readStandingsCache = (): StandingsCacheShape =>
@@ -473,30 +449,19 @@ const StandingsRow: React.FC<{ s: StandingsDataStandingModel }> = ({ s }) => (
 const pct = (value: number, decimals = 0) =>
   `${(value * 100).toFixed(decimals)}%`;
 
-const EnginePredictionPanel: React.FC<{
+export const EnginePredictionPanel: React.FC<{
   prediction: FixturePrediction;
   oddsMessage?: string;
   onCaptureOdds: (prediction: FixturePrediction) => Promise<string>;
-  selectedPickKeys: string[];
-  onTogglePick: (market: MarketValue) => void;
-}> = ({ prediction, oddsMessage, onCaptureOdds, selectedPickKeys, onTogglePick }) => {
+}> = ({ prediction: sourcePrediction, oddsMessage, onCaptureOdds }) => {
+  const prediction = visibleForecastPrediction(sourcePrediction);
   const [capturingOdds, setCapturingOdds] = useState(false);
   const [captureMessage, setCaptureMessage] = useState('');
-  const { probabilities, markets, selections, dataQuality, headline } = prediction;
-  const best = selections[0];
+  const { probabilities, dataQuality } = prediction;
 
-  const keyMarkets: MarketId[] = [
-    'home_win',
-    'draw',
-    'away_win',
-    'btts_yes',
-    'over_2_5',
-    'home_over_0_5',
-    'away_over_0_5',
-  ];
-  const lookup = (marketId: MarketId) => markets.find((market) => market.marketId === marketId);
-  const selectedMarketIds = new Set(selections.map((market) => market.marketId));
-  const rejectedMarkets = markets.filter((market) => !selectedMarketIds.has(market.marketId));
+  const firstMarkets: ForecastId[] = ['home_win', 'draw', 'away_win', 'btts_yes', 'over_2_5', 'home_over_0_5', 'away_over_0_5'];
+  const forecastIds = [...firstMarkets, ...(Object.keys(FORECAST_HIGHLIGHTS) as ForecastId[]).filter(id => !firstMarkets.includes(id))];
+  const hasSuggestions = forecastIds.some(id => highlightLevel(forecastProbability(prediction, id), FORECAST_HIGHLIGHTS[id] as ForecastPreference) !== 'none');
 
   return (
     <div className="mb-3 rounded-lg border border-indigo-400/30 bg-indigo-500/5 p-2">
@@ -513,15 +478,15 @@ const EnginePredictionPanel: React.FC<{
       </div>
 
       <div className="grid grid-cols-3 gap-1 text-[10px] text-slate-200 sm:grid-cols-4">
-        {keyMarkets.map((marketId) => {
-          const market = lookup(marketId);
-          if (!market) return null;
-          const validated = dataQuality.validatedMarkets.includes(marketId);
-          const weak = dataQuality.weakMarkets.includes(marketId);
+        {forecastIds.map((marketId) => {
+          const preference = FORECAST_HIGHLIGHTS[marketId] as ForecastPreference;
+          const probability = forecastProbability(prediction, marketId);
+          const validated = dataQuality.validatedMarkets.includes(marketId as MarketId);
+          const weak = dataQuality.weakMarkets.includes(marketId as MarketId);
           return (
-            <div key={marketId} className="rounded border border-slate-700 bg-slate-900/70 px-1.5 py-1">
+            <div key={marketId} title={preference.meaning} className="rounded border border-slate-700 bg-slate-900/70 px-1.5 py-1">
               <div className="flex items-center justify-between gap-1">
-                <span className="truncate text-slate-400">{market.label}</span>
+                <span className="truncate text-slate-400">{preference.label}</span>
                 {validated && (
                   <span title="Positive skill in the earlier evaluation only; later EPL goal-market results were weaker. Profitability unproven." className="shrink-0 rounded bg-emerald-500/20 px-1 text-[8px] font-semibold text-emerald-200">✓</span>
                 )}
@@ -529,18 +494,23 @@ const EnginePredictionPanel: React.FC<{
                   <span title="Weak or unvalidated edge over a simple baseline" className="shrink-0 rounded bg-amber-500/20 px-1 text-[8px] font-semibold text-amber-200">~</span>
                 )}
               </div>
-              <div className="font-semibold text-slate-100">{pct(market.modelProbability)}</div>
+              <div className="font-semibold text-slate-100">{probability === undefined ? 'Probability unavailable' : pct(probability)}</div>
+              <ForecastHighlight probability={probability} preference={preference} progressive={marketId === 'btts_yes'} />
+              <div className="mt-1 text-[9px] text-slate-400" title={preference.meaning}>{preference.range ? preference.meaning : null}</div>
+              {preference.range && <div className="mt-1 text-[9px] text-slate-400">Base scoreline model: sum of matching outcomes in the complete normalized grid; separate from prior-blended totals.</div>}
             </div>
           );
         })}
       </div>
 
+      <div className="mt-2 text-[10px] text-slate-400">Threshold-based suggestions compare forecasts with your configured market percentages. They do not establish accuracy or betting value.</div>
+      {!hasSuggestions && <div role="status" className="mt-1 text-[10px] text-slate-300">No forecasts meet the configured suggestion thresholds.</div>}
       <div className="mt-1 text-[9px] text-slate-400">
         ✓ earlier baseline study only · ~ weak/unvalidated · goal model: {dataQuality.goalModel}
       </div>
       {dataQuality.goalModel === 'prior-blended' && (
         <div className="mt-1 text-[9px] text-slate-400">
-          BTTS and total-goals percentages use the separate prior-blended goal model; base xG above is used for 1X2 and team-to-score.
+          BTTS and standard over/under percentages use the separate prior-blended goal model; base xG above is used for 1X2 and team-to-score.
         </div>
       )}
 
@@ -567,84 +537,7 @@ const EnginePredictionPanel: React.FC<{
         {captureMessage && <span className="text-[10px] text-slate-300">{captureMessage}</span>}
       </div>
 
-      {best && <div className="mt-2 text-[10px] leading-snug text-slate-300">{headline}</div>}
-
-      {best ? (
-        <div className="mt-2 rounded border border-emerald-400/30 bg-emerald-500/10 p-1.5 text-[10px] text-emerald-50">
-          <div className="font-semibold">
-            Leading model selection: {best.label} — model {pct(best.modelProbability)}
-            {best.decimalOdds ? `, odds ${best.decimalOdds.toFixed(2)}` : ''}
-            {typeof best.edge === 'number' && best.edge !== 0 ? `, edge ${pct(best.edge, 1)}` : ''}
-          </div>
-          {best.evidence.slice(0, 2).map((line, index) => (
-            <div key={index} className="text-emerald-100/80">• {line}</div>
-          ))}
-        </div>
-      ) : (
-        <div className="mt-2 text-[10px] text-amber-200/90">
-          {!dataQuality.oddsAvailable
-            ? 'Unpriced forecast: betting value is unknown.'
-            : dataQuality.homeSampleSize < 3 && prediction.homeTeam.overallSampleSize < 3 || dataQuality.awaySampleSize < 3 && prediction.awayTeam.overallSampleSize < 3
-              ? 'Insufficient team history: no recommendation.'
-              : markets.some((market) => market.oddsStale)
-                ? 'No eligible pick. Some prices are stale; refresh odds to reassess.'
-                : 'No priced option meets the probability, edge and positive-EV rules.'}
-          {oddsMessage && <div className="mt-1">{oddsMessage}</div>}
-        </div>
-      )}
-
-      {selections.length > 0 && (
-        <div className="mt-2 rounded border border-emerald-400/20 bg-slate-950/70 p-2">
-          <div className="mb-1 text-[10px] font-semibold text-emerald-100">Eligible picks · ranked by estimated EV</div>
-          <div className="space-y-1.5">
-            {selections.map((market) => {
-              const pickKey = `${prediction.fixture.fixture.id}:${market.marketId}`;
-              const picked = selectedPickKeys.includes(pickKey);
-              return (
-                <div key={market.marketId} className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800 pt-1.5 first:border-0 first:pt-0">
-                  <div className="text-[10px] text-slate-200">
-                    <span className="font-semibold">{market.label}</span>
-                    {' · '}model {pct(market.modelProbability)}
-                    {market.decimalOdds ? ` · ${market.decimalOdds.toFixed(2)}${market.bookmaker ? ` ${market.bookmaker}` : ''}` : ''}
-                    {market.marginAdjustedProbability !== undefined ? ` · market ${pct(market.marginAdjustedProbability)}` : ''}
-                    {market.edge !== 0 ? ` · edge ${pct(market.edge, 1)}` : ''}
-                    {market.expectedValue !== undefined ? ` · EV ${pct(market.expectedValue, 1)}` : ''}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => onTogglePick(market)}
-                    className={`rounded border px-2 py-1 text-[10px] font-semibold ${picked ? 'border-emerald-400/50 bg-emerald-500/20 text-emerald-100' : 'border-slate-600 bg-slate-800 text-slate-200 hover:border-emerald-400/40'}`}
-                  >
-                    {picked ? 'Remove from pick list' : 'Add to pick list'}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-1 text-[9px] text-slate-500">Pick list only; no bet is placed by the app.</div>
-        </div>
-      )}
-
-      {rejectedMarkets.length > 0 && (
-        <details className="mt-2 rounded border border-slate-700/70 px-2 py-1.5">
-          <summary className="cursor-pointer text-[10px] font-semibold text-slate-300">
-            Why other markets were rejected ({rejectedMarkets.length})
-          </summary>
-          <div className="mt-2 space-y-1.5">
-            {rejectedMarkets.map((market) => (
-              <div key={market.marketId} className="border-t border-slate-800 pt-1.5 text-[10px] first:border-0 first:pt-0">
-                <span className="font-semibold text-slate-200">{market.label}</span>
-                {' · '}model {pct(market.modelProbability)}
-                <div className="text-slate-400">
-                  {market.rejectReasons.length > 0
-                    ? market.rejectReasons.join(' ')
-                    : 'Passed market thresholds but was omitted by the sample-quality or ranking limit.'}
-                </div>
-              </div>
-            ))}
-          </div>
-        </details>
-      )}
+      {oddsMessage && <p className="mt-1 text-[10px] text-slate-400">{oddsMessage}</p>}
 
       {dataQuality.warnings.length > 0 && (
         <div className="mt-1 text-[10px] text-amber-200/80">
@@ -679,6 +572,9 @@ const BetAndFixturesScreen: React.FC = () => {
     return () => window.clearTimeout(id);
   }, [rawSearch]);
 
+  const [cacheReady, setCacheReady] = useState(false);
+  const initialCacheRestored = useRef(false);
+
   // Selection
   const [selectedBatch, setSelectedBatch] = useState<LeagueDataModel[]>([]);
 
@@ -693,9 +589,12 @@ const BetAndFixturesScreen: React.FC = () => {
   const [paperSelections, setPaperSelections] = useState<PaperSelection[]>(() => readPaperRecord().selections);
   const [selectedStatisticalPickKeys, setSelectedStatisticalPickKeys] = useState<string[]>(readStatisticalPickKeys);
   const [fixtureLoadWarnings, setFixtureLoadWarnings] = useState<string[]>([]);
+  const [failedLeagueLoads, setFailedLeagueLoads] = useState<Record<number, LeagueLoadFailure>>({});
+  const [retryingLeagueIds, setRetryingLeagueIds] = useState<number[]>([]);
   const [favoritePredictions, setFavoritePredictions] = useState<FavoritePredictionItem[]>(() => readFavoritesCache());
   const [isLeaguesByCountryCollapsed, setIsLeaguesByCountryCollapsed] = useState(false);
   const [isBetOptionsCollapsed, setIsBetOptionsCollapsed] = useState(true);
+  const [expandedForecasts, setExpandedForecasts] = useState<Record<string, boolean>>({});
 
   const [selectedOptions, setSelectedOptions] = useState<betOptionModel[]>(betOptions);
   const [predictionMode, setPredictionMode] = useState<PredictionMode>(readPredictionMode);
@@ -723,8 +622,8 @@ const BetAndFixturesScreen: React.FC = () => {
   };
 
   // Date range
-  const [fromDate, setFromDate] = useState(new Date(moment().format('YYYY-MM-DD')));
-  const [toDate, setToDate] = useState(new Date(moment().add(1, 'days').format('YYYY-MM-DD')));
+  const [fromDate, setFromDate] = useState(() => new Date(`${moment().format('YYYY-MM-DD')}T00:00:00`));
+  const [toDate, setToDate] = useState(() => new Date(`${moment().add(1, 'days').format('YYYY-MM-DD')}T00:00:00`));
 
   // Cooldown
   const [lastBetAt, setLastBetAt] = useState<number | null>(null);
@@ -900,15 +799,18 @@ const BetAndFixturesScreen: React.FC = () => {
   };
   const resetSelection = () => setSelectedBatch([]);
 
-  const clearPredictions = () => {
+  const clearPredictions = async () => {
     setPredictedFixtures([]);
+    setExpandedForecasts({});
     setGroupedData({});
     setEnginePredictions({});
     setAllFixtures([]);
     setFutureFixtures([]);
     setCurrentFixtures([]);
     setLastBetAt(null);
-    try { localStorage.removeItem(PREDICTIONS_CACHE_KEY); } catch {}
+    setFailedLeagueLoads({});
+    setFixtureLoadWarnings([]);
+    if (!await clearPredictionsCache()) setFixtureLoadWarnings(['Prediction storage could not be cleared. Please retry when browser storage is available.']);
   };
 
   // Cooldown ticker
@@ -919,7 +821,7 @@ const BetAndFixturesScreen: React.FC = () => {
   const msLeft = lastBetAt ? Math.max(0, lastBetAt + COOLDOWN_MS - nowTick) : 0;
 
   // <<< CHANGE: allow bets during countdown if batch < 7
-  const canBet = selectedBatch.length > 0 && (selectedBatch.length < MAX_BATCH || msLeft === 0);
+  const canBet = cacheReady && selectedBatch.length > 0 && (selectedBatch.length < MAX_BATCH || msLeft === 0);
 
   // Do not attempt work that must fail: sign-in is authoritative server-side.
   const betDisabledReason = initialising
@@ -947,28 +849,34 @@ const BetAndFixturesScreen: React.FC = () => {
       toMomentDate(fixtureData.fixture.date).isSameOrBefore(moment(to).endOf('day'))
     );
 
-  // Restore cached predictions
+  // Large snapshots restore asynchronously without using localStorage's small quota.
   useEffect(() => {
-    const cache = readPredictionsCache();
-    const fresh = cache.items.filter(it => Date.now() - it.ts <= PREDICTIONS_CACHE_TTL);
-    if (fresh.length === 0) return;
-
-    const fromStr = moment(fromDate).format('YYYY-MM-DD');
-    const toStr = moment(toDate).format('YYYY-MM-DD');
-    const withinWindow = fresh.filter(it => it.from === fromStr && it.to === toStr);
-
-    const mergedFixtures = withinWindow.flatMap(it => it.fixtures);
-    setAllFixtures(prev => dedupeFixtures([...prev, ...mergedFixtures]));
-
-    const mergedPred = withinWindow.flatMap(it =>
-      it.predicted.map(p => {
-        const opt = betOptions.find(o => o.id === p.option.id);
-        const fallback = opt ?? new betOptionModel({ ...p.option, predict: () => ({ fixtures: [], option: {} as betOptionModel }) });
-        return { fixtures: p.fixtures, option: fallback };
-      })
-    );
-    setPredictedFixtures(prev => [...prev, ...mergedPred]);
-  }, []); // run once
+    let active = true;
+    const restore = async () => {
+      try {
+        const cache = await readPredictionsCache();
+        if (!active) return;
+        const fromStr = cache.view?.from ?? moment(fromDate).format('YYYY-MM-DD');
+        const toStr = cache.view?.to ?? moment(toDate).format('YYYY-MM-DD');
+        if (cache.view) {
+          setFromDate(new Date(`${fromStr}T00:00:00`));
+          setToDate(new Date(`${toStr}T00:00:00`));
+          setSelectedOptions(betOptions.filter(option => cache.view?.optionIds.includes(option.id)));
+        }
+        const withinWindow = cache.items.filter(item => item.from === fromStr && item.to === toStr);
+        const restoredEngine = withinWindow.flatMap(item => item.enginePredictions ?? []);
+        setEnginePredictions(Object.fromEntries(restoredEngine.map(prediction => [prediction.fixture.fixture.id, prediction])));
+        setOddsLoadMessages(Object.assign({}, ...withinWindow.map(item => item.oddsMessages ?? {})));
+        setAllFixtures(previous => dedupeFixtures([...previous, ...withinWindow.flatMap(item => item.fixtures)]));
+        setPredictedFixtures(withinWindow.flatMap(item => item.predicted.map(predicted => ({
+          fixtures: predicted.fixtures,
+          option: betOptions.find(option => option.id === predicted.option.id) ?? new betOptionModel({ ...predicted.option, predict: () => ({ fixtures: [], option: {} as betOptionModel }) }),
+        }))));
+      } finally { if (active) setCacheReady(true); }
+    };
+    restore();
+    return () => { active = false; };
+  }, []);
 
   // Derived fixtures & grouping
   useEffect(() => {
@@ -980,9 +888,11 @@ const BetAndFixturesScreen: React.FC = () => {
   }, [futureFixtures.length, fromDate.toString(), toDate.toString()]);
 
   useEffect(()=>{
-    const bet = ()=> handleBet()
-    bet()
-  }, [fromDate.toString(), toDate.toString()])
+    if (!cacheReady) return;
+    // Initial asynchronous hydration must not trigger a prediction run.
+    if (!initialCacheRestored.current) { initialCacheRestored.current = true; return; }
+    if (selectedBatch.length > 0) handleBet()
+  }, [cacheReady, fromDate.toString(), toDate.toString()])
 
   useEffect(() => {
     const grouped: Record<number, betOptionModel[]> = {};
@@ -1045,9 +955,10 @@ const BetAndFixturesScreen: React.FC = () => {
     fixtures: FixtureDataModel[];
     didNetwork: boolean;
     errors: string[];
+    failedSeasons: number[];
   };
 
-  const readApiErrors = (response: FixturesModel | undefined) => {
+  const readApiErrors = (response: { errors?: unknown } | undefined) => {
     const errors = response?.errors as unknown;
     if (Array.isArray(errors)) return errors.map(String).filter(Boolean);
     if (errors && typeof errors === 'object') {
@@ -1062,112 +973,100 @@ const BetAndFixturesScreen: React.FC = () => {
     return apiErrors.length > 0 ? apiErrors : [requestError?.message || 'Fixture request failed.'];
   };
 
-  const getLeaguesSeasonsFixtures = async (leaguesInput: LeagueDataModel[], refreshCurrentSeason = false): Promise<LeagueFixturesResult[]> => {
+  const getLeaguesSeasonsFixtures = async (
+    leaguesInput: LeagueDataModel[], refreshCurrentSeason = false,
+    retrySeasons?: Map<number, number[]>
+  ): Promise<LeagueFixturesResult[]> => {
     const seasonsCount = Math.max(1, Number(numberOfSeasonsBack || 1));
-
-    return Promise.all(
-      leaguesInput.map(async (league: LeagueDataModel) => {
-        const currentSeason =
-          league.seasons.find((s) => s.current === true)?.year ??
-          league.seasons[0]?.year;
-
-        const seasons: number[] = Array.from({ length: seasonsCount }, (_, i) => currentSeason - i);
-
-        let didNetwork = false;
+    return Promise.all(leaguesInput.map(async league => {
+      const currentSeason = league.seasons.find(season => season.current)?.year ?? league.seasons[0]?.year;
+      const targeted = retrySeasons?.get(league.league.id);
+      const seasons = targeted ?? Array.from({ length: seasonsCount }, (_, index) => currentSeason - index);
+      let didNetwork = false;
+      const perSeason = await Promise.all(seasons.map(async season => {
+        const existing = allFixtures.filter(fixture => fixture.league.id === league.league.id && fixture.league.season === season);
+        const force = targeted !== undefined || refreshCurrentSeason && season === currentSeason || failedLeagueLoads[league.league.id]?.fixtureSeasons.includes(season);
+        if (!force && countFinished(existing) >= MIN_SEASON_EXISTING_THRESHOLD) return { season, fixtures: existing, errors: [] as string[] };
         const errors: string[] = [];
-
-        const perSeason = await Promise.all(
-          seasons.map(async (season) => {
-            const existing = allFixtures.filter(f => f.league.id === league.league.id && f.league.season === season);
-            if (!(refreshCurrentSeason && season === currentSeason) && countFinished(existing) >= MIN_SEASON_EXISTING_THRESHOLD) {
-              return existing; // no network
-            }
-
-            // try fast path
-            try {
-              const resFast: FixturesModel = (await getFilteredFixtures(
-                new FixturesFilterModel({ league: league.league.id, season })
-              )).data as FixturesModel;
-              didNetwork = true;
-              errors.push(...readApiErrors(resFast));
-              const fixturesFast = resFast?.response ?? [];
-              if (countFinished(fixturesFast) > 0) {
-                return fixturesFast;
-              }
-
-              // retry ranged
-              const { from, to } = seasonWindow(season);
-              const resRanged: FixturesModel = (await getFilteredFixtures(
-                new FixturesFilterModel({ league: league.league.id, season, from, to })
-              )).data as FixturesModel;
-              didNetwork = true;
-              errors.push(...readApiErrors(resRanged));
-              return resRanged?.response ?? [];
-            } catch (error) {
-              errors.push(...describeRequestError(error));
-              try {
-                const { from, to } = seasonWindow(season);
-                const resRanged: FixturesModel = (await getFilteredFixtures(
-                  new FixturesFilterModel({ league: league.league.id, season, from, to })
-                )).data as FixturesModel;
-                didNetwork = true;
-                errors.push(...readApiErrors(resRanged));
-                return resRanged?.response ?? [];
-              } catch (retryError) {
-                errors.push(...describeRequestError(retryError));
-                return [];
-              }
-            }
-          })
-        );
-
-        return {
-          leagueId: league.league.id,
-          fixtures: dedupeFixtures(perSeason.flat()),
-          didNetwork,
-          errors: Array.from(new Set(errors)),
-        };
-      })
-    );
+        let fastFixtures: FixtureDataModel[] = [];
+        try {
+          didNetwork = true;
+          const data = (await getFilteredFixtures(new FixturesFilterModel({ league: league.league.id, season }))).data as FixturesModel;
+          errors.push(...readApiErrors(data));
+          fastFixtures = data?.response ?? [];
+          if (!errors.length && countFinished(fastFixtures) > 0) return { season, fixtures: fastFixtures, errors: [] as string[] };
+        } catch (error) { errors.push(...describeRequestError(error)); }
+        try {
+          didNetwork = true;
+          const { from, to } = seasonWindow(season);
+          const data = (await getFilteredFixtures(new FixturesFilterModel({ league: league.league.id, season, from, to }))).data as FixturesModel;
+          const rangedErrors = readApiErrors(data);
+          if (!rangedErrors.length) {
+            // A successful fallback resolves the fast-request error.
+            return { season, fixtures: dedupeFixtures([...fastFixtures, ...(data?.response ?? [])]), errors: [] as string[] };
+          }
+          errors.push(...rangedErrors);
+          return { season, fixtures: dedupeFixtures([...existing, ...fastFixtures, ...(data?.response ?? [])]), errors };
+        } catch (error) {
+          errors.push(...describeRequestError(error));
+          return { season, fixtures: dedupeFixtures([...existing, ...fastFixtures]), errors };
+        }
+      }));
+      return {
+        leagueId: league.league.id,
+        fixtures: dedupeFixtures(perSeason.flatMap(result => result.fixtures)),
+        didNetwork,
+        failedSeasons: perSeason.filter(result => result.errors.length > 0).map(result => result.season),
+        errors: Array.from(new Set(perSeason.flatMap(result => result.errors.map(error => `Season ${result.season}: ${error}`)))),
+      };
+    }));
   };
 
-  // Standings ensure (unchanged)
-  const ensureStandingsFor = async (leaguesInput: LeagueDataModel[]): Promise<StandingsModel[]> => {
-    if (!leaguesInput || leaguesInput.length === 0) return [];
+  const ensureStandingsFor = async (leaguesInput: LeagueDataModel[], forceIds: Set<number>) => {
     const cache = readStandingsCache();
-
-    const results: StandingsModel[] = [];
-    const toFetch: { league: LeagueDataModel; season: number }[] = [];
-
-    for (const lg of leaguesInput) {
-      const season = lg.seasons.find(s => s.current === true)?.year || lg.seasons[0]?.year;
-      const hit = cache.items.find(it => it.leagueId === lg.league.id && it.season === season && (Date.now() - it.ts <= STANDINGS_CACHE_TTL));
-      if (hit) {
-        results.push(hit.data);
-      } else if (!leaguesStandings.find(s => s.response?.[0]?.league?.id === lg.league.id)) {
-        toFetch.push({ league: lg, season });
+    const fetched = await Promise.all(leaguesInput.map(async league => {
+      const id = league.league.id;
+      const season = league.seasons.find(entry => entry.current)?.year ?? league.seasons[0]?.year;
+      const cached = cache.items.find(item => item.leagueId === id && item.season === season && Date.now() - item.ts < STANDINGS_CACHE_TTL);
+      if (cached && !forceIds.has(id) && !readApiErrors(cached.data).length) return { league, season, data: cached.data, errors: [] as string[], fetched: false };
+      const existing = leaguesStandings.find(entry => entry.response?.[0]?.league?.id === id && entry.response[0].league.season === season);
+      if (existing && !forceIds.has(id) && !readApiErrors(existing).length) return { league, season, data: existing, errors: [] as string[], fetched: false };
+      try {
+        const data = await getStandingsByLeagueId({ leagueId: id, season });
+        const errors = readApiErrors(data);
+        return { league, season, data: errors.length ? undefined : data, errors, fetched: true };
+      } catch (error) {
+        return { league, season, data: undefined, errors: describeRequestError(error), fetched: true };
       }
-    }
-
-    if (toFetch.length > 0) {
-      const fetched = await Promise.all(
-        toFetch.map(({ league, season }) => getStandingsByLeagueId({ leagueId: league.league.id, season }))
-      );
-      const freshCache = readStandingsCache();
-      toFetch.forEach((entry, idx) => {
-        freshCache.items = freshCache.items.filter(it => !(it.leagueId === entry.league.league.id && it.season === entry.season));
-        freshCache.items.push({ leagueId: entry.league.league.id, season: entry.season, data: fetched[idx], ts: Date.now() });
+    }));
+    const fresh = fetched.filter(result => result.fetched && result.data);
+    if (fresh.length) {
+      const updated = readStandingsCache();
+      fresh.forEach(result => {
+        updated.items = updated.items.filter(item => !(item.leagueId === result.league.league.id && item.season === result.season));
+        if (result.data) updated.items.push({ leagueId: result.league.league.id, season: result.season, data: result.data, ts: Date.now() });
       });
-      writeStandingsCache(freshCache);
-      setLeaguesStandings(prev => [...prev, ...fetched]);
-      results.push(...fetched);
+      writeStandingsCache(updated);
+      setLeaguesStandings(previous => [...previous.filter(entry => !fresh.some(result => result.league.league.id === entry.response?.[0]?.league?.id)), ...fresh.flatMap(result => result.data ? [result.data] : [])]);
     }
-
-    return results;
+    return {
+      standings: fetched.flatMap(result => result.data ? [result.data] : []),
+      failures: fetched.filter(result => result.errors.length),
+    };
   };
 
   // ===== BET flow =====
   const [loadingBatch, setLoadingBatch] = useState(false);
+  const predictionRunInFlight = useRef(false);
+  const [predictionLoading, setPredictionLoading] = useState<{ stage: PredictionLoadingStage; leagueCount: number; includeOdds: boolean }>({
+    stage: 'fixtures', leagueCount: 0, includeOdds: true,
+  });
+  const predictionLoaderRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!loadingBatch) return;
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    predictionLoaderRef.current?.scrollIntoView?.({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' });
+  }, [loadingBatch]);
 
   const capturePaperOdds = async (prediction: FixturePrediction): Promise<string> => {
     const fixture = prediction.fixture;
@@ -1223,15 +1122,32 @@ const BetAndFixturesScreen: React.FC = () => {
     }));
     setOddsLoadMessages((previous) => ({ ...previous, [fixture.fixture.id]: 'Odds refreshed from the prediction service.' }));
 
+    const cache = await readPredictionsCache();
+    cache.items.forEach(item => {
+      if (item.enginePredictions?.some(entry => entry.fixture.fixture.id === fixture.fixture.id)) {
+        item.enginePredictions = item.enginePredictions.map(entry => entry.fixture.fixture.id === fixture.fixture.id ? withOdds : entry);
+        item.oddsMessages = { ...item.oddsMessages, [fixture.fixture.id]: 'Odds refreshed from the prediction service.' };
+      }
+    });
+    if (!await writePredictionsCache(cache)) {
+      setFixtureLoadWarnings(previous => [...previous, 'Prediction storage is unavailable or at capacity; refreshed odds could not be saved.']);
+    }
+
     return `Captured ${paperSelections.length} priced markets from stored quotes.`;
   };
 
-  const handleBet = async (refreshCurrentSeason = false) => {
-    if (loadingBatch) return;
+  const handleBet = async (refreshCurrentSeason = false, retryFailures?: LeagueLoadFailure[]) => {
+    const runLeagues = retryFailures ? retryFailures.map(failure => failure.league) : selectedBatch;
+    if (predictionRunInFlight.current || !runLeagues.length) return;
     if (initialising || !signedIn) {
       setFixtureLoadWarnings([betDisabledReason || 'Sign in to run predictions.']);
       return;
     }
+    predictionRunInFlight.current = true;
+    const runIds = new Set(runLeagues.map(league => league.league.id));
+    const runFailures: Record<number, LeagueLoadFailure> = {};
+    setRetryingLeagueIds(retryFailures ? Array.from(runIds) : []);
+    setPredictionLoading({ stage: 'fixtures', leagueCount: runLeagues.length, includeOdds: predictionMode === 'statistical' });
     setLoadingBatch(true);
     setFixtureLoadWarnings([]);
 
@@ -1241,17 +1157,17 @@ const BetAndFixturesScreen: React.FC = () => {
     const optionIds = [...selectedOptions.map(o => o.id)].sort((a,b) => a-b);
 
     // Determine cache hits vs misses (per-league)
-    const predCache = readPredictionsCache();
+    const predCache = await readPredictionsCache();
     const hits: PredictionsCacheItem[] = [];
     const misses: LeagueDataModel[] = [];
 
-    for (const lg of selectedBatch) {
+    for (const lg of runLeagues) {
       const season = lg.seasons.find(s => s.current === true)?.year || lg.seasons[0]?.year;
       const item = predCache.items.find(it =>
         cacheKeyMatch(it, lg.league.id, season, fromStr, toStr, optionIds) &&
         (Date.now() - it.ts <= PREDICTIONS_CACHE_TTL)
       );
-      if (item && !refreshCurrentSeason) hits.push(item); else misses.push(lg);
+      if (item && !refreshCurrentSeason && !retryFailures && !failedLeagueLoads[lg.league.id]) hits.push(item); else misses.push(lg);
     }
 
     // fixtures from cache
@@ -1266,23 +1182,43 @@ const BetAndFixturesScreen: React.FC = () => {
     let fetchedFixtures: FixtureDataModel[] = [];
     let fetchedLeagueCount = 0; // <<< CHANGE: track leagues that actually triggered network
     if (misses.length > 0) {
-      const responses = await getLeaguesSeasonsFixtures(misses, refreshCurrentSeason);
+      const responses = await getLeaguesSeasonsFixtures(misses, refreshCurrentSeason, retryFailures ? new Map(retryFailures.map(failure => [failure.league.league.id, failure.fixtureSeasons])) : undefined);
       fetchedFixtures = responses.flatMap(r => r.fixtures);
       fetchedLeagueCount = responses.filter(r => r.didNetwork).length;
-      setFixtureLoadWarnings(
-        responses.flatMap((response) =>
-          response.errors.map((message) => `League ${response.leagueId}: ${message}`)
-        )
-      );
+      responses.forEach(response => {
+        const league = runLeagues.find(entry => entry.league.id === response.leagueId);
+        if (league && response.errors.length) runFailures[response.leagueId] = {
+          league, fixtureSeasons: response.failedSeasons, standings: false, messages: response.errors,
+        };
+      });
     }
 
+    // Stage changes follow actual work; there is no simulated percentage or timer-driven progress.
+    setPredictionLoading(previous => ({ ...previous, stage: 'standings' }));
     // ensure standings
-    const freshStandings = await ensureStandingsFor(selectedBatch);
-    const standingsForPrediction = [...leaguesStandings, ...freshStandings];
+    const standingsResult = await ensureStandingsFor(runLeagues, new Set(runLeagues.filter(league =>
+      failedLeagueLoads[league.league.id]?.standings || retryFailures?.some(failure => failure.league.league.id === league.league.id && failure.standings)
+    ).map(league => league.league.id)));
+    standingsResult.failures.forEach(result => {
+      const previous = runFailures[result.league.league.id];
+      runFailures[result.league.league.id] = {
+        league: result.league, fixtureSeasons: previous?.fixtureSeasons ?? [], standings: true,
+        messages: [...(previous?.messages ?? []), ...result.errors.map(error => `Standings: ${error}`)],
+      };
+    });
+    setFailedLeagueLoads(previous => {
+      const updated = { ...previous };
+      runIds.forEach(id => { delete updated[id]; });
+      return { ...updated, ...runFailures };
+    });
+    const standingsForPrediction = [...standingsResult.standings, ...leaguesStandings.filter(entry =>
+      !standingsResult.standings.some(fresh => fresh.response?.[0]?.league?.id === entry.response?.[0]?.league?.id)
+    )];
 
     // predict
     const mergedAll = dedupeFixtures([...allFixtures, ...cachedFixtures, ...fetchedFixtures]);
     const currentWindow = filterBetweenDates(filterFutureFixtures(mergedAll), fromDate, toDate);
+    const predictionWindow = retryFailures ? currentWindow.filter(fixture => runIds.has(fixture.league.id)) : currentWindow;
 
     const knownResults = new Map<number, { homeGoals: number; awayGoals: number }>();
     mergedAll.forEach((fixture) => {
@@ -1305,9 +1241,12 @@ const BetAndFixturesScreen: React.FC = () => {
       }
     }
 
+    setPredictionLoading(previous => ({ ...previous, stage: 'form' }));
+    // Let the browser paint the status before synchronous prediction calculations.
+    await new Promise<void>(resolve => window.setTimeout(resolve, 0));
     const freshPred = runPredict({
       allFixturesLocal: mergedAll,
-      currentFixturesLocal: currentWindow,
+      currentFixturesLocal: predictionWindow,
       leaguesStandingsLocal: standingsForPrediction
     });
 
@@ -1317,8 +1256,9 @@ const BetAndFixturesScreen: React.FC = () => {
     const oddsByFixtureId = new Map<number, MarketOdds[]>();
     const oddsMessages: Record<number, string> = {};
     if (predictionMode === 'statistical') {
+      setPredictionLoading(previous => ({ ...previous, stage: 'odds' }));
       const now = Date.now();
-      const upcoming = currentWindow.filter((fixture) => fixture.fixture.timestamp * 1000 > now);
+      const upcoming = predictionWindow.filter((fixture) => fixture.fixture.timestamp * 1000 > now);
       const dates = Array.from(new Set(upcoming.map((fixture) => fixture.fixture.date.slice(0, 10))));
       for (const date of dates) {
         const dayFixtures = upcoming.filter((fixture) => fixture.fixture.date.slice(0, 10) === date);
@@ -1346,17 +1286,20 @@ const BetAndFixturesScreen: React.FC = () => {
           oddsMessages[fixture.fixture.id] = 'No stored pre-match quotes are available for this fixture yet.';
         }
       });
-      currentWindow
+      predictionWindow
         .filter((fixture) => fixture.fixture.timestamp * 1000 <= now)
         .forEach((fixture) => { oddsMessages[fixture.fixture.id] = 'Kickoff has passed; pre-match recommendations are closed.'; });
     }
-    setOddsLoadMessages(oddsMessages);
+    setOddsLoadMessages(previous => retryFailures ? { ...previous, ...oddsMessages } : oddsMessages);
 
+    setPredictionLoading(previous => ({ ...previous, stage: 'forecasts' }));
+    await new Promise<void>(resolve => window.setTimeout(resolve, 0));
+    let engineResultsForCache: FixturePrediction[] = [];
     // Statistical engine: calibrated probabilities + explanations for every fixture.
     // Guarded so an unexpected error in the engine cannot break the existing bet flow.
     try {
       const baseEngineResults = predictFixturesWithEngine({
-        currentFixtures: currentWindow,
+        currentFixtures: predictionWindow,
         allFixtures: mergedAll,
         leaguesStandings: standingsForPrediction,
         standingsAreCurrent: true,
@@ -1374,7 +1317,8 @@ const BetAndFixturesScreen: React.FC = () => {
           now: Date.now(),
         });
       });
-      const engineMap: Record<number, FixturePrediction> = {};
+      engineResultsForCache = engineResults;
+      const engineMap: Record<number, FixturePrediction> = retryFailures ? { ...enginePredictions } : {};
       engineResults.forEach((prediction) => {
         engineMap[Number(prediction.fixture.fixture.id)] = prediction;
       });
@@ -1412,12 +1356,17 @@ const BetAndFixturesScreen: React.FC = () => {
       console.error('Prediction engine failed; existing predictions are unaffected.', error);
     }
 
-    const mergedPred = [...predictedFixtures, ...cachedPred, ...freshPred];
+    const mergedPred = retryFailures ? [
+      ...predictedFixtures.map(entry => ({ ...entry, fixtures: entry.fixtures.filter(fixture => !runIds.has(fixture.league.id)) })).filter(entry => entry.fixtures.length),
+      ...freshPred,
+    ] : [...predictedFixtures, ...cachedPred, ...freshPred];
 
-    // write predictions cache for misses
-    if (misses.length > 0) {
-      const toWrite = readPredictionsCache();
-      for (const lg of misses) {
+    // Store the actual displayed forecasts, including runs that reused fixture data.
+    if (runLeagues.length > 0) {
+      const toWrite = await readPredictionsCache();
+      toWrite.items = toWrite.items.filter(item => Date.now() >= item.ts && Date.now() - item.ts < PREDICTIONS_CACHE_TTL);
+      for (const lg of runLeagues) {
+        if (runFailures[lg.league.id]) continue; // Do not cache incomplete league data as a fresh success.
         const season = lg.seasons.find(s => s.current === true)?.year || lg.seasons[0]?.year;
         const perLeaguePred = freshPred
           .map(p => ({
@@ -1438,14 +1387,20 @@ const BetAndFixturesScreen: React.FC = () => {
           from: fromStr,
           to: toStr,
           optionIds,
-          fixtures: fetchedFixtures.filter(f => f.league.id === lg.league.id && f.league.season === season),
+          fixtures: mergedAll.filter(f => f.league.id === lg.league.id),
+          enginePredictions: engineResultsForCache.filter(prediction => prediction.fixture.league.id === lg.league.id),
+          oddsMessages: Object.fromEntries(engineResultsForCache.filter(prediction => prediction.fixture.league.id === lg.league.id)
+            .map(prediction => [prediction.fixture.fixture.id, oddsMessages[prediction.fixture.fixture.id]])),
           predicted: perLeaguePred,
           ts: Date.now(),
         };
         toWrite.items = toWrite.items.filter(it => !cacheKeyMatch(it, lg.league.id, season, fromStr, toStr, optionIds));
         toWrite.items.push(item);
       }
-      writePredictionsCache(toWrite);
+      toWrite.view = { ts: Date.now(), from: fromStr, to: toStr, optionIds };
+      if (!await writePredictionsCache(toWrite)) {
+        setFixtureLoadWarnings(previous => [...previous, 'Prediction storage is unavailable or at capacity; forecasts remain on this page but could not be saved for page refresh.']);
+      }
     }
 
     setAllFixtures(mergedAll);
@@ -1459,9 +1414,15 @@ const BetAndFixturesScreen: React.FC = () => {
     }
 
     } catch (error) {
-      setEnginePredictions({});
-      setFixtureLoadWarnings([describeFailure(error)]);
+      const message = describeFailure(error);
+      setFailedLeagueLoads(previous => ({ ...previous, ...Object.fromEntries(runLeagues.map(league => [league.league.id, {
+        league,
+        fixtureSeasons: Array.from({ length: Math.max(1, Number(numberOfSeasonsBack || 1)) }, (_, index) => (league.seasons.find(season => season.current)?.year ?? league.seasons[0]?.year) - index),
+        standings: true, messages: [message],
+      }])) }));
     } finally {
+      predictionRunInFlight.current = false;
+      setRetryingLeagueIds([]);
       setLoadingBatch(false);
     }
   };
@@ -1541,24 +1502,18 @@ const BetAndFixturesScreen: React.FC = () => {
     toggleModal();
   };
 
-  const settledPaperSelections = paperSelections.filter((selection) => selection.settled);
-  const paperSummaries = summariseBy(settledPaperSelections, (selection) => selection.marketId);
-  const pendingPaperCount = paperSelections.filter((selection) => !selection.settled).length;
   const paperSelectionsByKey = new Map(
     paperSelections.map((selection) => [`${selection.fixtureId}:${selection.marketId}`, selection])
   );
   const selectedPaperPicks = selectedStatisticalPickKeys
     .map((key) => paperSelectionsByKey.get(key))
-    .filter((selection): selection is PaperSelection => Boolean(selection));
+    .filter((selection): selection is PaperSelection => Boolean(selection) && selection?.marketId !== 'btts_no');
   const displayedFixtureIds = predictionMode === 'legacy'
     ? Object.keys(groupedData)
-    : Object.keys(enginePredictions);
+    : Object.keys(enginePredictions).filter(id => currentFixtures.some(fixture => fixture.fixture.id === Number(id)));
   const visibleEnginePredictions = Object.values(enginePredictions).filter((prediction) =>
     currentFixtures.some((fixture) => fixture.fixture.id === prediction.fixture.fixture.id)
-  );
-  const directPicks = rankDirectPicks(visibleEnginePredictions, nowTick);
-  const unpricedPredictions = visibleEnginePredictions.filter((prediction) => !prediction.dataQuality.oddsAvailable);
-  const unpricedForecasts = rankUnpricedForecasts(visibleEnginePredictions, nowTick);
+  ).map(visibleForecastPrediction);
 
   // ===== Render =====
   return (
@@ -1609,12 +1564,14 @@ const BetAndFixturesScreen: React.FC = () => {
                 <div className="flex flex-wrap items-center gap-2">
                   <DatePicker
                     className="w-[140px] rounded-lg border border-slate-500 bg-white px-2 py-1.5 text-xs text-slate-900"
+                    disabled={!cacheReady}
                     selected={fromDate}
                     onChange={(d: Date) => setFromDate(d)}
                   />
                   <span className="text-xs text-slate-200">to</span>
                   <DatePicker
                     className="w-[140px] rounded-lg border border-slate-500 bg-white px-2 py-1.5 text-xs text-slate-900"
+                    disabled={!cacheReady}
                     selected={toDate}
                     onChange={(d: Date) => setToDate(d)}
                   />
@@ -1818,115 +1775,157 @@ const BetAndFixturesScreen: React.FC = () => {
                       : 'bg-cyan-600 text-white shadow-lg hover:bg-cyan-500'
                   }`}
                 >
-                  {loadingBatch ? 'Betting...' : 'Bet (run predictions)'}
+                  {loadingBatch ? 'Preparing forecasts…' : 'Bet (run predictions)'}
                 </button>
               </div>
             </div>
           </div>
 
           <div className="space-y-4 lg:col-span-7 xl:col-span-8">
-            <div className="rounded-2xl border border-slate-700/60 bg-slate-900/80 p-4">
-              <div className="mb-2 flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-100">Predictions</h2>
-                  <div className="text-xs text-slate-400">Fixtures matched in current range: {displayedFixtureIds.length}</div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-[11px] text-slate-300">{predictionRangeLabel}</div>
-                  <button
-                    onClick={clearPredictions}
-                    className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-2 py-1 text-[11px] font-semibold text-rose-200 hover:bg-rose-500/20"
-                  >
-                    Clear predictions
-                  </button>
-                </div>
+            {!cacheReady && <div role="status" className="rounded-xl border border-slate-600 bg-slate-900 p-3 text-sm text-slate-200">Restoring saved forecasts…</div>}
+            {loadingBatch && <div ref={predictionLoaderRef} className="scroll-mt-48">
+              <PredictionLoader {...predictionLoading} hasPreviousForecasts={displayedFixtureIds.length > 0} />
+            </div>}
+            <LeagueLoadErrors failures={Object.values(failedLeagueLoads)} warnings={fixtureLoadWarnings}
+              loading={loadingBatch} retryingIds={retryingLeagueIds} onRetry={failures => handleBet(true, failures)} />
+            <details open aria-busy={loadingBatch} className="border-t border-slate-700 p-2">
+              <summary className="cursor-pointer py-2 text-sm font-semibold text-slate-300">
+                {predictionMode === 'statistical' ? 'All forecasts and market details' : 'Legacy fixture results'} · {displayedFixtureIds.length} fixtures
+              </summary>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs text-slate-400">{predictionRangeLabel}</span>
+                <button type="button" onClick={clearPredictions} disabled={loadingBatch || !cacheReady}
+                  className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-2 py-1 text-[11px] font-semibold text-rose-200 hover:bg-rose-500/20 disabled:opacity-50">Clear predictions</button>
               </div>
-              {predictionMode === 'statistical' && (
-                <section aria-label="Best available options" className="mb-4 border-t border-slate-700 py-3">
-                  <h3 className="text-base font-semibold text-white">Best available options · {directPicks.length}</h3>
-                  <div className="mt-1 text-xs text-amber-200">Model-ranked candidates, not proven profitable bets. Prices can change.</div>
-                  {!loadingBatch && fixtureLoadWarnings.length > 0 && (
-                    <div role="alert" className="mt-2 text-xs text-amber-200">{fixtureLoadWarnings.join(' ')}</div>
+              {displayedFixtureIds.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label="Forecast expansion controls">
+                  <button type="button" onClick={() => setExpandedForecasts(previous => ({ ...previous, ...Object.fromEntries(displayedFixtureIds.map(id => [id, true])) }))}
+                    className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700">Expand all</button>
+                  <button type="button" onClick={() => setExpandedForecasts(previous => ({ ...previous, ...Object.fromEntries(displayedFixtureIds.map(id => [id, false])) }))}
+                    className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700">Collapse all</button>
+                </div>
+              )}
+              {displayedFixtureIds.length === 0 && loadingBatch ? (
+                <div aria-hidden="true" className="space-y-3 py-3">
+                  {[0, 1, 2].map(row => <div key={row} className="rounded-xl border border-slate-700/60 bg-slate-900 p-4 motion-safe:animate-pulse">
+                    <div className="mb-3 h-3 w-2/5 rounded bg-slate-700" />
+                    <div className="grid grid-cols-3 gap-2">{[0, 1, 2].map(cell => <div key={cell} className="h-12 rounded bg-slate-800" />)}</div>
+                  </div>)}
+                </div>
+              ) : displayedFixtureIds.length === 0 ? (
+                <div className="grid place-items-center py-16 text-sm text-slate-400">
+                  {Object.keys(failedLeagueLoads).length > 0 || fixtureLoadWarnings.length > 0 ? (
+                    <p className="max-w-xl text-center text-sm text-slate-200">Some data could not be loaded. See the notice and retry controls above.</p>
+                  ) : selectedBatch.length > 0 ? (
+                    <div className="max-w-xl text-center text-xs text-slate-300">
+                      No fixtures were returned for the selected leagues and date range. Current-season fixture or team-history access may be restricted by the API plan; no model snapshot or paper entry was created.
+                    </div>
+                  ) : (
+                    'No predictions yet. Select leagues, choose options, and press Bet.'
                   )}
-                  {loadingBatch ? <div role="status" className="py-4 text-sm text-slate-300">Checking fixtures and bookmaker prices...</div>
-                    : directPicks.length === 0 ? (
-                      <div className="py-3 text-sm text-slate-300">
-                        {visibleEnginePredictions.length === 0 ? 'No upcoming fixtures assessed in this window.'
-                          : unpricedPredictions.length === visibleEnginePredictions.length ? 'Awaiting bookmaker prices. Forecasts are available below; no priced recommendation yet.'
-                            : 'No eligible priced picks in this batch. Remaining forecasts and rejection reasons are below.'}
-                      </div>
-                    ) : (
-                      <ol className="mt-3 divide-y divide-slate-700">
-                        {directPicks.map(({ prediction, market }, index) => {
-                          const fixture = prediction.fixture;
-                          const key = `${fixture.fixture.id}:${market.marketId}`;
-                          const picked = selectedStatisticalPickKeys.includes(key);
-                          return (
-                            <li key={key} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                              <div className="min-w-0 flex-1 text-xs text-slate-300">
-                                <div className="break-words text-sm font-semibold text-white">{index + 1}. {fixture.teams.home.name} vs {fixture.teams.away.name}</div>
-                                <div className="mt-1 font-semibold text-emerald-200">{market.label} · {market.decimalOdds?.toFixed(2)} {market.bookmaker}</div>
-                                <div className="mt-1">{fixture.league.name} · {toMomentDate(fixture.fixture.date).format('DD MMM HH:mm')}</div>
-                                <div>Model {pct(market.modelProbability)} · estimated EV {pct(market.expectedValue ?? 0, 1)} · edge {pct(market.edge, 1)}</div>
-                                <div className="text-slate-400">{prediction.dataQuality.homeSampleSize}/{prediction.dataQuality.awaySampleSize} venue samples · {prediction.dataQuality.standingsAvailable ? 'standings available' : 'opponent strength unknown'}</div>
-                                {prediction.dataQuality.weakMarkets.includes(market.marketId) && <div className="text-amber-200">Weak or unvalidated market model.</div>}
+                </div>
+              ) : (
+                <div className="max-h-[70vh] space-y-3 overflow-y-auto pr-1">
+                  {displayedFixtureIds.map((fixtureId) => {
+                    const currentFixture = currentFixtures.find((f) => `${f.fixture.id}` === fixtureId);
+                    if (!currentFixture) return null;
+                    const enginePrediction = enginePredictions[Number(fixtureId)];
+                    const expanded = expandedForecasts[fixtureId] !== false;
+                    const matchLabel = `${currentFixture.teams.home.name} vs ${currentFixture.teams.away.name}`;
+
+                    return (
+                      <div key={fixtureId} className="rounded-xl border border-slate-700/70 bg-slate-900 p-3">
+                        <div className="mb-2 flex items-center justify-between text-xs text-slate-300">
+                          <div>
+                            {!expanded && <div className="mb-1 font-semibold text-slate-100">{matchLabel}</div>}
+                            <div className="font-semibold text-slate-100">{currentFixture.league.name} ({currentFixture.league.country})</div>
+                            <div>{toMomentDate(currentFixture.fixture.date).format('DD MMMM YYYY HH:mm')}</div>
+                          </div>
+                          <div className="flex flex-wrap justify-end gap-2">
+                          <button type="button" aria-expanded={expanded} aria-controls={`forecast-content-${fixtureId}`}
+                            aria-label={`${expanded ? 'Collapse' : 'Expand'} forecast for ${matchLabel}`}
+                            title={expanded ? 'Collapse forecast' : 'Expand forecast'}
+                            onClick={() => setExpandedForecasts(previous => ({ ...previous, [fixtureId]: !expanded }))}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300">
+                            <svg aria-hidden="true" focusable="false" className={`h-5 w-5 ${expanded ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={onFixtureClick(currentFixture)}
+                            className="rounded-lg border border-cyan-500/50 bg-cyan-500/10 px-3 py-1 text-[11px] font-semibold text-cyan-200 hover:bg-cyan-500/20"
+                          >
+                            View details
+                          </button>
+                          </div>
+                        </div>
+
+                        <div id={`forecast-content-${fixtureId}`} hidden={!expanded}>
+                        {predictionMode === 'statistical' && enginePrediction && (
+                          <EnginePredictionPanel
+                            prediction={enginePrediction}
+                            oddsMessage={oddsLoadMessages[currentFixture.fixture.id]}
+                            onCaptureOdds={capturePaperOdds}
+                          />
+                        )}
+
+                        <div className="flex flex-col gap-2 text-sm font-medium text-slate-100 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex items-center gap-2">
+                            <img src={currentFixture.teams.home.logo} className="h-5 w-5" />
+                            <div className="truncate">{currentFixture.teams.home.name}</div>
+                          </div>
+                          <div className="text-xs text-slate-500">vs</div>
+                          <div className="flex items-center gap-2 sm:justify-end">
+                            <img src={currentFixture.teams.away.logo} className="h-5 w-5" />
+                            <div className="truncate">{currentFixture.teams.away.name}</div>
+                          </div>
+                        </div>
+
+                        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          {predictionMode === 'legacy' && groupedData[currentFixture.fixture.id]?.map((option) => {
+                            const favorite = isFavoritePrediction(currentFixture.fixture.id, option.id);
+                            return (
+                              <div key={option.id} className="rounded-lg border border-sky-400/20 bg-sky-500/10 p-2">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-[11px] font-semibold text-sky-100">{option.shortName}</span>
+                                  <button
+                                    onClick={() => toggleFavoritePrediction(currentFixture, option)}
+                                    className={`rounded-md px-2 py-1 text-[10px] font-semibold ${
+                                      favorite
+                                        ? 'border border-cyan-400/50 bg-cyan-500/20 text-cyan-100'
+                                        : 'border border-slate-600 bg-slate-800 text-slate-300'
+                                    }`}
+                                  >
+                                    {favorite ? 'Saved' : 'Save'}
+                                  </button>
+                                </div>
+                                <div className="mt-1 text-[10px] text-slate-200">{option.description || option.name}</div>
+                                {LEGACY_FORECAST_IDS[option.id] && <div className="mt-1 text-[9px] text-slate-400">Probability unavailable: legacy rules return a match flag, not a probability. No threshold-based highlight.</div>}
                               </div>
-                              <button type="button" onClick={() => toggleStatisticalPick(fixture.fixture.id, market)}
-                                className={`shrink-0 rounded border px-3 py-2 text-xs font-semibold ${picked ? 'border-emerald-400 bg-emerald-500/20 text-emerald-100' : 'border-cyan-400 bg-cyan-600 text-white'}`}>
-                                {picked ? 'Remove pick' : 'Add pick'}
-                              </button>
-                            </li>
-                          );
-                        })}
-                      </ol>
-                    )}
-                </section>
+                            );
+                          })}
+                        </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
-              {predictionMode === 'statistical' && !loadingBatch && unpricedForecasts.length > 0 && (
-                <section aria-label="Forecasts without odds" className="mb-4 border-t border-slate-700 py-3">
-                  <h3 className="text-base font-semibold text-white">Forecasts without odds · {unpricedForecasts.length}</h3>
-                  <div className="mt-1 text-xs text-amber-200">Ranked by model likelihood, not betting value. No bookmaker price or EV verified.</div>
-                  <ol className="mt-2 divide-y divide-slate-700">
-                    {unpricedForecasts.map(({ prediction, market, enoughHistory }) => {
-                      const fixture = prediction.fixture;
-                      return (
-                        <li key={fixture.fixture.id} className="py-3 text-xs text-slate-300">
-                          <div className="break-words text-sm font-semibold text-white">{fixture.teams.home.name} vs {fixture.teams.away.name}</div>
-                          <div className="mt-1 text-slate-400">{fixture.league.name} · {toMomentDate(fixture.fixture.date).format('DD MMM HH:mm')}</div>
-                          {market ? (
-                            <>
-                              <div className="mt-1 font-semibold text-cyan-200">Leading forecast: {market.label} · model {pct(market.modelProbability)}</div>
-                              <div className="mt-1">Highest estimated likelihood among standard win, scoring and goals outcomes; not necessarily the best-priced bet.</div>
-                              <div className="mt-1">Model break-even odds: ~{(1 / market.modelProbability).toFixed(2)} · not a bookmaker quote.</div>
-                              {!market.passedProbabilityThreshold && <div className="mt-1 text-amber-200">Below the preferred probability cutoff; forecast only.</div>}
-                              {prediction.dataQuality.weakMarkets.includes(market.marketId) && <div className="mt-1 text-amber-200">Weak or unvalidated market model.</div>}
-                              <div className="mt-2 font-semibold text-slate-200">Evidence</div>
-                              {market.evidence.slice(0, 2).map((line, index) => <div key={index} className="mt-1 break-words">{line}</div>)}
-                              {prediction.dataQuality.goalModel === 'prior-blended' && /^(btts|over_|under_)/.test(market.marketId) && (
-                                <div className="mt-1 text-slate-400">This goal-market forecast uses a league-prior model; sample frequencies are context, not the forecast itself.</div>
-                              )}
-                            </>
-                          ) : <div className="mt-2 text-amber-200">{enoughHistory ? 'No usable standard-market estimate available.' : 'Insufficient team history; no leading forecast.'}</div>}
-                          <div className="mt-2 text-slate-400">Venue samples {prediction.dataQuality.homeSampleSize}/{prediction.dataQuality.awaySampleSize} · overall samples {prediction.homeTeam.overallSampleSize}/{prediction.awayTeam.overallSampleSize}</div>
-                          {prediction.dataQuality.warnings.filter((warning) => !/odds/i.test(warning)).slice(0, 2).map((warning, index) => (
-                            <div key={index} className="mt-1 break-words text-amber-200">{warning}</div>
-                          ))}
-                          <div className="mt-2 break-words text-slate-400">Odds status: {oddsLoadMessages[fixture.fixture.id] || 'No supported bookmaker prices available.'}</div>
-                        </li>
-                      );
-                    })}
-                  </ol>
-                </section>
-              )}
+            </details>
+            <SuggestedBetList
+              predictions={visibleEnginePredictions}
+              now={nowTick}
+              loading={loadingBatch}
+              statistical={predictionMode === 'statistical'}
+              selectedPickKeys={selectedStatisticalPickKeys}
+              onReview={prediction => onFixtureClick(prediction.fixture)()}
+              onTogglePick={toggleStatisticalPick}
+            />
+            {selectedPaperPicks.length > 0 && (
               <details className="mb-2 border-t border-slate-700/60 pt-2">
                 <summary className="cursor-pointer text-xs font-semibold text-slate-300">
-                  My Statistical pick list · {selectedPaperPicks.length} selected
+                  My saved picks · {selectedPaperPicks.length} selected
                 </summary>
-                {selectedPaperPicks.length === 0 ? (
-                  <div className="mt-2 text-[11px] text-slate-400">
-                    Add a qualified market from a Statistical fixture card. This is a shortlist only; no bet is placed.
-                  </div>
-                ) : (
                   <div className="mt-2 space-y-1.5">
                     {selectedPaperPicks.map((pick) => {
                       const key = `${pick.fixtureId}:${pick.marketId}`;
@@ -1956,52 +1955,8 @@ const BetAndFixturesScreen: React.FC = () => {
                     })}
                     <div className="text-[9px] text-slate-500">Selections from the same match are correlated; this list does not account for combined stake or portfolio risk.</div>
                   </div>
-                )}
               </details>
-              <details className="mt-3 border-t border-slate-700/60 pt-2">
-                <summary className="cursor-pointer text-xs font-semibold text-slate-300">
-                  Prospective odds tracking · {pendingPaperCount} pending · {settledPaperSelections.length} settled
-                </summary>
-                {settledPaperSelections.length === 0 ? (
-                  <div className="mt-2 text-[11px] text-slate-400">
-                    Capture pre-match odds on a fixture card. Results are settled when completed fixtures are refreshed.
-                    No historical odds are available, so this report accumulates prospectively.
-                  </div>
-                ) : (
-                  <div className="mt-2 overflow-x-auto">
-                    <table className="w-full min-w-[620px] text-left text-[10px] text-slate-300">
-                      <thead className="text-slate-500">
-                        <tr>
-                          <th className="py-1 pr-3">Market</th>
-                          <th className="py-1 pr-3">N</th>
-                          <th className="py-1 pr-3">Hit rate</th>
-                          <th className="py-1 pr-3">Brier</th>
-                          <th className="py-1 pr-3">Log loss</th>
-                          <th className="py-1 pr-3">ROI/unit</th>
-                          <th className="py-1">95% ROI half-width</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {Object.values(paperSummaries).map((summary) => (
-                          <tr key={summary.scope} className="border-t border-slate-800">
-                            <td className="py-1 pr-3">{summary.scope}</td>
-                            <td className="py-1 pr-3">{summary.n}</td>
-                            <td className="py-1 pr-3">{pct(summary.hitRate)}</td>
-                            <td className="py-1 pr-3">{summary.brierScore.toFixed(3)}</td>
-                            <td className="py-1 pr-3">{summary.logLoss.toFixed(3)}</td>
-                            <td className="py-1 pr-3">{summary.roi.toFixed(3)}</td>
-                            <td className="py-1">±{summary.roiConfidence95.toFixed(3)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <div className="mt-1 text-[9px] text-slate-500">
-                      Flat-stake descriptive results only; correlated selections and small samples make ROI uncertainty substantial.
-                    </div>
-                  </div>
-                )}
-              </details>
-            </div>
+            )}
 
             <div className="rounded-2xl border border-slate-700/60 bg-slate-900/80 p-3">
               <div className="mb-2 flex items-center justify-between">
@@ -2072,102 +2027,7 @@ const BetAndFixturesScreen: React.FC = () => {
               )}
             </div>
 
-            <details open={predictionMode === 'legacy'} className="border-t border-slate-700 p-2">
-              <summary className="cursor-pointer py-2 text-sm font-semibold text-slate-300">
-                {predictionMode === 'statistical' ? 'All forecasts and market details' : 'Legacy fixture results'} · {displayedFixtureIds.length} fixtures
-              </summary>
-              {displayedFixtureIds.length === 0 ? (
-                <div className="grid place-items-center py-16 text-sm text-slate-400">
-                  {fixtureLoadWarnings.length > 0 ? (
-                    <div className="max-w-2xl space-y-2 text-left">
-                      <div className="font-semibold text-amber-200">Fixture data unavailable</div>
-                      {Array.from(new Set(fixtureLoadWarnings)).map((warning) => (
-                        <div key={warning} className="text-xs text-amber-100/80">{warning}</div>
-                      ))}
-                    </div>
-                  ) : selectedBatch.length > 0 ? (
-                    <div className="max-w-xl text-center text-xs text-slate-300">
-                      No fixtures were returned for the selected leagues and date range. Current-season fixture or team-history access may be restricted by the API plan; no model snapshot or paper entry was created.
-                    </div>
-                  ) : (
-                    'No predictions yet. Select leagues, choose options, and press Bet.'
-                  )}
-                </div>
-              ) : (
-                <div className="max-h-[70vh] space-y-3 overflow-y-auto pr-1">
-                  {displayedFixtureIds.map((fixtureId) => {
-                    const currentFixture = currentFixtures.find((f) => `${f.fixture.id}` === fixtureId);
-                    if (!currentFixture) return null;
-                    const enginePrediction = enginePredictions[Number(fixtureId)];
 
-                    return (
-                      <div key={fixtureId} className="rounded-xl border border-slate-700/70 bg-slate-900 p-3">
-                        <div className="mb-2 flex items-center justify-between text-xs text-slate-300">
-                          <div>
-                            <div className="font-semibold text-slate-100">{currentFixture.league.name} ({currentFixture.league.country})</div>
-                            <div>{toMomentDate(currentFixture.fixture.date).format('DD MMMM YYYY HH:mm')}</div>
-                          </div>
-                          <button
-                            onClick={onFixtureClick(currentFixture)}
-                            className="rounded-lg border border-cyan-500/50 bg-cyan-500/10 px-3 py-1 text-[11px] font-semibold text-cyan-200 hover:bg-cyan-500/20"
-                          >
-                            View details
-                          </button>
-                        </div>
-
-                        {predictionMode === 'statistical' && enginePrediction && (
-                          <EnginePredictionPanel
-                            prediction={enginePrediction}
-                            oddsMessage={oddsLoadMessages[currentFixture.fixture.id]}
-                            onCaptureOdds={capturePaperOdds}
-                            selectedPickKeys={selectedStatisticalPickKeys}
-                            onTogglePick={(market) =>
-                              toggleStatisticalPick(enginePrediction.fixture.fixture.id, market)
-                            }
-                          />
-                        )}
-
-                        <div className="flex flex-col gap-2 text-sm font-medium text-slate-100 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="flex items-center gap-2">
-                            <img src={currentFixture.teams.home.logo} className="h-5 w-5" />
-                            <div className="truncate">{currentFixture.teams.home.name}</div>
-                          </div>
-                          <div className="text-xs text-slate-500">vs</div>
-                          <div className="flex items-center gap-2 sm:justify-end">
-                            <img src={currentFixture.teams.away.logo} className="h-5 w-5" />
-                            <div className="truncate">{currentFixture.teams.away.name}</div>
-                          </div>
-                        </div>
-
-                        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                          {predictionMode === 'legacy' && groupedData[currentFixture.fixture.id]?.map((option) => {
-                            const favorite = isFavoritePrediction(currentFixture.fixture.id, option.id);
-                            return (
-                              <div key={option.id} className="rounded-lg border border-sky-400/20 bg-sky-500/10 p-2">
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className="text-[11px] font-semibold text-sky-100">{option.shortName}</span>
-                                  <button
-                                    onClick={() => toggleFavoritePrediction(currentFixture, option)}
-                                    className={`rounded-md px-2 py-1 text-[10px] font-semibold ${
-                                      favorite
-                                        ? 'border border-cyan-400/50 bg-cyan-500/20 text-cyan-100'
-                                        : 'border border-slate-600 bg-slate-800 text-slate-300'
-                                    }`}
-                                  >
-                                    {favorite ? 'Saved' : 'Save'}
-                                  </button>
-                                </div>
-                                <div className="mt-1 text-[10px] text-slate-200">{option.description || option.name}</div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </details>
           </div>
         </div>
       </div>
@@ -2182,7 +2042,7 @@ const BetAndFixturesScreen: React.FC = () => {
         }`}
         title={msLeft > 0 ? `Cooldown: ${Math.ceil(msLeft / 1000)}s` : 'Bet now'}
       >
-        {loadingBatch ? 'Betting...' : 'Bet'}
+        {loadingBatch ? 'Preparing…' : 'Bet'}
       </button>
 
       {/* Modal (unchanged) */}
