@@ -3,7 +3,7 @@ import {StandingsModel, StandingsResponseModel} from '../../models/standings-mod
 import { EnvelopeResponse } from '../api/types';
 
 // Standings are stored canonical data served by the PredictXI Django API.
-const endpoint = '/standings';
+const endpoint = '/standings/';
 
 export const getStandingsByTeamId = async ({teamId, season, leagueId}: {teamId:number; season: number, leagueId: number}) => {
     const response = await apiGet<EnvelopeResponse<StandingsResponseModel>>(endpoint, { params: { season, team: teamId, league: leagueId } })

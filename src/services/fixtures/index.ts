@@ -8,7 +8,7 @@
 import { apiGet } from '../api/client';
 import { FixturesFilterModel } from '../../models/fixtures/index';
 
-const endpoint = '/fixtures';
+const endpoint = '/fixtures/';
 
 /** Build query params from the shared filter model, dropping empty values. */
 const toParams = (filters: FixturesFilterModel) => {

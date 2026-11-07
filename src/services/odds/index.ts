@@ -10,7 +10,7 @@
  */
 import { apiGet } from '../api/client';
 
-const endpoint = '/odds';
+const endpoint = '/odds/';
 
 export const getOddsByFixture = async (fixtureId: number) => {
   return apiGet(endpoint, { params: { fixture: fixtureId } });

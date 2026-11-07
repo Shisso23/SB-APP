@@ -3,7 +3,7 @@
 import { apiGet } from '../api/client';
 import { LeaguesFilterModel } from '../../models/leagues';
 
-const endpoint = '/leagues';
+const endpoint = '/leagues/';
 
 export const getFilteredLeagues = async (filters: LeaguesFilterModel) => {
     const params: Record<string, string | number | boolean> = {};
