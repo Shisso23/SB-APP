@@ -127,7 +127,10 @@ class ApiFootballProvider:
         total = 1
         page = 1
         while page <= total:
-            payload = self._page(endpoint, {**params, "page": page})
+            # Most endpoints reject an explicit page=1 (only true multi-page
+            # endpoints like odds accept "page" at all), so omit it on page 1.
+            request_params = {**params, "page": page} if page > 1 else params
+            payload = self._page(endpoint, request_params)
             paging = payload.get("paging", {"current": page, "total": 1})
             if not isinstance(paging, dict):
                 raise ProviderError("Provider pagination is invalid.")

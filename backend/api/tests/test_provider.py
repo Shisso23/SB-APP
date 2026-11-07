@@ -43,7 +43,7 @@ class ProviderTests(SimpleTestCase):
                 call()
                 args, kwargs = self.session.get.call_args
                 self.assertEqual(args[0], "https://v3.football.api-sports.io/" + endpoint)
-                self.assertEqual(kwargs["params"], {**params, "page": 1})
+                self.assertEqual(kwargs["params"], params)
                 self.assertEqual(kwargs["timeout"], (3.05, 10))
                 self.assertFalse(kwargs["allow_redirects"])
                 self.assertTrue(kwargs["stream"])

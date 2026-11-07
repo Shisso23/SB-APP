@@ -7,6 +7,9 @@ from api.models import AccessEntitlement
 def has_prediction_access(user, now=None):
     if not user or not user.is_authenticated or not user.is_active:
         return False
+    # Server-side staff flag only (never trust claims from the ID token itself).
+    if user.is_staff or user.is_superuser:
+        return True
     current = now if now is not None else timezone.now()
     return AccessEntitlement.objects.filter(
         user=user, scope=AccessEntitlement.Scope.PREDICTIONS,
@@ -27,6 +30,8 @@ def prediction_access_window(user, now=None):
     if not user or not user.is_authenticated or not user.is_active:
         return None
     current = now if now is not None else timezone.now()
+    if user.is_staff or user.is_superuser:
+        return {"starts_at": user.created_at, "ends_at": current.replace(year=current.year + 50)}
     entitlement = (
         AccessEntitlement.objects.filter(
             user=user, scope=AccessEntitlement.Scope.PREDICTIONS,
