@@ -382,7 +382,6 @@ export const modelBetOptions: betOptionModel[] = (
     'home_over_0_5',
     'away_over_0_5',
     'btts_yes',
-    'btts_no',
     'over_1_5',
     'over_2_5',
     'over_3_5',

@@ -50,6 +50,8 @@ import {
   summariseBy,
 } from '../../prediction-engine';
 import type { MarketValue, PaperSelection } from '../../prediction-engine';
+import { FORECAST_HIGHLIGHTS, ForecastId, ForecastPreference, forecastProbability, highlightLevel, LEGACY_FORECAST_IDS, visibleForecastPrediction } from '../../config/forecast-highlights';
+import { ForecastHighlight } from './ForecastHighlight';
 import { rankDirectPicks, rankUnpricedForecasts } from '../../prediction-engine/selection';
 
 Modal.setAppElement('#root');
@@ -438,28 +440,22 @@ const StandingsRow: React.FC<{ s: StandingsDataStandingModel }> = ({ s }) => (
 const pct = (value: number, decimals = 0) =>
   `${(value * 100).toFixed(decimals)}%`;
 
-const EnginePredictionPanel: React.FC<{
+export const EnginePredictionPanel: React.FC<{
   prediction: FixturePrediction;
   oddsMessage?: string;
   onCaptureOdds: (prediction: FixturePrediction) => Promise<string>;
   selectedPickKeys: string[];
   onTogglePick: (market: MarketValue) => void;
-}> = ({ prediction, oddsMessage, onCaptureOdds, selectedPickKeys, onTogglePick }) => {
+}> = ({ prediction: sourcePrediction, oddsMessage, onCaptureOdds, selectedPickKeys, onTogglePick }) => {
+  const prediction = visibleForecastPrediction(sourcePrediction);
   const [capturingOdds, setCapturingOdds] = useState(false);
   const [captureMessage, setCaptureMessage] = useState('');
   const { probabilities, markets, selections, dataQuality, headline } = prediction;
   const best = selections[0];
 
-  const keyMarkets: MarketId[] = [
-    'home_win',
-    'draw',
-    'away_win',
-    'btts_yes',
-    'over_2_5',
-    'home_over_0_5',
-    'away_over_0_5',
-  ];
-  const lookup = (marketId: MarketId) => markets.find((market) => market.marketId === marketId);
+  const firstMarkets: ForecastId[] = ['home_win', 'draw', 'away_win', 'btts_yes', 'over_2_5', 'home_over_0_5', 'away_over_0_5'];
+  const forecastIds = [...firstMarkets, ...(Object.keys(FORECAST_HIGHLIGHTS) as ForecastId[]).filter(id => !firstMarkets.includes(id))];
+  const hasSuggestions = forecastIds.some(id => highlightLevel(forecastProbability(prediction, id), FORECAST_HIGHLIGHTS[id] as ForecastPreference) !== 'none');
   const selectedMarketIds = new Set(selections.map((market) => market.marketId));
   const rejectedMarkets = markets.filter((market) => !selectedMarketIds.has(market.marketId));
 
@@ -478,15 +474,15 @@ const EnginePredictionPanel: React.FC<{
       </div>
 
       <div className="grid grid-cols-3 gap-1 text-[10px] text-slate-200 sm:grid-cols-4">
-        {keyMarkets.map((marketId) => {
-          const market = lookup(marketId);
-          if (!market) return null;
-          const validated = dataQuality.validatedMarkets.includes(marketId);
-          const weak = dataQuality.weakMarkets.includes(marketId);
+        {forecastIds.map((marketId) => {
+          const preference = FORECAST_HIGHLIGHTS[marketId] as ForecastPreference;
+          const probability = forecastProbability(prediction, marketId);
+          const validated = dataQuality.validatedMarkets.includes(marketId as MarketId);
+          const weak = dataQuality.weakMarkets.includes(marketId as MarketId);
           return (
-            <div key={marketId} className="rounded border border-slate-700 bg-slate-900/70 px-1.5 py-1">
+            <div key={marketId} title={preference.meaning} className="rounded border border-slate-700 bg-slate-900/70 px-1.5 py-1">
               <div className="flex items-center justify-between gap-1">
-                <span className="truncate text-slate-400">{market.label}</span>
+                <span className="truncate text-slate-400">{preference.label}</span>
                 {validated && (
                   <span title="Positive skill in the earlier evaluation only; later EPL goal-market results were weaker. Profitability unproven." className="shrink-0 rounded bg-emerald-500/20 px-1 text-[8px] font-semibold text-emerald-200">✓</span>
                 )}
@@ -494,18 +490,23 @@ const EnginePredictionPanel: React.FC<{
                   <span title="Weak or unvalidated edge over a simple baseline" className="shrink-0 rounded bg-amber-500/20 px-1 text-[8px] font-semibold text-amber-200">~</span>
                 )}
               </div>
-              <div className="font-semibold text-slate-100">{pct(market.modelProbability)}</div>
+              <div className="font-semibold text-slate-100">{probability === undefined ? 'Probability unavailable' : pct(probability)}</div>
+              <ForecastHighlight probability={probability} preference={preference} progressive={marketId === 'btts_yes'} />
+              <div className="mt-1 text-[9px] text-slate-400" title={preference.meaning}>{preference.range ? preference.meaning : null}</div>
+              {preference.range && <div className="mt-1 text-[9px] text-slate-400">Base scoreline model: sum of matching outcomes in the complete normalized grid; separate from prior-blended totals.</div>}
             </div>
           );
         })}
       </div>
 
+      <div className="mt-2 text-[10px] text-slate-400">Threshold-based suggestions use configurable preferences, independently of model picks. They do not establish accuracy or betting value.</div>
+      {!hasSuggestions && <div role="status" className="mt-1 text-[10px] text-slate-300">No forecasts meet the configured suggestion thresholds.</div>}
       <div className="mt-1 text-[9px] text-slate-400">
         ✓ earlier baseline study only · ~ weak/unvalidated · goal model: {dataQuality.goalModel}
       </div>
       {dataQuality.goalModel === 'prior-blended' && (
         <div className="mt-1 text-[9px] text-slate-400">
-          BTTS and total-goals percentages use the separate prior-blended goal model; base xG above is used for 1X2 and team-to-score.
+          BTTS and standard over/under percentages use the separate prior-blended goal model; base xG above is used for 1X2 and team-to-score.
         </div>
       )}
 
@@ -532,6 +533,8 @@ const EnginePredictionPanel: React.FC<{
         {captureMessage && <span className="text-[10px] text-slate-300">{captureMessage}</span>}
       </div>
 
+      <details className="mt-2">
+        <summary className="cursor-pointer text-[10px] font-semibold text-slate-300">Model picks and explanations</summary>
       {best && <div className="mt-2 text-[10px] leading-snug text-slate-300">{headline}</div>}
 
       {best ? (
@@ -610,6 +613,8 @@ const EnginePredictionPanel: React.FC<{
           </div>
         </details>
       )}
+
+      </details>
 
       {dataQuality.warnings.length > 0 && (
         <div className="mt-1 text-[10px] text-amber-200/80">
@@ -1501,21 +1506,21 @@ const BetAndFixturesScreen: React.FC = () => {
     toggleModal();
   };
 
-  const settledPaperSelections = paperSelections.filter((selection) => selection.settled);
+  const settledPaperSelections = paperSelections.filter((selection) => selection.settled && selection.marketId !== 'btts_no');
   const paperSummaries = summariseBy(settledPaperSelections, (selection) => selection.marketId);
-  const pendingPaperCount = paperSelections.filter((selection) => !selection.settled).length;
+  const pendingPaperCount = paperSelections.filter((selection) => !selection.settled && selection.marketId !== 'btts_no').length;
   const paperSelectionsByKey = new Map(
     paperSelections.map((selection) => [`${selection.fixtureId}:${selection.marketId}`, selection])
   );
   const selectedPaperPicks = selectedStatisticalPickKeys
     .map((key) => paperSelectionsByKey.get(key))
-    .filter((selection): selection is PaperSelection => Boolean(selection));
+    .filter((selection): selection is PaperSelection => Boolean(selection) && selection?.marketId !== 'btts_no');
   const displayedFixtureIds = predictionMode === 'legacy'
     ? Object.keys(groupedData)
-    : Object.keys(enginePredictions);
+    : Object.keys(enginePredictions).filter(id => currentFixtures.some(fixture => fixture.fixture.id === Number(id)));
   const visibleEnginePredictions = Object.values(enginePredictions).filter((prediction) =>
     currentFixtures.some((fixture) => fixture.fixture.id === prediction.fixture.fixture.id)
-  );
+  ).map(visibleForecastPrediction);
   const directPicks = rankDirectPicks(visibleEnginePredictions, nowTick);
   const unpricedPredictions = visibleEnginePredictions.filter((prediction) => !prediction.dataQuality.oddsAvailable);
   const unpricedForecasts = rankUnpricedForecasts(visibleEnginePredictions, nowTick);
@@ -1785,7 +1790,105 @@ const BetAndFixturesScreen: React.FC = () => {
           </div>
 
           <div className="space-y-4 lg:col-span-7 xl:col-span-8">
-            <div className="rounded-2xl border border-slate-700/60 bg-slate-900/80 p-4">
+            <details open className="border-t border-slate-700 p-2">
+              <summary className="cursor-pointer py-2 text-sm font-semibold text-slate-300">
+                {predictionMode === 'statistical' ? 'All forecasts and market details' : 'Legacy fixture results'} · {displayedFixtureIds.length} fixtures
+              </summary>
+              {displayedFixtureIds.length === 0 ? (
+                <div className="grid place-items-center py-16 text-sm text-slate-400">
+                  {fixtureLoadWarnings.length > 0 ? (
+                    <div className="max-w-2xl space-y-2 text-left">
+                      <div className="font-semibold text-amber-200">Fixture data unavailable</div>
+                      {Array.from(new Set(fixtureLoadWarnings)).map((warning) => (
+                        <div key={warning} className="text-xs text-amber-100/80">{warning}</div>
+                      ))}
+                    </div>
+                  ) : selectedBatch.length > 0 ? (
+                    <div className="max-w-xl text-center text-xs text-slate-300">
+                      No fixtures were returned for the selected leagues and date range. Current-season fixture or team-history access may be restricted by the API plan; no model snapshot or paper entry was created.
+                    </div>
+                  ) : (
+                    'No predictions yet. Select leagues, choose options, and press Bet.'
+                  )}
+                </div>
+              ) : (
+                <div className="max-h-[70vh] space-y-3 overflow-y-auto pr-1">
+                  {displayedFixtureIds.map((fixtureId) => {
+                    const currentFixture = currentFixtures.find((f) => `${f.fixture.id}` === fixtureId);
+                    if (!currentFixture) return null;
+                    const enginePrediction = enginePredictions[Number(fixtureId)];
+
+                    return (
+                      <div key={fixtureId} className="rounded-xl border border-slate-700/70 bg-slate-900 p-3">
+                        <div className="mb-2 flex items-center justify-between text-xs text-slate-300">
+                          <div>
+                            <div className="font-semibold text-slate-100">{currentFixture.league.name} ({currentFixture.league.country})</div>
+                            <div>{toMomentDate(currentFixture.fixture.date).format('DD MMMM YYYY HH:mm')}</div>
+                          </div>
+                          <button
+                            onClick={onFixtureClick(currentFixture)}
+                            className="rounded-lg border border-cyan-500/50 bg-cyan-500/10 px-3 py-1 text-[11px] font-semibold text-cyan-200 hover:bg-cyan-500/20"
+                          >
+                            View details
+                          </button>
+                        </div>
+
+                        {predictionMode === 'statistical' && enginePrediction && (
+                          <EnginePredictionPanel
+                            prediction={enginePrediction}
+                            oddsMessage={oddsLoadMessages[currentFixture.fixture.id]}
+                            onCaptureOdds={capturePaperOdds}
+                            selectedPickKeys={selectedStatisticalPickKeys}
+                            onTogglePick={(market) =>
+                              toggleStatisticalPick(enginePrediction.fixture.fixture.id, market)
+                            }
+                          />
+                        )}
+
+                        <div className="flex flex-col gap-2 text-sm font-medium text-slate-100 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex items-center gap-2">
+                            <img src={currentFixture.teams.home.logo} className="h-5 w-5" />
+                            <div className="truncate">{currentFixture.teams.home.name}</div>
+                          </div>
+                          <div className="text-xs text-slate-500">vs</div>
+                          <div className="flex items-center gap-2 sm:justify-end">
+                            <img src={currentFixture.teams.away.logo} className="h-5 w-5" />
+                            <div className="truncate">{currentFixture.teams.away.name}</div>
+                          </div>
+                        </div>
+
+                        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          {predictionMode === 'legacy' && groupedData[currentFixture.fixture.id]?.map((option) => {
+                            const favorite = isFavoritePrediction(currentFixture.fixture.id, option.id);
+                            return (
+                              <div key={option.id} className="rounded-lg border border-sky-400/20 bg-sky-500/10 p-2">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-[11px] font-semibold text-sky-100">{option.shortName}</span>
+                                  <button
+                                    onClick={() => toggleFavoritePrediction(currentFixture, option)}
+                                    className={`rounded-md px-2 py-1 text-[10px] font-semibold ${
+                                      favorite
+                                        ? 'border border-cyan-400/50 bg-cyan-500/20 text-cyan-100'
+                                        : 'border border-slate-600 bg-slate-800 text-slate-300'
+                                    }`}
+                                  >
+                                    {favorite ? 'Saved' : 'Save'}
+                                  </button>
+                                </div>
+                                <div className="mt-1 text-[10px] text-slate-200">{option.description || option.name}</div>
+                                {LEGACY_FORECAST_IDS[option.id] && <div className="mt-1 text-[9px] text-slate-400">Probability unavailable: legacy rules return a match flag, not a probability. No threshold-based highlight.</div>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </details>
+            <details className="rounded-2xl border border-slate-700/60 bg-slate-900/80 p-4">
+              <summary className="cursor-pointer text-sm font-semibold text-slate-200">Model picks, rankings and explanations</summary>
               <div className="mb-2 flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-100">Predictions</h2>
@@ -1961,7 +2064,7 @@ const BetAndFixturesScreen: React.FC = () => {
                   </div>
                 )}
               </details>
-            </div>
+            </details>
 
             <div className="rounded-2xl border border-slate-700/60 bg-slate-900/80 p-3">
               <div className="mb-2 flex items-center justify-between">
@@ -2032,102 +2135,7 @@ const BetAndFixturesScreen: React.FC = () => {
               )}
             </div>
 
-            <details open={predictionMode === 'legacy'} className="border-t border-slate-700 p-2">
-              <summary className="cursor-pointer py-2 text-sm font-semibold text-slate-300">
-                {predictionMode === 'statistical' ? 'All forecasts and market details' : 'Legacy fixture results'} · {displayedFixtureIds.length} fixtures
-              </summary>
-              {displayedFixtureIds.length === 0 ? (
-                <div className="grid place-items-center py-16 text-sm text-slate-400">
-                  {fixtureLoadWarnings.length > 0 ? (
-                    <div className="max-w-2xl space-y-2 text-left">
-                      <div className="font-semibold text-amber-200">Fixture data unavailable</div>
-                      {Array.from(new Set(fixtureLoadWarnings)).map((warning) => (
-                        <div key={warning} className="text-xs text-amber-100/80">{warning}</div>
-                      ))}
-                    </div>
-                  ) : selectedBatch.length > 0 ? (
-                    <div className="max-w-xl text-center text-xs text-slate-300">
-                      No fixtures were returned for the selected leagues and date range. Current-season fixture or team-history access may be restricted by the API plan; no model snapshot or paper entry was created.
-                    </div>
-                  ) : (
-                    'No predictions yet. Select leagues, choose options, and press Bet.'
-                  )}
-                </div>
-              ) : (
-                <div className="max-h-[70vh] space-y-3 overflow-y-auto pr-1">
-                  {displayedFixtureIds.map((fixtureId) => {
-                    const currentFixture = currentFixtures.find((f) => `${f.fixture.id}` === fixtureId);
-                    if (!currentFixture) return null;
-                    const enginePrediction = enginePredictions[Number(fixtureId)];
 
-                    return (
-                      <div key={fixtureId} className="rounded-xl border border-slate-700/70 bg-slate-900 p-3">
-                        <div className="mb-2 flex items-center justify-between text-xs text-slate-300">
-                          <div>
-                            <div className="font-semibold text-slate-100">{currentFixture.league.name} ({currentFixture.league.country})</div>
-                            <div>{toMomentDate(currentFixture.fixture.date).format('DD MMMM YYYY HH:mm')}</div>
-                          </div>
-                          <button
-                            onClick={onFixtureClick(currentFixture)}
-                            className="rounded-lg border border-cyan-500/50 bg-cyan-500/10 px-3 py-1 text-[11px] font-semibold text-cyan-200 hover:bg-cyan-500/20"
-                          >
-                            View details
-                          </button>
-                        </div>
-
-                        {predictionMode === 'statistical' && enginePrediction && (
-                          <EnginePredictionPanel
-                            prediction={enginePrediction}
-                            oddsMessage={oddsLoadMessages[currentFixture.fixture.id]}
-                            onCaptureOdds={capturePaperOdds}
-                            selectedPickKeys={selectedStatisticalPickKeys}
-                            onTogglePick={(market) =>
-                              toggleStatisticalPick(enginePrediction.fixture.fixture.id, market)
-                            }
-                          />
-                        )}
-
-                        <div className="flex flex-col gap-2 text-sm font-medium text-slate-100 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="flex items-center gap-2">
-                            <img src={currentFixture.teams.home.logo} className="h-5 w-5" />
-                            <div className="truncate">{currentFixture.teams.home.name}</div>
-                          </div>
-                          <div className="text-xs text-slate-500">vs</div>
-                          <div className="flex items-center gap-2 sm:justify-end">
-                            <img src={currentFixture.teams.away.logo} className="h-5 w-5" />
-                            <div className="truncate">{currentFixture.teams.away.name}</div>
-                          </div>
-                        </div>
-
-                        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                          {predictionMode === 'legacy' && groupedData[currentFixture.fixture.id]?.map((option) => {
-                            const favorite = isFavoritePrediction(currentFixture.fixture.id, option.id);
-                            return (
-                              <div key={option.id} className="rounded-lg border border-sky-400/20 bg-sky-500/10 p-2">
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className="text-[11px] font-semibold text-sky-100">{option.shortName}</span>
-                                  <button
-                                    onClick={() => toggleFavoritePrediction(currentFixture, option)}
-                                    className={`rounded-md px-2 py-1 text-[10px] font-semibold ${
-                                      favorite
-                                        ? 'border border-cyan-400/50 bg-cyan-500/20 text-cyan-100'
-                                        : 'border border-slate-600 bg-slate-800 text-slate-300'
-                                    }`}
-                                  >
-                                    {favorite ? 'Saved' : 'Save'}
-                                  </button>
-                                </div>
-                                <div className="mt-1 text-[10px] text-slate-200">{option.description || option.name}</div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </details>
           </div>
         </div>
       </div>

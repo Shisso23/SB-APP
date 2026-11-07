@@ -1,5 +1,7 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { predictFixture } from '../../prediction-engine/predict-fixture';
+import { EnginePredictionPanel } from './BetAndFixturesScreen';
 import BetAndFixturesScreen from './BetAndFixturesScreen';
 import authNetworkService from '../../services/auth-network-service/auth-network.service';
 import { makeFixture } from '../../prediction-engine/test-support/fixture-builders';
@@ -109,4 +111,47 @@ it('reports a failed explicit refresh without inventing a settled result', async
   await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Fixture refresh unavailable'));
   await waitFor(() => expect(screen.getByRole('button', { name: 'Bet (run predictions)' })).not.toBeDisabled());
   expect(readPaperRecord().selections[0].settled).toBeUndefined();
+});
+it('keeps all forecasts first and open, retains collapsible picks, and updates on model and filter changes', async () => {
+  await runInitialBatch();
+  const forecasts = screen.getByText(/All forecasts and market details/).closest('details')!;
+  const picks = screen.getByText('Model picks, rankings and explanations').closest('details')!;
+  expect(forecasts).toHaveAttribute('open');
+  expect(picks).not.toHaveAttribute('open');
+  expect(forecasts.compareDocumentPosition(picks) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(forecasts.querySelector('[data-highlight]')).toBeTruthy();
+  expect(forecasts).toHaveTextContent('2–5 total goals');
+  expect(forecasts).toHaveTextContent('3–6 total goals');
+  const statisticalBadges = forecasts.querySelectorAll('[data-highlight]').length;
+  fireEvent.click(screen.getByRole('button', { name: 'Legacy rules', exact: true }));
+  expect(screen.queryByText(/All forecasts and market details/)).not.toBeInTheDocument();
+  expect(screen.getByText(/Legacy fixture results/).closest('details')!.querySelector('[data-highlight]')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Statistical', exact: true }));
+  expect(screen.getByText(/All forecasts and market details/).closest('details')!.querySelectorAll('[data-highlight]')).toHaveLength(statisticalBadges);
+  // A date range with no assessed fixtures must remove the previous highlights.
+  const dates = screen.getAllByRole('textbox').filter(input => (input as HTMLInputElement).value.match(/^\d{2}\/\d{2}\/\d{4}$/));
+  expect(dates.length).toBeGreaterThanOrEqual(2);
+  await act(async () => {
+    fireEvent.change(dates[0], { target: { value: '01/01/2099' } });
+    fireEvent.blur(dates[0]);
+  });
+  await waitFor(() => expect(screen.getByText(/All forecasts and market details/).closest('details')!.querySelector('[data-highlight]')).toBeNull());
+});
+
+
+it('keeps every forecast visible with an honest empty suggestion state when probabilities are missing', () => {
+  const prediction = predictFixture({
+    fixture: makeApiFixture(999, Date.now() + 3_600_000, currentYear, false),
+    allFixtures: [], leaguesStandings: [],
+  });
+  prediction.markets = [{ marketId: 'btts_no', label: 'BTTS No', modelProbability: .99 } as typeof prediction.markets[number]];
+  prediction.selections = [...prediction.markets];
+  prediction.headline = 'BTTS No is leading';
+  prediction.probabilities.baseScorelines = undefined;
+  render(<EnginePredictionPanel prediction={prediction} selectedPickKeys={[]} onTogglePick={jest.fn()} onCaptureOdds={jest.fn()} />);
+  expect(screen.getByRole('status')).toHaveTextContent('No forecasts meet the configured suggestion thresholds.');
+  expect(screen.getAllByText('Probability unavailable')).toHaveLength(25);
+  expect(screen.queryByText(/BTTS No/)).not.toBeInTheDocument();
+  expect(screen.getByText('Both teams to score')).toBeInTheDocument();
+  expect(screen.getByText('Model picks and explanations').closest('details')).not.toHaveAttribute('open');
 });

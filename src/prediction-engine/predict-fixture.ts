@@ -216,6 +216,7 @@ export const predictFixture = (
     awayOrDraw: grid.awayOrDraw,
     homeDrawNoBet: grid.homeDrawNoBet,
     awayDrawNoBet: grid.awayDrawNoBet,
+    baseScorelines: grid.baseScorelines,
     topScorelines: grid.topScorelines,
   };
 

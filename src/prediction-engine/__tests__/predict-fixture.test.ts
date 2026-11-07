@@ -101,8 +101,9 @@ describe('predictFixture (end-to-end)', () => {
       })),
       coldStart: { probabilities: coldStart.probabilities, selectionIds: coldStart.selections.map((market) => market.marketId) },
     };
-    const roundedOutput = JSON.parse(JSON.stringify(output, (_key, value) =>
-      typeof value === 'number' ? Number(value.toFixed(4)) : value
+    const roundedOutput = JSON.parse(JSON.stringify(output, (key, value) =>
+      // New display-only full grid is verified separately; preserve every original golden value.
+      key === 'baseScorelines' ? undefined : typeof value === 'number' ? Number(value.toFixed(4)) : value
     ));
     expect(roundedOutput).toEqual({
       probabilities: {

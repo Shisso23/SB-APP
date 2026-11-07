@@ -110,6 +110,7 @@ export interface PoissonGridResult {
   awayOrDraw: number;
   homeDrawNoBet: number;
   awayDrawNoBet: number;
+  baseScorelines: Array<{ home: number; away: number; probability: number }>;
   topScorelines: Array<{ home: number; away: number; probability: number }>;
 }
 
@@ -227,6 +228,7 @@ export const buildPoissonGrid = ({
     awayOrDraw: round(awayOrDraw, 4),
     homeDrawNoBet: round(homeDrawNoBet, 4),
     awayDrawNoBet: round(awayDrawNoBet, 4),
+    baseScorelines: scorelines,
     topScorelines,
   };
 };
