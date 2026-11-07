@@ -689,6 +689,7 @@ const BetAndFixturesScreen: React.FC = () => {
   const [favoritePredictions, setFavoritePredictions] = useState<FavoritePredictionItem[]>(() => readFavoritesCache());
   const [isLeaguesByCountryCollapsed, setIsLeaguesByCountryCollapsed] = useState(false);
   const [isBetOptionsCollapsed, setIsBetOptionsCollapsed] = useState(true);
+  const [expandedForecasts, setExpandedForecasts] = useState<Record<string, boolean>>({});
 
   const [selectedOptions, setSelectedOptions] = useState<betOptionModel[]>(() => restoredView ? betOptions.filter(option => restoredView.optionIds.includes(option.id)) : betOptions);
   const [predictionMode, setPredictionMode] = useState<PredictionMode>(readPredictionMode);
@@ -895,6 +896,7 @@ const BetAndFixturesScreen: React.FC = () => {
 
   const clearPredictions = () => {
     setPredictedFixtures([]);
+    setExpandedForecasts({});
     setGroupedData({});
     setEnginePredictions({});
     setAllFixtures([]);
@@ -1849,6 +1851,14 @@ const BetAndFixturesScreen: React.FC = () => {
               <summary className="cursor-pointer py-2 text-sm font-semibold text-slate-300">
                 {predictionMode === 'statistical' ? 'All forecasts and market details' : 'Legacy fixture results'} · {displayedFixtureIds.length} fixtures
               </summary>
+              {displayedFixtureIds.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label="Forecast expansion controls">
+                  <button type="button" onClick={() => setExpandedForecasts(previous => ({ ...previous, ...Object.fromEntries(displayedFixtureIds.map(id => [id, true])) }))}
+                    className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700">Expand all</button>
+                  <button type="button" onClick={() => setExpandedForecasts(previous => ({ ...previous, ...Object.fromEntries(displayedFixtureIds.map(id => [id, false])) }))}
+                    className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700">Collapse all</button>
+                </div>
+              )}
               {displayedFixtureIds.length === 0 ? (
                 <div className="grid place-items-center py-16 text-sm text-slate-400">
                   {fixtureLoadWarnings.length > 0 ? (
@@ -1872,22 +1882,34 @@ const BetAndFixturesScreen: React.FC = () => {
                     const currentFixture = currentFixtures.find((f) => `${f.fixture.id}` === fixtureId);
                     if (!currentFixture) return null;
                     const enginePrediction = enginePredictions[Number(fixtureId)];
+                    const expanded = expandedForecasts[fixtureId] !== false;
+                    const matchLabel = `${currentFixture.teams.home.name} vs ${currentFixture.teams.away.name}`;
 
                     return (
                       <div key={fixtureId} className="rounded-xl border border-slate-700/70 bg-slate-900 p-3">
                         <div className="mb-2 flex items-center justify-between text-xs text-slate-300">
                           <div>
+                            {!expanded && <div className="mb-1 font-semibold text-slate-100">{matchLabel}</div>}
                             <div className="font-semibold text-slate-100">{currentFixture.league.name} ({currentFixture.league.country})</div>
                             <div>{toMomentDate(currentFixture.fixture.date).format('DD MMMM YYYY HH:mm')}</div>
                           </div>
+                          <div className="flex flex-wrap justify-end gap-2">
+                          <button type="button" aria-expanded={expanded} aria-controls={`forecast-content-${fixtureId}`}
+                            aria-label={`${expanded ? 'Collapse' : 'Expand'} forecast for ${matchLabel}`}
+                            onClick={() => setExpandedForecasts(previous => ({ ...previous, [fixtureId]: !expanded }))}
+                            className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-1 text-[11px] font-semibold text-slate-200 hover:bg-slate-700">
+                            {expanded ? 'Collapse forecast' : 'Expand forecast'}
+                          </button>
                           <button
                             onClick={onFixtureClick(currentFixture)}
                             className="rounded-lg border border-cyan-500/50 bg-cyan-500/10 px-3 py-1 text-[11px] font-semibold text-cyan-200 hover:bg-cyan-500/20"
                           >
                             View details
                           </button>
+                          </div>
                         </div>
 
+                        <div id={`forecast-content-${fixtureId}`} hidden={!expanded}>
                         {predictionMode === 'statistical' && enginePrediction && (
                           <EnginePredictionPanel
                             prediction={enginePrediction}
@@ -1935,6 +1957,7 @@ const BetAndFixturesScreen: React.FC = () => {
                               </div>
                             );
                           })}
+                        </div>
                         </div>
                       </div>
                     );

@@ -232,3 +232,23 @@ it('keeps forecasts usable and reports a browser-storage failure', async () => {
     expect(screen.getAllByText(/predictions could not be saved for page refresh/).length).toBeGreaterThan(0);
   } finally { spy.mockRestore(); }
 });
+
+it('expands or collapses individual fixtures and the full forecast list without removing forecasts', async () => {
+  await runInitialBatch();
+  const toggles = screen.getAllByRole('button', { name: /^Collapse forecast for/ });
+  expect(toggles.length).toBeGreaterThan(1);
+  const contents = toggles.map(button => document.getElementById(button.getAttribute('aria-controls')!)!);
+  contents.forEach(content => expect(content).toBeVisible());
+  const probabilitiesBefore = contents.map(content => content.textContent);
+  fireEvent.click(toggles[0]);
+  expect(toggles[0]).toHaveAttribute('aria-expanded', 'false');
+  expect(contents[0]).not.toBeVisible();
+  expect(contents[1]).toBeVisible();
+  expect(screen.getAllByRole('button', { name: 'View details' }).length).toBeGreaterThan(0);
+  fireEvent.click(screen.getByRole('button', { name: 'Collapse all', exact: true }));
+  contents.forEach(content => expect(content).not.toBeVisible());
+  fireEvent.click(screen.getByRole('button', { name: 'Expand all', exact: true }));
+  contents.forEach(content => expect(content).toBeVisible());
+  expect(contents.map(content => content.textContent)).toEqual(probabilitiesBefore);
+  expect(screen.getAllByRole('button', { name: /^Collapse forecast for/ })).toHaveLength(toggles.length);
+});
