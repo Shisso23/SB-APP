@@ -61,6 +61,7 @@ const MAX_BATCH = 7;
 const COOLDOWN_MS = 60_000; // 1 minute
 const LEAGUES_CACHE_KEY = 'leaguesCache_v1';
 const PREDICTIONS_CACHE_KEY = 'leaguePredictions_v3';
+const PREDICTION_VIEW_KEY = 'predictionView_v1';
 const STANDINGS_CACHE_KEY = 'standingsCache_v2';
 const FAVORITES_CACHE_KEY = 'favoritePredictions_v1';
 const STATISTICAL_PICKS_KEY = 'statisticalPicks_v1';
@@ -164,7 +165,16 @@ interface LeaguesCacheShape {
   data: LeagueDataModel[];
 }
 
+interface PredictionViewCache {
+  ts: number;
+  from: string;
+  to: string;
+  optionIds: number[];
+}
+
 interface PredictionsCacheItem {
+  enginePredictions?: FixturePrediction[];
+  oddsMessages?: Record<number, string>;
   leagueId: number;
   season: number;
   from: string;
@@ -226,10 +236,25 @@ const writeLeaguesCache = (filters: LeaguesFilterModel, data: LeagueDataModel[])
   try { localStorage.setItem(LEAGUES_CACHE_KEY, JSON.stringify(payload)); } catch {}
 };
 
-const readPredictionsCache = (): PredictionsCacheShape =>
-  safeParse<PredictionsCacheShape>(localStorage.getItem(PREDICTIONS_CACHE_KEY)) || { items: [] };
+const readPredictionsCache = (): PredictionsCacheShape => {
+  try {
+    const parsed = safeParse<PredictionsCacheShape>(localStorage.getItem(PREDICTIONS_CACHE_KEY));
+    return { items: Array.isArray(parsed?.items) ? parsed.items.filter(item =>
+      item && Number.isFinite(item.ts) && Array.isArray(item.fixtures) && Array.isArray(item.predicted) && Array.isArray(item.optionIds)
+    ) : [] };
+  } catch { return { items: [] }; }
+};
+const readPredictionView = (): PredictionViewCache | null => {
+  try {
+    const view = safeParse<PredictionViewCache>(localStorage.getItem(PREDICTION_VIEW_KEY));
+    if (!view || !Number.isFinite(view.ts) || Date.now() < view.ts || Date.now() - view.ts >= PREDICTIONS_CACHE_TTL ||
+      !Array.isArray(view.optionIds) || !moment(view.from, 'YYYY-MM-DD', true).isValid() ||
+      !moment(view.to, 'YYYY-MM-DD', true).isValid() || view.from > view.to) return null;
+    return view;
+  } catch { return null; }
+};
 const writePredictionsCache = (shape: PredictionsCacheShape) => {
-  try { localStorage.setItem(PREDICTIONS_CACHE_KEY, JSON.stringify(shape)); } catch {}
+  try { localStorage.setItem(PREDICTIONS_CACHE_KEY, JSON.stringify(shape)); return true; } catch { return false; }
 };
 
 const readStandingsCache = (): StandingsCacheShape =>
@@ -645,6 +670,8 @@ const BetAndFixturesScreen: React.FC = () => {
     return () => window.clearTimeout(id);
   }, [rawSearch]);
 
+  const [restoredView] = useState(readPredictionView);
+
   // Selection
   const [selectedBatch, setSelectedBatch] = useState<LeagueDataModel[]>([]);
 
@@ -663,7 +690,7 @@ const BetAndFixturesScreen: React.FC = () => {
   const [isLeaguesByCountryCollapsed, setIsLeaguesByCountryCollapsed] = useState(false);
   const [isBetOptionsCollapsed, setIsBetOptionsCollapsed] = useState(true);
 
-  const [selectedOptions, setSelectedOptions] = useState<betOptionModel[]>(betOptions);
+  const [selectedOptions, setSelectedOptions] = useState<betOptionModel[]>(() => restoredView ? betOptions.filter(option => restoredView.optionIds.includes(option.id)) : betOptions);
   const [predictionMode, setPredictionMode] = useState<PredictionMode>(readPredictionMode);
 
   const changePredictionMode = (mode: PredictionMode) => {
@@ -689,8 +716,8 @@ const BetAndFixturesScreen: React.FC = () => {
   };
 
   // Date range
-  const [fromDate, setFromDate] = useState(new Date(moment().format('YYYY-MM-DD')));
-  const [toDate, setToDate] = useState(new Date(moment().add(1, 'days').format('YYYY-MM-DD')));
+  const [fromDate, setFromDate] = useState(() => new Date(`${restoredView?.from ?? moment().format('YYYY-MM-DD')}T00:00:00`));
+  const [toDate, setToDate] = useState(() => new Date(`${restoredView?.to ?? moment().add(1, 'days').format('YYYY-MM-DD')}T00:00:00`));
 
   // Cooldown
   const [lastBetAt, setLastBetAt] = useState<number | null>(null);
@@ -874,7 +901,7 @@ const BetAndFixturesScreen: React.FC = () => {
     setFutureFixtures([]);
     setCurrentFixtures([]);
     setLastBetAt(null);
-    try { localStorage.removeItem(PREDICTIONS_CACHE_KEY); } catch {}
+    try { localStorage.removeItem(PREDICTIONS_CACHE_KEY); localStorage.removeItem(PREDICTION_VIEW_KEY); } catch {}
   };
 
   // Cooldown ticker
@@ -909,13 +936,16 @@ const BetAndFixturesScreen: React.FC = () => {
   // Restore cached predictions
   useEffect(() => {
     const cache = readPredictionsCache();
-    const fresh = cache.items.filter(it => Date.now() - it.ts <= PREDICTIONS_CACHE_TTL);
+    const fresh = cache.items.filter(it => Date.now() >= it.ts && Date.now() - it.ts < PREDICTIONS_CACHE_TTL);
     if (fresh.length === 0) return;
 
     const fromStr = moment(fromDate).format('YYYY-MM-DD');
     const toStr = moment(toDate).format('YYYY-MM-DD');
     const withinWindow = fresh.filter(it => it.from === fromStr && it.to === toStr);
 
+    const restoredEngine = withinWindow.flatMap(item => item.enginePredictions ?? []);
+    setEnginePredictions(Object.fromEntries(restoredEngine.map(prediction => [prediction.fixture.fixture.id, prediction])));
+    setOddsLoadMessages(Object.assign({}, ...withinWindow.map(item => item.oddsMessages ?? {})));
     const mergedFixtures = withinWindow.flatMap(it => it.fixtures);
     setAllFixtures(prev => dedupeFixtures([...prev, ...mergedFixtures]));
 
@@ -939,8 +969,8 @@ const BetAndFixturesScreen: React.FC = () => {
   }, [futureFixtures.length, fromDate.toString(), toDate.toString()]);
 
   useEffect(()=>{
-    const bet = ()=> handleBet()
-    bet()
+    // Restore saved results on mount without an empty-batch run overwriting them.
+    if (selectedBatch.length > 0) handleBet()
   }, [fromDate.toString(), toDate.toString()])
 
   useEffect(() => {
@@ -1178,6 +1208,17 @@ const BetAndFixturesScreen: React.FC = () => {
     }));
     setOddsLoadMessages((previous) => ({ ...previous, [fixture.fixture.id]: 'Odds refreshed from the provider.' }));
 
+    const cache = readPredictionsCache();
+    cache.items.forEach(item => {
+      if (item.enginePredictions?.some(entry => entry.fixture.fixture.id === fixture.fixture.id)) {
+        item.enginePredictions = item.enginePredictions.map(entry => entry.fixture.fixture.id === fixture.fixture.id ? withOdds : entry);
+        item.oddsMessages = { ...item.oddsMessages, [fixture.fixture.id]: 'Odds refreshed from the provider.' };
+      }
+    });
+    if (!writePredictionsCache(cache)) {
+      setFixtureLoadWarnings(previous => [...previous, 'Browser storage is full or unavailable; refreshed odds could not be saved.']);
+    }
+
     return `Captured ${paperSelections.length} priced markets from ${mapped.bookmakers.length} bookmakers.`;
   };
 
@@ -1317,6 +1358,7 @@ const BetAndFixturesScreen: React.FC = () => {
     }
     setOddsLoadMessages(oddsMessages);
 
+    let engineResultsForCache: FixturePrediction[] = [];
     // Statistical engine: calibrated probabilities + explanations for every fixture.
     // Guarded so an unexpected error in the engine cannot break the existing bet flow.
     try {
@@ -1339,6 +1381,7 @@ const BetAndFixturesScreen: React.FC = () => {
           now: Date.now(),
         });
       });
+      engineResultsForCache = engineResults;
       const engineMap: Record<number, FixturePrediction> = {};
       engineResults.forEach((prediction) => {
         engineMap[Number(prediction.fixture.fixture.id)] = prediction;
@@ -1379,10 +1422,11 @@ const BetAndFixturesScreen: React.FC = () => {
 
     const mergedPred = [...predictedFixtures, ...cachedPred, ...freshPred];
 
-    // write predictions cache for misses
-    if (misses.length > 0) {
+    // Store the actual displayed forecasts, including runs that reused fixture data.
+    if (selectedBatch.length > 0) {
       const toWrite = readPredictionsCache();
-      for (const lg of misses) {
+      toWrite.items = toWrite.items.filter(item => Date.now() >= item.ts && Date.now() - item.ts < PREDICTIONS_CACHE_TTL);
+      for (const lg of selectedBatch) {
         const season = lg.seasons.find(s => s.current === true)?.year || lg.seasons[0]?.year;
         const perLeaguePred = freshPred
           .map(p => ({
@@ -1403,14 +1447,25 @@ const BetAndFixturesScreen: React.FC = () => {
           from: fromStr,
           to: toStr,
           optionIds,
-          fixtures: fetchedFixtures.filter(f => f.league.id === lg.league.id && f.league.season === season),
+          fixtures: mergedAll.filter(f => f.league.id === lg.league.id),
+          enginePredictions: engineResultsForCache.filter(prediction => prediction.fixture.league.id === lg.league.id),
+          oddsMessages: Object.fromEntries(engineResultsForCache.filter(prediction => prediction.fixture.league.id === lg.league.id)
+            .map(prediction => [prediction.fixture.fixture.id, oddsMessages[prediction.fixture.fixture.id]])),
           predicted: perLeaguePred,
           ts: Date.now(),
         };
         toWrite.items = toWrite.items.filter(it => !cacheKeyMatch(it, lg.league.id, season, fromStr, toStr, optionIds));
         toWrite.items.push(item);
       }
-      writePredictionsCache(toWrite);
+      if (writePredictionsCache(toWrite)) {
+        try {
+          localStorage.setItem(PREDICTION_VIEW_KEY, JSON.stringify({ ts: Date.now(), from: fromStr, to: toStr, optionIds }));
+        } catch {
+          setFixtureLoadWarnings(previous => [...previous, 'Browser storage is unavailable; the date range could not be saved.']);
+        }
+      } else {
+        setFixtureLoadWarnings(previous => [...previous, 'Browser storage is full or unavailable; predictions could not be saved for page refresh.']);
+      }
     }
 
     setAllFixtures(mergedAll);

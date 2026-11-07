@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { predictFixture } from '../../prediction-engine/predict-fixture';
 import { EnginePredictionPanel } from './BetAndFixturesScreen';
 import BetAndFixturesScreen from './BetAndFixturesScreen';
@@ -154,4 +154,81 @@ it('keeps every forecast visible with an honest empty suggestion state when prob
   expect(screen.queryByText(/BTTS No/)).not.toBeInTheDocument();
   expect(screen.getByText('Both teams to score')).toBeInTheDocument();
   expect(screen.getByText('Model picks and explanations').closest('details')).not.toHaveAttribute('open');
+});
+
+
+it('restores statistical forecasts and highlights after remount without refetching or renewing their six-hour lifetime', async () => {
+  await runInitialBatch();
+  const cacheBefore = localStorage.getItem('leaguePredictions_v3');
+  const forecastsBefore = screen.getByText(/All forecasts and market details/).closest('details')!.textContent;
+  const requestsBefore = get.mock.calls.length;
+  expect(JSON.parse(cacheBefore!).items[0].enginePredictions.length).toBeGreaterThan(0);
+  cleanup();
+  render(<BetAndFixturesScreen />);
+  await screen.findAllByText('2–5 total goals');
+  expect(screen.getByText(/All forecasts and market details/).closest('details')!.textContent).toBe(forecastsBefore);
+  expect(get.mock.calls.length).toBe(requestsBefore);
+  expect(localStorage.getItem('leaguePredictions_v3')).toBe(cacheBefore);
+  expect(screen.queryByText(/BTTS No/)).not.toBeInTheDocument();
+});
+
+it('restores a saved date range and legacy results, and clearing removes both caches', async () => {
+  await runInitialBatch();
+  const view = JSON.parse(localStorage.getItem('predictionView_v1')!);
+  // Save a wider custom range that still includes the assessed fixture.
+  view.from = '2020-01-01';
+  view.to = '2099-01-01';
+  localStorage.setItem('predictionView_v1', JSON.stringify(view));
+  const cache = JSON.parse(localStorage.getItem('leaguePredictions_v3')!);
+  cache.items.forEach((item: { from: string; to: string }) => { item.from = view.from; item.to = view.to; });
+  // Seed a known legacy match: the synthetic team's rule-based run can legitimately return none.
+  cache.items[0].predicted = [{
+    fixtures: [cache.items[0].enginePredictions[0].fixture],
+    option: { id: 1, name: 'Home Win', shortName: 'Home', level: 3, description: 'Home team wins' },
+  }];
+  localStorage.setItem('leaguePredictions_v3', JSON.stringify(cache));
+  fireEvent.click(screen.getByRole('button', { name: 'Legacy rules', exact: true }));
+  cleanup();
+  render(<BetAndFixturesScreen />);
+  await waitFor(() => expect(screen.getByText(/Legacy fixture results/).textContent).not.toContain('0 fixtures'));
+  expect(screen.getByDisplayValue('01/01/2020')).toBeInTheDocument();
+  expect(screen.getByDisplayValue('01/01/2099')).toBeInTheDocument();
+  fireEvent.click(screen.getByText('Model picks, rankings and explanations'));
+  fireEvent.click(screen.getByRole('button', { name: 'Clear predictions' }));
+  expect(localStorage.getItem('leaguePredictions_v3')).toBeNull();
+  expect(localStorage.getItem('predictionView_v1')).toBeNull();
+  cleanup();
+  render(<BetAndFixturesScreen />);
+  expect(screen.getByText(/Legacy fixture results/)).toHaveTextContent('0 fixtures');
+});
+
+it('does not restore cached predictions at the six-hour expiry boundary', async () => {
+  await runInitialBatch();
+  const cache = JSON.parse(localStorage.getItem('leaguePredictions_v3')!);
+  cache.items.forEach((item: { ts: number }) => { item.ts = Date.now() - 6 * 60 * 60 * 1000; });
+  localStorage.setItem('leaguePredictions_v3', JSON.stringify(cache));
+  cleanup();
+  render(<BetAndFixturesScreen />);
+  expect(screen.getByText(/All forecasts and market details/)).toHaveTextContent('0 fixtures');
+  expect(screen.queryByText('2–5 total goals')).not.toBeInTheDocument();
+});
+
+test.each(['not-json', '{"items":{}}'])('ignores malformed prediction cache: %s', raw => {
+  localStorage.setItem('leaguePredictions_v3', raw);
+  localStorage.setItem('predictionView_v1', raw);
+  render(<BetAndFixturesScreen />);
+  expect(screen.getByText(/All forecasts and market details/)).toHaveTextContent('0 fixtures');
+});
+
+it('keeps forecasts usable and reports a browser-storage failure', async () => {
+  const original = Storage.prototype.setItem;
+  const spy = jest.spyOn(Storage.prototype, 'setItem').mockImplementation(function(key, value) {
+    if (key === 'leaguePredictions_v3') throw new DOMException('Storage full', 'QuotaExceededError');
+    return original.call(this, key, value);
+  });
+  try {
+    await runInitialBatch();
+    expect(screen.getAllByText('2–5 total goals').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/predictions could not be saved for page refresh/).length).toBeGreaterThan(0);
+  } finally { spy.mockRestore(); }
 });
