@@ -52,6 +52,8 @@ import {
 import type { MarketValue, PaperSelection } from '../../prediction-engine';
 import { FORECAST_HIGHLIGHTS, ForecastId, ForecastPreference, forecastProbability, highlightLevel, LEGACY_FORECAST_IDS, visibleForecastPrediction } from '../../config/forecast-highlights';
 import { ForecastHighlight } from './ForecastHighlight';
+import { PredictionLoader, PredictionLoadingStage } from './PredictionLoader';
+import { SuggestedBetList } from './SuggestedBetList';
 import { rankDirectPicks, rankUnpricedForecasts } from '../../prediction-engine/selection';
 
 Modal.setAppElement('#root');
@@ -1159,6 +1161,15 @@ const BetAndFixturesScreen: React.FC = () => {
 
   // ===== BET flow =====
   const [loadingBatch, setLoadingBatch] = useState(false);
+  const [predictionLoading, setPredictionLoading] = useState<{ stage: PredictionLoadingStage; leagueCount: number; includeOdds: boolean }>({
+    stage: 'fixtures', leagueCount: 0, includeOdds: true,
+  });
+  const predictionLoaderRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!loadingBatch) return;
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    predictionLoaderRef.current?.scrollIntoView?.({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' });
+  }, [loadingBatch]);
 
   const capturePaperOdds = async (prediction: FixturePrediction): Promise<string> => {
     const fixture = prediction.fixture;
@@ -1226,6 +1237,7 @@ const BetAndFixturesScreen: React.FC = () => {
 
   const handleBet = async (refreshCurrentSeason = false) => {
     if (loadingBatch) return;
+    setPredictionLoading({ stage: 'fixtures', leagueCount: selectedBatch.length, includeOdds: predictionMode === 'statistical' });
     setLoadingBatch(true);
     setFixtureLoadWarnings([]);
 
@@ -1270,6 +1282,8 @@ const BetAndFixturesScreen: React.FC = () => {
       );
     }
 
+    // Stage changes follow actual work; there is no simulated percentage or timer-driven progress.
+    setPredictionLoading(previous => ({ ...previous, stage: 'standings' }));
     // ensure standings
     const freshStandings = await ensureStandingsFor(selectedBatch);
     const standingsForPrediction = [...leaguesStandings, ...freshStandings];
@@ -1299,6 +1313,9 @@ const BetAndFixturesScreen: React.FC = () => {
       }
     }
 
+    setPredictionLoading(previous => ({ ...previous, stage: 'form' }));
+    // Let the browser paint the status before synchronous prediction calculations.
+    await new Promise<void>(resolve => window.setTimeout(resolve, 0));
     const freshPred = runPredict({
       allFixturesLocal: mergedAll,
       currentFixturesLocal: currentWindow,
@@ -1311,6 +1328,7 @@ const BetAndFixturesScreen: React.FC = () => {
     const oddsByFixtureId = new Map<number, ReturnType<typeof mapApiFootballOdds>['markets']>();
     const oddsMessages: Record<number, string> = {};
     if (predictionMode === 'statistical') {
+      setPredictionLoading(previous => ({ ...previous, stage: 'odds' }));
       const now = Date.now();
       const acceptOdds = (oddsResponse: Parameters<typeof mapApiFootballOdds>[0]) => {
         const mapped = mapApiFootballOdds(oddsResponse);
@@ -1360,6 +1378,8 @@ const BetAndFixturesScreen: React.FC = () => {
     }
     setOddsLoadMessages(oddsMessages);
 
+    setPredictionLoading(previous => ({ ...previous, stage: 'forecasts' }));
+    await new Promise<void>(resolve => window.setTimeout(resolve, 0));
     let engineResultsForCache: FixturePrediction[] = [];
     // Statistical engine: calibrated probabilities + explanations for every fixture.
     // Guarded so an unexpected error in the engine cannot break the existing bet flow.
@@ -1840,14 +1860,17 @@ const BetAndFixturesScreen: React.FC = () => {
                       : 'bg-cyan-600 text-white shadow-lg hover:bg-cyan-500'
                   }`}
                 >
-                  {loadingBatch ? 'Betting...' : 'Bet (run predictions)'}
+                  {loadingBatch ? 'Preparing forecasts…' : 'Bet (run predictions)'}
                 </button>
               </div>
             </div>
           </div>
 
           <div className="space-y-4 lg:col-span-7 xl:col-span-8">
-            <details open className="border-t border-slate-700 p-2">
+            {loadingBatch && <div ref={predictionLoaderRef} className="scroll-mt-48">
+              <PredictionLoader {...predictionLoading} hasPreviousForecasts={displayedFixtureIds.length > 0} />
+            </div>}
+            <details open aria-busy={loadingBatch} className="border-t border-slate-700 p-2">
               <summary className="cursor-pointer py-2 text-sm font-semibold text-slate-300">
                 {predictionMode === 'statistical' ? 'All forecasts and market details' : 'Legacy fixture results'} · {displayedFixtureIds.length} fixtures
               </summary>
@@ -1859,7 +1882,14 @@ const BetAndFixturesScreen: React.FC = () => {
                     className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700">Collapse all</button>
                 </div>
               )}
-              {displayedFixtureIds.length === 0 ? (
+              {displayedFixtureIds.length === 0 && loadingBatch ? (
+                <div aria-hidden="true" className="space-y-3 py-3">
+                  {[0, 1, 2].map(row => <div key={row} className="rounded-xl border border-slate-700/60 bg-slate-900 p-4 motion-safe:animate-pulse">
+                    <div className="mb-3 h-3 w-2/5 rounded bg-slate-700" />
+                    <div className="grid grid-cols-3 gap-2">{[0, 1, 2].map(cell => <div key={cell} className="h-12 rounded bg-slate-800" />)}</div>
+                  </div>)}
+                </div>
+              ) : displayedFixtureIds.length === 0 ? (
                 <div className="grid place-items-center py-16 text-sm text-slate-400">
                   {fixtureLoadWarnings.length > 0 ? (
                     <div className="max-w-2xl space-y-2 text-left">
@@ -1965,6 +1995,15 @@ const BetAndFixturesScreen: React.FC = () => {
                 </div>
               )}
             </details>
+            <SuggestedBetList
+              predictions={visibleEnginePredictions}
+              now={nowTick}
+              loading={loadingBatch}
+              statistical={predictionMode === 'statistical'}
+              selectedPickKeys={selectedStatisticalPickKeys}
+              onReview={prediction => onFixtureClick(prediction.fixture)()}
+              onTogglePick={toggleStatisticalPick}
+            />
             <details className="rounded-2xl border border-slate-700/60 bg-slate-900/80 p-4">
               <summary className="cursor-pointer text-sm font-semibold text-slate-200">Model picks, rankings and explanations</summary>
               <div className="mb-2 flex items-center justify-between">
@@ -1989,7 +2028,7 @@ const BetAndFixturesScreen: React.FC = () => {
                   {!loadingBatch && fixtureLoadWarnings.length > 0 && (
                     <div role="alert" className="mt-2 text-xs text-amber-200">{fixtureLoadWarnings.join(' ')}</div>
                   )}
-                  {loadingBatch ? <div role="status" className="py-4 text-sm text-slate-300">Checking fixtures and bookmaker prices...</div>
+                  {loadingBatch ? <div className="py-4 text-sm text-slate-300">Your forecasts are being prepared above.</div>
                     : directPicks.length === 0 ? (
                       <div className="py-3 text-sm text-slate-300">
                         {visibleEnginePredictions.length === 0 ? 'No upcoming fixtures assessed in this window.'
@@ -2228,7 +2267,7 @@ const BetAndFixturesScreen: React.FC = () => {
         }`}
         title={msLeft > 0 ? `Cooldown: ${Math.ceil(msLeft / 1000)}s` : 'Bet now'}
       >
-        {loadingBatch ? 'Betting...' : 'Bet'}
+        {loadingBatch ? 'Preparing…' : 'Bet'}
       </button>
 
       {/* Modal (unchanged) */}

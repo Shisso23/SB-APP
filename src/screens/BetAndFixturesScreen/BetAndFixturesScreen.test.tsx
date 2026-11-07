@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { predictFixture } from '../../prediction-engine/predict-fixture';
 import { EnginePredictionPanel } from './BetAndFixturesScreen';
 import BetAndFixturesScreen from './BetAndFixturesScreen';
@@ -119,12 +119,18 @@ it('keeps all forecasts first and open, retains collapsible picks, and updates o
   expect(forecasts).toHaveAttribute('open');
   expect(picks).not.toHaveAttribute('open');
   expect(forecasts.compareDocumentPosition(picks) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  const betList = screen.getByRole('region', { name: 'Suggested bet list' });
+  expect(forecasts.compareDocumentPosition(betList) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(betList.compareDocumentPosition(picks) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(within(betList).getAllByRole('listitem')).toHaveLength(1);
   expect(forecasts.querySelector('[data-highlight]')).toBeTruthy();
   expect(forecasts).toHaveTextContent('2–5 total goals');
   expect(forecasts).toHaveTextContent('3–6 total goals');
   const statisticalBadges = forecasts.querySelectorAll('[data-highlight]').length;
   fireEvent.click(screen.getByRole('button', { name: 'Legacy rules', exact: true }));
   expect(screen.queryByText(/All forecasts and market details/)).not.toBeInTheDocument();
+  expect(within(betList).queryByRole('listitem')).not.toBeInTheDocument();
+  expect(betList).toHaveTextContent('Legacy rules do not supply forecast probabilities');
   expect(screen.getByText(/Legacy fixture results/).closest('details')!.querySelector('[data-highlight]')).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Statistical', exact: true }));
   expect(screen.getByText(/All forecasts and market details/).closest('details')!.querySelectorAll('[data-highlight]')).toHaveLength(statisticalBadges);
@@ -136,6 +142,8 @@ it('keeps all forecasts first and open, retains collapsible picks, and updates o
     fireEvent.blur(dates[0]);
   });
   await waitFor(() => expect(screen.getByText(/All forecasts and market details/).closest('details')!.querySelector('[data-highlight]')).toBeNull());
+  await screen.findByRole('button', { name: 'Bet (run predictions)' });
+  expect(within(betList).queryByRole('listitem')).not.toBeInTheDocument();
 });
 
 
@@ -251,4 +259,37 @@ it('expands or collapses individual fixtures and the full forecast list without 
   contents.forEach(content => expect(content).toBeVisible());
   expect(contents.map(content => content.textContent)).toEqual(probabilitiesBefore);
   expect(screen.getAllByRole('button', { name: /^Collapse forecast for/ })).toHaveLength(toggles.length);
+});
+
+it('shows progress while a request is pending and removes the loader when predictions finish', async () => {
+  const implementation = get.getMockImplementation();
+  if (!implementation) throw new Error('Missing API fixture mock');
+  let release: () => void = () => undefined;
+  const pending = new Promise<void>(resolve => { release = resolve; });
+  get.mockImplementation(async (endpoint, options) => {
+    if (endpoint === 'fixtures' && options.params.season === currentYear) await pending;
+    return implementation(endpoint, options);
+  });
+  render(<BetAndFixturesScreen />);
+  fireEvent.click((await screen.findAllByRole('button', { name: /Premier League/ }))[0]);
+  fireEvent.click(screen.getByRole('button', { name: 'Bet (run predictions)' }));
+  expect(screen.getByRole('region', { name: 'Prediction loading' })).toBeInTheDocument();
+  expect(screen.getByRole('status', { name: 'Prediction progress' })).toHaveTextContent('Gathering fixtures');
+  expect(screen.getByRole('button', { name: 'Preparing forecasts…' })).toBeDisabled();
+  expect(screen.queryByText('No predictions yet. Select leagues, choose options, and press Bet.')).not.toBeInTheDocument();
+  await act(async () => { release(); });
+  await screen.findByRole('button', { name: 'Bet (run predictions)' });
+  expect(screen.queryByRole('region', { name: 'Prediction loading' })).not.toBeInTheDocument();
+  expect(screen.getAllByText('2–5 total goals').length).toBeGreaterThan(0);
+});
+
+it('keeps existing forecasts visible while refreshing and clears the loader after a failed data request', async () => {
+  const run = await runInitialBatch();
+  failRefresh = true;
+  fireEvent.click(run);
+  expect(screen.getByRole('region', { name: 'Prediction loading' })).toHaveTextContent('Your previous forecasts remain below');
+  expect(screen.getAllByText('2–5 total goals').length).toBeGreaterThan(0);
+  await screen.findByRole('button', { name: 'Bet (run predictions)' });
+  expect(screen.queryByRole('region', { name: 'Prediction loading' })).not.toBeInTheDocument();
+  expect(screen.getByRole('alert')).toHaveTextContent('Fixture refresh unavailable');
 });
