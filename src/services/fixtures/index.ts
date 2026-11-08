@@ -20,6 +20,8 @@ const toParams = (filters: FixturesFilterModel) => {
     ['league', filters.league],
     ['season', filters.season],
     ['team', filters.team],
+    ['page', filters.page],
+    ['page_size', filters.pageSize],
   ];
   entries.forEach(([key, value]) => {
     if (value !== undefined && value !== null && `${value}` !== '') {

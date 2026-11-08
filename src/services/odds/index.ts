@@ -25,11 +25,11 @@ export const getOddsByLeagueSeason = async ({ leagueId, season }: { leagueId: nu
 };
 
 export const getBookmakers = async () => {
-  return apiGet(`${endpoint}/bookmakers`);
+  return apiGet(`${endpoint}bookmakers`);
 };
 
 export const getLiveOdds = async () => {
-  return apiGet(`${endpoint}/live`);
+  return apiGet(`${endpoint}live`);
 };
 
 /** Stored-quote envelope returned by Django, matching the previous shape. */

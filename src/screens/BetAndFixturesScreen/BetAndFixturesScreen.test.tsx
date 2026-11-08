@@ -1,4 +1,5 @@
 import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { predictFixture } from '../../prediction-engine/predict-fixture';
 import { EnginePredictionPanel } from './BetAndFixturesScreen';
@@ -69,7 +70,28 @@ beforeEach(async () => {
   failRefresh = false;
   activeSeasonRequests = 0;
   get.mockImplementation((endpoint, options) => {
-    if (endpoint === '/fixtures') {
+    if (endpoint === '/me/') {
+      return Promise.resolve({ data: { has_prediction_access: true, prediction_access_ends_at: '2099-01-01' } });
+    }
+    if (endpoint === '/predictions/') {
+      const season = options.params.season;
+      if (season !== currentYear) return Promise.resolve({ data: { response: [], errors: [], results: 0 } });
+      const now = Date.now();
+      const history = Array.from({ length: 10 }, (_, index) =>
+        makeApiFixture(season * 100 + index, Date.UTC(season, 0, 1 + index), season)
+      );
+      const settled = makeApiFixture(900, now - 3_600_000, season, resultFinished);
+      const upcoming = makeApiFixture(9999, now + 3_600_000, season, false);
+      const allFixtures = [...history, settled, upcoming];
+      const toRow = (id: number, fixture: ReturnType<typeof makeApiFixture>) => ({
+        id, engine_version: 'test', config_hash: 'test',
+        generated_at: new Date(now).toISOString(), as_of: new Date(now).toISOString(),
+        valid_until: null, is_actionable: true,
+        output: predictFixture({ fixture, allFixtures, leaguesStandings: [] }),
+      });
+      return Promise.resolve({ data: { response: [toRow(1, settled), toRow(2, upcoming)], errors: [], results: 2 } });
+    }
+    if (endpoint === '/fixtures/') {
       const season = options.params.season;
       if (season === currentYear) {
         activeSeasonRequests += 1;
@@ -84,7 +106,7 @@ beforeEach(async () => {
       }
       return Promise.resolve({ data: { response, errors: [], results: response.length } });
     }
-    if (endpoint === '/standings' || endpoint === '/odds') {
+    if (endpoint === '/standings/' || endpoint === '/odds/') {
       return Promise.resolve({ data: { response: [], errors: [], results: 0 } });
     }
     throw new Error(`Unexpected test request: ${endpoint}`);
@@ -98,7 +120,7 @@ beforeEach(async () => {
 });
 
 const renderPredictionDesk = async () => {
-  const rendered = render(<BetAndFixturesScreen />);
+  const rendered = render(<MemoryRouter><BetAndFixturesScreen /></MemoryRouter>);
   await waitFor(() => expect(screen.queryByText('Restoring saved forecasts…')).not.toBeInTheDocument());
   return rendered;
 };
@@ -123,7 +145,7 @@ it('refreshes the active season through both caches and settles the latest resul
   fireEvent.click(run);
   await waitFor(() => expect(readPaperRecord().selections[0].settled?.won).toBe(true));
   expect(activeSeasonRequests).toBe(2);
-  const requestedSeasons = get.mock.calls.filter(([endpoint]) => endpoint === '/fixtures')
+  const requestedSeasons = get.mock.calls.filter(([endpoint]) => endpoint === '/fixtures/')
     .map(([, options]) => options.params.season);
   expect(requestedSeasons.filter((season) => season === currentYear - 1)).toHaveLength(1);
   expect(requestedSeasons.filter((season) => season === currentYear - 2)).toHaveLength(1);
@@ -146,8 +168,26 @@ it('does not run predictions when signed out', async () => {
   const run = screen.getByRole('button', { name: 'Bet (run predictions)' });
   await waitFor(() => expect(run).toBeDisabled());
   // No fixtures request should be issued while signed out.
-  expect(get.mock.calls.filter(([endpoint]) => endpoint === '/fixtures')).toHaveLength(0);
+  expect(get.mock.calls.filter(([endpoint]) => endpoint === '/fixtures/')).toHaveLength(0);
   mockAuth.user = { email: 'test@example.com' };
+});
+it('shows a paywall CTA and blocks the predictions fetch when no active pass exists', async () => {
+  const implementation = get.getMockImplementation();
+  if (!implementation) throw new Error('Missing API fixture mock');
+  get.mockImplementation((endpoint, options) => {
+    if (endpoint === '/me/') return Promise.resolve({ data: { has_prediction_access: false, prediction_access_ends_at: null } });
+    return implementation(endpoint, options);
+  });
+  await renderPredictionDesk();
+  await waitFor(() => expect(screen.getByText(/An active prediction pass is required/)).toBeInTheDocument());
+  expect(screen.getByRole('link', { name: 'Get a pass' })).toHaveAttribute('href', '/access');
+  fireEvent.click((await screen.findAllByRole('button', { name: /Premier League/ }))[0]);
+  const run = screen.getByRole('button', { name: 'Bet (run predictions)' });
+  await waitFor(() => expect(run).not.toBeDisabled());
+  fireEvent.click(run);
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Bet (run predictions)' })).not.toBeDisabled());
+  expect(get.mock.calls.filter(([endpoint]) => endpoint === '/predictions/')).toHaveLength(0);
+  expect(screen.getByRole('alert')).toHaveTextContent('An active prediction pass is required');
 });
 it('keeps forecasts first, removes model-pick sections, and updates the threshold bet list on model and filter changes', async () => {
   await runInitialBatch();
@@ -211,7 +251,10 @@ it('restores statistical forecasts and highlights after remount without refetchi
   await renderPredictionDesk();
   await screen.findAllByText('2–5 total goals');
   expect(screen.getByText(/All forecasts and market details/).closest('details')!.textContent).toBe(forecastsBefore);
-  expect(get.mock.calls.length).toBe(requestsBefore);
+  // Entitlement is re-checked via /me/ on every mount; no fixture/prediction/odds
+  // refetch should happen because the cache is still within its lifetime.
+  const dataRequestsAfter = get.mock.calls.slice(requestsBefore).filter(([endpoint]) => endpoint !== '/me/');
+  expect(dataRequestsAfter).toHaveLength(0);
   expect(await readPredictionsCache()).toEqual(cacheBefore);
   expect(screen.queryByText(/BTTS No/)).not.toBeInTheDocument();
 });
@@ -313,7 +356,7 @@ it('shows progress while a request is pending and removes the loader when predic
   let release: () => void = () => undefined;
   const pending = new Promise<void>(resolve => { release = resolve; });
   get.mockImplementation(async (endpoint, options) => {
-    if (endpoint === '/fixtures' && options.params.season === currentYear) await pending;
+    if (endpoint === '/fixtures/' && options.params.season === currentYear) await pending;
     return implementation(endpoint, options);
   });
   await renderPredictionDesk();
@@ -356,8 +399,27 @@ const setupLeagueRetryApi = () => {
   const fallbackSuccesses = new Set<string>();
   const blockers = new Map<string, Promise<void>>();
   get.mockImplementation(async (endpoint, options) => {
+    if (endpoint === '/me/') {
+      return { data: { has_prediction_access: true, prediction_access_ends_at: '2099-01-01' } };
+    }
+    if (endpoint === '/predictions/') {
+      const { league, season } = options.params;
+      if (season !== currentYear) return { data: { response: [], errors: [], results: 0 } };
+      const now = Date.now();
+      const base = makeApiFixture(league * 1_000_000 + 99_999, now + 3_600_000, season, false);
+      const fixture = {
+        ...base,
+        league: { ...base.league, id: league, name: retryLeagueNames[league] },
+      };
+      const output = predictFixture({ fixture, allFixtures: [], leaguesStandings: [] });
+      return { data: { response: [{
+        id: league, engine_version: 'test', config_hash: 'test',
+        generated_at: new Date(now).toISOString(), as_of: new Date(now).toISOString(),
+        valid_until: null, is_actionable: true, output,
+      }], errors: [], results: 1 } };
+    }
     const { league, season } = options.params;
-    if (endpoint === '/fixtures') {
+    if (endpoint === '/fixtures/') {
       const key = `${league}:${season}`;
       if (blockers.has(key)) await blockers.get(key);
       if (fixtureFailures.has(key) || fallbackSuccesses.has(key) && !options.params.from) throw new Error(`Network unavailable for ${retryLeagueNames[league]}`);
@@ -377,8 +439,8 @@ const setupLeagueRetryApi = () => {
       if (season === currentYear) response.push(fixtureForLeague(league * 1_000_000 + 99_999, Date.now() + 3_600_000, false));
       return { data: { response, errors: [] } };
     }
-    if (endpoint === '/standings' && standingsFailures.has(league)) return { data: { response: [], errors: { access: 'Standings unavailable from provider' } } };
-    if (endpoint === '/standings' || endpoint === '/odds') return { data: { response: [], errors: [] } };
+    if (endpoint === '/standings/' && standingsFailures.has(league)) return { data: { response: [], errors: { access: 'Standings unavailable from provider' } } };
+    if (endpoint === '/standings/' || endpoint === '/odds/') return { data: { response: [], errors: [] } };
     throw new Error(`Unexpected test request: ${endpoint}`);
   });
   return { fixtureFailures, standingsFailures, payloadFailures, fallbackSuccesses, blockers };
@@ -407,7 +469,7 @@ it('retries only a failed league and season, preserves successful forecasts, and
   let before = get.mock.calls.length;
   fireEvent.click(screen.getByRole('button', { name: 'Retry Bundesliga', exact: true }));
   await screen.findByRole('button', { name: 'Bet (run predictions)' });
-  let fixtureRequests = get.mock.calls.slice(before).filter(([endpoint]) => endpoint === '/fixtures');
+  let fixtureRequests = get.mock.calls.slice(before).filter(([endpoint]) => endpoint === '/fixtures/');
   expect(fixtureRequests).toHaveLength(1);
   expect(fixtureRequests[0][1].params).toMatchObject({ league: 78, season: currentYear });
   expect(screen.queryByRole('button', { name: 'Retry Bundesliga', exact: true })).not.toBeInTheDocument();
@@ -418,7 +480,7 @@ it('retries only a failed league and season, preserves successful forecasts, and
   before = get.mock.calls.length;
   fireEvent.click(screen.getByRole('button', { name: 'Retry La Liga', exact: true }));
   await screen.findByRole('button', { name: 'Bet (run predictions)' });
-  fixtureRequests = get.mock.calls.slice(before).filter(([endpoint]) => endpoint === '/fixtures');
+  fixtureRequests = get.mock.calls.slice(before).filter(([endpoint]) => endpoint === '/fixtures/');
   expect(fixtureRequests).toHaveLength(1);
   expect(fixtureRequests[0][1].params).toMatchObject({ league: 140, season: currentYear - 1 });
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
@@ -441,7 +503,7 @@ it('retries all failed leagues, disables duplicate retries, and keeps a failure 
   expect(get.mock.calls.length).toBe(pendingCalls);
   await act(async () => { release(); });
   await screen.findByRole('button', { name: 'Bet (run predictions)' });
-  const fixtureRequests = get.mock.calls.slice(before).filter(([endpoint]) => endpoint === '/fixtures');
+  const fixtureRequests = get.mock.calls.slice(before).filter(([endpoint]) => endpoint === '/fixtures/');
   expect(new Set(fixtureRequests.map(([, options]) => options.params.league))).toEqual(new Set([78, 140]));
   expect(fixtureRequests.every(([, options]) => options.params.season === currentYear)).toBe(true);
   expect(screen.queryByRole('button', { name: 'Retry Bundesliga', exact: true })).not.toBeInTheDocument();
@@ -464,8 +526,8 @@ it('handles a standings provider error per league and retries standings without 
   fireEvent.click(screen.getByRole('button', { name: 'Retry Bundesliga', exact: true }));
   await screen.findByRole('button', { name: 'Bet (run predictions)' });
   const requests = get.mock.calls.slice(before);
-  expect(requests.filter(([endpoint]) => endpoint === '/fixtures')).toHaveLength(0);
-  const standings = requests.filter(([endpoint]) => endpoint === '/standings');
+  expect(requests.filter(([endpoint]) => endpoint === '/fixtures/')).toHaveLength(0);
+  const standings = requests.filter(([endpoint]) => endpoint === '/standings/');
   expect(standings).toHaveLength(1);
   expect(standings[0][1].params.league).toBe(78);
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
@@ -476,7 +538,7 @@ it('does not report a league failure when the automatic ranged fallback succeeds
   api.fallbackSuccesses.add(`78:${currentYear}`);
   await runRetryBatch();
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-  expect(get.mock.calls.filter(([endpoint, options]) => endpoint === '/fixtures' && options.params.league === 78 && options.params.season === currentYear)).toHaveLength(2);
+  expect(get.mock.calls.filter(([endpoint, options]) => endpoint === '/fixtures/' && options.params.league === 78 && options.params.season === currentYear)).toHaveLength(2);
 });
 
 it('offers retries for an entirely failed fixture batch even after clearing the league selection', async () => {

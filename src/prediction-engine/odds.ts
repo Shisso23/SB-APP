@@ -48,9 +48,11 @@ export interface BuildMarketValueOptions {
 }
 
 /**
- * Build a MarketValue for a selection, computing edge/EV/break-even and applying the
- * configured probability + minimum-edge gates. Selections are never marked as
- * guaranteed: `qualifies` only means "passed both configured thresholds".
+ * Build a MarketValue for a selection, computing edge/EV/break-even for disclosure and
+ * applying the configured probability gate. Edge vs. market odds is no longer a
+ * qualification requirement (per explicit product decision): `qualifies` means the
+ * model probability passed its configured threshold (and, when odds exist, that the
+ * quoted price is still fresh). Selections are never marked as guaranteed.
  */
 export const buildMarketValue = ({
   marketId,
@@ -86,7 +88,7 @@ export const buildMarketValue = ({
       oddsStale: false,
       passedProbabilityThreshold,
       passedEdgeThreshold: false,
-      qualifies: false,
+      qualifies: passedProbabilityThreshold,
       rejectReasons,
       evidence,
     };
@@ -114,9 +116,6 @@ export const buildMarketValue = ({
   if (stale) {
     rejectReasons.push('Odds update time is missing, invalid, in the future, or outside the configured freshness window.');
   }
-  if (ev <= 0) {
-    rejectReasons.push('The offered price has no positive estimated expected value.');
-  }
 
   return {
     marketId,
@@ -133,7 +132,7 @@ export const buildMarketValue = ({
     oddsStale: stale,
     passedProbabilityThreshold,
     passedEdgeThreshold,
-    qualifies: passedProbabilityThreshold && passedEdgeThreshold && !stale && ev > 0,
+    qualifies: passedProbabilityThreshold && !stale,
     rejectReasons,
     evidence,
   };

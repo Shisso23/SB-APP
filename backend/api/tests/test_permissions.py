@@ -79,3 +79,23 @@ class PermissionTests(APITestCase):
         Prediction.objects.create(fixture=self.fixture, engine_version="v2", input_hash="c" * 64,
                                   config_hash="b" * 64, as_of=self.now, valid_until=self.now - timedelta(seconds=1), output={})
         self.assertEqual(self.client.get("/api/v1/predictions/").data["response"], [])
+
+    def test_predictions_can_be_filtered_by_fixture_league_season_and_date(self):
+        self.entitlement()
+        other_fixture = Fixture.objects.create(provider_id=20, league_id=140, season=2026, home_team_id=3, away_team_id=4,
+                                                home_team_name="Other Home", away_team_name="Other Away",
+                                                kickoff=self.now + timedelta(days=1), status="NS",
+                                                source_payload={"private_source": "not public"})
+        Prediction.objects.create(fixture=other_fixture, engine_version="v1", input_hash="d" * 64, config_hash="b" * 64,
+                                  as_of=self.now, valid_until=self.now + timedelta(minutes=15), output={"homeWin": 0.4})
+        by_fixture = self.client.get("/api/v1/predictions/", {"fixture": 10})
+        self.assertEqual(len(by_fixture.data["response"]), 1)
+        self.assertEqual(by_fixture.data["response"][0]["output"], {"homeWin": 0.6})
+        by_league = self.client.get("/api/v1/predictions/", {"league": 140})
+        self.assertEqual(len(by_league.data["response"]), 1)
+        self.assertEqual(by_league.data["response"][0]["output"], {"homeWin": 0.4})
+        by_season = self.client.get("/api/v1/predictions/", {"season": 2026})
+        self.assertEqual(len(by_season.data["response"]), 2)
+        by_date = self.client.get("/api/v1/predictions/", {"date": (self.now + timedelta(days=1)).date().isoformat()})
+        self.assertEqual(len(by_date.data["response"]), 2)
+        self.assertEqual(self.client.get("/api/v1/predictions/", {"unsupported": "1"}).status_code, 400)

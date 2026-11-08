@@ -134,6 +134,8 @@ export class FixturesFilterModel {
     public next?: number;
     public from?: string;
     public to?: string;
+    public page?: number;
+    public pageSize?: number;
     constructor(init: FixturesFilterModel) {
        this.live = init.live;
        this.date = init.date;
@@ -145,6 +147,8 @@ export class FixturesFilterModel {
        this.from = init.from;
        this.to = init.to;
        this.h2h =  init.h2h;
+       this.page = init.page;
+       this.pageSize = init.pageSize;
     }
 }
 

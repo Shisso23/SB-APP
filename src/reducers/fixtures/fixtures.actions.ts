@@ -6,7 +6,7 @@ import { getFilteredFixtures } from '../../services/fixtures/index';
 type ThunkDispatch = (action: unknown) => unknown;
 
 /** Load fixtures from the PredictXI Django API; errors propagate to the caller. */
-export const geFilteredFixturesAction = async (filters: FixturesFilterModel) => async (dispatch: ThunkDispatch) => {
+export const geFilteredFixturesAction = (filters: FixturesFilterModel) => async (dispatch: ThunkDispatch) => {
   dispatch(setIsLoadingFixtures(true));
 
   try {

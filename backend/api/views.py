@@ -9,11 +9,13 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework import status as http_status
 from django.conf import settings
 from django.core.cache import cache
+from django.core.management import call_command
 from django.db.models import F, OuterRef, Q, Subquery
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 
 from api.envelopes import ProviderPagination
+from api.jobs import JobPolicy
 from api.models import AccessProduct, Fixture, LeagueCatalog, OddsSnapshot, Prediction, PurchaseAttempt, StandingsSnapshot
 from api.permissions import HasPredictionAccess, has_prediction_access, prediction_access_window
 from api.serializers import (
@@ -149,6 +151,21 @@ class LeagueViewSet(ReadOnlyEnvelopeViewSet):
             rows = rows.filter(provider_id=provider_id)
         if league_type and len(league_type) > 40:
             raise ValidationError("type is too long.")
+
+        # The catalog table holds every league API-Football returns, not just the
+        # ones this deployment supports; narrow to the configured allowlist first.
+        policy = JobPolicy.from_environment()
+        if policy.allowed_leagues:
+            rows = rows.filter(provider_id__in=policy.allowed_leagues)
+
+        if league_type or current in ("true", "false"):
+            want_current = current == "true" if current in ("true", "false") else None
+            matching_ids = [
+                row.provider_id for row in rows
+                if (not league_type or (row.payload.get("league", {}).get("type") or "").lower() == league_type.lower())
+                and (want_current is None or any(bool(season.get("current")) == want_current for season in row.payload.get("seasons", [])))
+            ]
+            rows = rows.filter(provider_id__in=matching_ids)
         return rows
 
 
@@ -314,16 +331,53 @@ class PredictionViewSet(ReadOnlyEnvelopeViewSet):
     permission_classes = [IsAuthenticated, HasPredictionAccess]
 
     def get_queryset(self):
+        if self.request.query_params.keys() - {"history", "fixture", "league", "season", "date", "page", "page_size"}:
+            raise ValidationError("Unsupported prediction filter.")
         history = self.request.query_params.get("history", "false")
         if history not in {"true", "false"}:
             raise ValidationError("history must be true or false.")
         latest = Prediction.objects.filter(fixture_id=OuterRef("fixture_id")).order_by("-generated_at", "-id")
         rows = Prediction.objects.select_related("fixture").annotate(latest_version_id=Subquery(latest.values("id")[:1]))
+        fixture_id = self.integer_param("fixture")
+        league, season = (self.integer_param(name) for name in ("league", "season"))
+        single_date = self.date_param("date")
+        if fixture_id:
+            rows = rows.filter(fixture__provider_id=fixture_id)
+        if league:
+            rows = rows.filter(fixture__league_id=league)
+        if season:
+            rows = rows.filter(fixture__season=season)
+        if single_date:
+            rows = rows.filter(fixture__kickoff__date=single_date)
         if history == "true":
-            return rows
+            return rows.order_by("fixture__kickoff", "-generated_at")
         now = timezone.now()
-        return rows.filter(pk=F("latest_version_id"), valid_until__gt=now, fixture__kickoff__gt=now,
-                           fixture__status__in=["NS", "TBD"], generated_at__lt=F("fixture__kickoff"), as_of__lte=F("generated_at"))
+        fresh = rows.filter(pk=F("latest_version_id"), valid_until__gt=now, fixture__kickoff__gt=now,
+                            fixture__status__in=["NS", "TBD"], generated_at__lt=F("fixture__kickoff"),
+                            as_of__lte=F("generated_at"))
+        if not fresh.exists():
+            # Cache-on-read: nothing fresh is stored for this scope yet, so generate it inline
+            # for the requesting caller. Subsequent requests for the same league/season within
+            # the validity window are served straight from the DB below, no regeneration needed.
+            target_league, target_season = league, season
+            if not (target_league and target_season) and fixture_id:
+                located = Fixture.objects.filter(provider_id=fixture_id).values("league_id", "season").first()
+                if located:
+                    target_league, target_season = located["league_id"], located["season"]
+            if target_league and target_season:
+                self._generate_on_demand(target_league, target_season)
+                fresh = rows.filter(pk=F("latest_version_id"), valid_until__gt=now, fixture__kickoff__gt=now,
+                                    fixture__status__in=["NS", "TBD"], generated_at__lt=F("fixture__kickoff"),
+                                    as_of__lte=F("generated_at"))
+        return fresh.order_by("fixture__kickoff")
+
+    def _generate_on_demand(self, league, season):
+        for mode in ("refresh", "predict"):
+            try:
+                call_command("run_prediction_job", mode=mode, league=league, season=season)
+            except Exception as error:
+                logger.info("On-demand %s skipped for league=%s season=%s: %s", mode, league, season, error)
+                return
 
     def finalize_response(self, request, response, *args, **kwargs):
         response = super().finalize_response(request, response, *args, **kwargs)

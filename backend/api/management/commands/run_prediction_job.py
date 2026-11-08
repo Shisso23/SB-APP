@@ -1,5 +1,3 @@
-from datetime import timedelta
-
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
@@ -52,7 +50,10 @@ class Command(BaseCommand):
             seasons = [season - offset for offset in range(configuration["historySeasons"])] if mode == "bootstrap" else [season]
             for year in seasons:
                 step = f"fixtures:{league}:{year}"
-                if step not in context.run.checkpoint:
+                # A season already stored from an earlier bootstrap run stays skipped across job
+                # slots/checkpoints too, so re-running bootstrap for a league is always cheap and safe.
+                already_stored = mode == "bootstrap" and Fixture.objects.filter(league_id=league, season=year).exists()
+                if step not in context.run.checkpoint and not already_stored:
                     store_fixtures(context, provider.fixtures(league=league, season=year), league, year)
             if mode == "refresh":
                 if "leagues" not in context.run.checkpoint:
@@ -75,7 +76,10 @@ class Command(BaseCommand):
             raise JobError("Job cannot resume with a different engine/configuration build.")
         fixtures = Fixture.objects.filter(league_id=league, season=season)
         if mode == "predict":
-            fixtures = fixtures.filter(status__in=["NS", "TBD"], kickoff__gt=timezone.now(), kickoff__lte=timezone.now() + timedelta(days=2))
+            # No upper bound here: on-demand requests should reach whatever the
+            # next scheduled fixture is, even past a multi-week international
+            # break; max_fixtures/max_seconds already cap the work per call.
+            fixtures = fixtures.filter(status__in=["NS", "TBD"], kickoff__gt=timezone.now())
         else:
             fixtures = fixtures.filter(status="FT", kickoff__lt=timezone.now(), predictions__isnull=False).distinct()
         completed = set(context.run.checkpoint.get("done", []))

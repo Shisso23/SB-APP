@@ -5,6 +5,7 @@
 // =============================================================
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { CircularProgress } from '@mui/material';
 import DatePicker from 'react-datepicker';
@@ -24,7 +25,6 @@ import {
   FixturesModel,
 } from '../../models/fixtures';
 import { getFilteredFixtures } from '../../services/fixtures';
-import { getOddsByDate, getOddsByFixture } from '../../services/odds';
 import {
   StandingsModel,
   StandingsDataStandingModel,
@@ -36,8 +36,6 @@ import { toMomentDate } from '../../helpers/dateTimeHelper';
 import { getH2HFixtures, getLastFiveTeamFixtures } from '../../prediction-functions/shared-functions';
 import { fuzzyScore } from '../../helpers/fuzzy-search';
 import {
-  predictFixturesWithEngine,
-  predictFixture,
   FixturePrediction,
   MarketId,
   buildPaperSelections,
@@ -50,6 +48,9 @@ import type { MarketOdds, MarketValue, PaperSelection } from '../../prediction-e
 import { PremiumRequiredError, SessionExpiredError, SignInRequiredError } from '../../services/api/client';
 import { describeFailure } from '../../services/api/failures';
 import { useAuth } from '../../services/auth/AuthProvider';
+import { getMe, isAccessActive } from '../../services/access';
+import { getPredictionsByLeagueSeason, getPredictionsByFixture, PredictionEnvelopeRow } from '../../services/predictions';
+import { usePremiumRedirect } from '../../hooks/usePremiumRedirect';
 import { FORECAST_HIGHLIGHTS, ForecastId, ForecastPreference, forecastProbability, highlightLevel, LEGACY_FORECAST_IDS, visibleForecastPrediction } from '../../config/forecast-highlights';
 import { ForecastHighlight } from './ForecastHighlight';
 import { PredictionLoader, PredictionLoadingStage } from './PredictionLoader';
@@ -59,49 +60,33 @@ import { readPredictionsCache, writePredictionsCache, clearPredictionsCache, PRE
 
 Modal.setAppElement('#root');
 
-// ======= Stored odds helpers =======
-// Django serves stored, pre-kickoff canonical quotes. The browser converts them into
-// engine `MarketOdds` locally; it never fetches or maps raw provider payloads.
-const storedQuotesToMarkets = (payload: unknown, fixtureId: number): MarketOdds[] => {
-  const rows = (payload as { response?: unknown })?.response;
-  if (!Array.isArray(rows)) return [];
-  return rows
-    .filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === 'object')
-    .filter((row) => Number(row.fixture_id) === fixtureId)
-    .map((row) => {
-      const updated = row.provider_updated_at ? Date.parse(String(row.provider_updated_at)) : NaN;
-      const market: MarketOdds = {
-        marketId: row.market_id as MarketOdds['marketId'],
-        decimalOdds: Number(row.decimal_odds),
-        bookmaker: row.bookmaker ? String(row.bookmaker) : undefined,
-      };
-      if (Number.isFinite(updated)) market.timestamp = updated;
-      const adjusted = row.margin_adjusted_probability;
-      if (adjusted !== null && adjusted !== undefined && Number.isFinite(Number(adjusted))) {
-        market.marginAdjustedProbability = Number(adjusted);
-      }
-      return market;
-    })
-    .filter((market) => Number.isFinite(market.decimalOdds) && market.decimalOdds > 1);
+// ======= Published-forecast helpers =======
+// Django serves forecasts that were generated and stored server-side by the
+// private prediction engine. The browser never computes a forecast itself; it
+// only reads `Prediction.output`, which has the same shape as `FixturePrediction`
+// because both come from the same engine source.
+const predictionRowToFixturePrediction = (row: PredictionEnvelopeRow): FixturePrediction | null => {
+  const output = row.output as unknown as FixturePrediction | undefined;
+  if (!output || typeof output !== 'object' || !output.fixture?.fixture?.id) return null;
+  return output;
 };
 
 /** Turn an API failure into an explicit, non-misleading message. */
-const describeOddsFailure = (error: unknown) => {
-  if (error instanceof SignInRequiredError) return 'Sign in is required to view odds.';
+const describePredictionsFailure = (error: unknown) => {
+  if (error instanceof SignInRequiredError) return 'Sign in is required to view forecasts.';
   if (error instanceof SessionExpiredError) return 'Your session has expired. Please sign in again.';
-  if (error instanceof PremiumRequiredError) return 'An active prediction subscription is required to view odds.';
-  return error instanceof Error ? error.message : 'Odds could not be loaded.';
+  if (error instanceof PremiumRequiredError) return 'An active prediction pass is required to view statistical forecasts.';
+  return error instanceof Error ? error.message : 'Forecasts could not be loaded.';
 };
+
 
 // ======= Config =======
 const MAX_BATCH = 7;
 const COOLDOWN_MS = 60_000; // 1 minute
-const LEAGUES_CACHE_KEY = 'leaguesCache_v1';
 const STANDINGS_CACHE_KEY = 'standingsCache_v2';
 const FAVORITES_CACHE_KEY = 'favoritePredictions_v1';
 const STATISTICAL_PICKS_KEY = 'statisticalPicks_v1';
 const POPULAR_LEAGUE_IDS_KEY = 'popularLeagueIds_v1';
-const LEAGUES_CACHE_TTL = 1000 * 60 * 60 * 24 * 7; // 7 days
 const PREDICTIONS_CACHE_TTL = PREDICTION_CACHE_TTL;
 const STANDINGS_CACHE_TTL = 1000 * 60 * 60 * 6; // 6 hours
 const PREDICTION_MODE_KEY = 'predictionMode_v1';
@@ -194,12 +179,6 @@ const smartMatchScore = (query: string, target: string) => {
 };
 
 // ======= Cache shapes =======
-interface LeaguesCacheShape {
-  ts: number;
-  filters: LeaguesFilterModel;
-  data: LeagueDataModel[];
-}
-
 interface StandingsCacheItem {
   leagueId: number;
   season: number;
@@ -228,17 +207,6 @@ interface FavoritePredictionItem {
 const safeParse = <T,>(raw: string | null): T | null => {
   if (!raw) return null;
   try { return JSON.parse(raw) as T; } catch { return null; }
-};
-
-const readLeaguesCache = (): LeaguesCacheShape | null => {
-  const parsed = safeParse<LeaguesCacheShape>(localStorage.getItem(LEAGUES_CACHE_KEY));
-  if (!parsed) return null;
-  if (Date.now() - parsed.ts > LEAGUES_CACHE_TTL) return null;
-  return parsed;
-};
-const writeLeaguesCache = (filters: LeaguesFilterModel, data: LeagueDataModel[]) => {
-  const payload: LeaguesCacheShape = { ts: Date.now(), filters, data };
-  try { localStorage.setItem(LEAGUES_CACHE_KEY, JSON.stringify(payload)); } catch {}
 };
 
 const readStandingsCache = (): StandingsCacheShape =>
@@ -559,6 +527,25 @@ const BetAndFixturesScreen: React.FC = () => {
   // by the navbar control; this screen only reflects the resulting state.
   const { user, initialising } = useAuth();
   const signedIn = Boolean(user);
+  const redirectToAccessPass = usePremiumRedirect();
+
+  // Statistical forecasts are server-generated and premium. `hasPredictionAccess`
+  // is read fresh from `/me/` (the only entitlement truth) whenever the user signs
+  // in; `null` means "not checked yet", so the UI never assumes access by default.
+  const [hasPredictionAccess, setHasPredictionAccess] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!signedIn) {
+      setHasPredictionAccess(null);
+      return;
+    }
+    let cancelled = false;
+    getMe().then((response) => {
+      if (!cancelled) setHasPredictionAccess(isAccessActive(response.data));
+    }).catch(() => {
+      if (!cancelled) setHasPredictionAccess(false);
+    });
+    return () => { cancelled = true; };
+  }, [signedIn]);
 
   const [leaguesFilters] = useState<LeaguesFilterModel>({ current: true, type: 'League' });
   const [allLeagues, setAllLeagues] = useState<LeagueDataModel[] | null>(null);
@@ -641,22 +628,20 @@ const BetAndFixturesScreen: React.FC = () => {
     writeFavoritesCache(favoritePredictions);
   }, [favoritePredictions]);
 
-  // Init leagues
+  // Init leagues: always fetch fresh, the backend now owns caching. Wait for Firebase's
+  // async session restore (`initialising`) before firing, otherwise `requireIdToken()` reads
+  // a still-null `currentUser` and throws SignInRequiredError even for a signed-in user.
+  // Re-fires on `signedIn` flips too, so a later sign-in (no reload) also loads leagues.
   useEffect(() => {
-    const cached = readLeaguesCache();
-    if (cached?.data?.length) {
-      setAllLeagues(cached.data.map(l => new LeagueDataModel(l)));
-    } else {
-      dispatch(geFilteredLeaguesAction(leaguesFilters));
-    }
-  }, [dispatch, leaguesFilters]);
+    if (initialising) return;
+    dispatch(geFilteredLeaguesAction(leaguesFilters));
+  }, [dispatch, leaguesFilters, initialising, signedIn]);
 
   useEffect(() => {
     const data = leagues?.response?.map((l: LeagueDataModel) => new LeagueDataModel(l));
     if (data && data.length) {
       const filtered = data.filter(l => (l.league?.type || '').toLowerCase() === 'league');
       setAllLeagues(filtered);
-      writeLeaguesCache(leaguesFilters, filtered);
     }
   }, [JSON.stringify(leagues)]);
 
@@ -973,6 +958,23 @@ const BetAndFixturesScreen: React.FC = () => {
     return apiErrors.length > 0 ? apiErrors : [requestError?.message || 'Fixture request failed.'];
   };
 
+  // The backend paginates fixtures (max page_size=200); a single page never covers a full
+  // season (e.g. 380 fixtures), so a season-level query would silently drop every fixture
+  // past page 1 - including any still-upcoming ones - without walking every page.
+  const MAX_FIXTURE_PAGE_SIZE = 200;
+  const fetchAllFixturePages = async (filter: FixturesFilterModel): Promise<{ response: FixtureDataModel[]; errors: string[] }> => {
+    const first = (await getFilteredFixtures(new FixturesFilterModel({ ...filter, page: 1, pageSize: MAX_FIXTURE_PAGE_SIZE }))).data as FixturesModel;
+    const errors = readApiErrors(first);
+    const response = [...(first?.response ?? [])];
+    const totalPages = first?.paging?.total ?? 1;
+    for (let page = 2; page <= totalPages; page += 1) {
+      const next = (await getFilteredFixtures(new FixturesFilterModel({ ...filter, page, pageSize: MAX_FIXTURE_PAGE_SIZE }))).data as FixturesModel;
+      errors.push(...readApiErrors(next));
+      response.push(...(next?.response ?? []));
+    }
+    return { response, errors };
+  };
+
   const getLeaguesSeasonsFixtures = async (
     leaguesInput: LeagueDataModel[], refreshCurrentSeason = false,
     retrySeasons?: Map<number, number[]>
@@ -991,22 +993,22 @@ const BetAndFixturesScreen: React.FC = () => {
         let fastFixtures: FixtureDataModel[] = [];
         try {
           didNetwork = true;
-          const data = (await getFilteredFixtures(new FixturesFilterModel({ league: league.league.id, season }))).data as FixturesModel;
-          errors.push(...readApiErrors(data));
-          fastFixtures = data?.response ?? [];
+          const data = await fetchAllFixturePages(new FixturesFilterModel({ league: league.league.id, season }));
+          errors.push(...data.errors);
+          fastFixtures = data.response;
           if (!errors.length && countFinished(fastFixtures) > 0) return { season, fixtures: fastFixtures, errors: [] as string[] };
         } catch (error) { errors.push(...describeRequestError(error)); }
         try {
           didNetwork = true;
           const { from, to } = seasonWindow(season);
-          const data = (await getFilteredFixtures(new FixturesFilterModel({ league: league.league.id, season, from, to }))).data as FixturesModel;
-          const rangedErrors = readApiErrors(data);
+          const data = await fetchAllFixturePages(new FixturesFilterModel({ league: league.league.id, season, from, to }));
+          const rangedErrors = data.errors;
           if (!rangedErrors.length) {
             // A successful fallback resolves the fast-request error.
-            return { season, fixtures: dedupeFixtures([...fastFixtures, ...(data?.response ?? [])]), errors: [] as string[] };
+            return { season, fixtures: dedupeFixtures([...fastFixtures, ...data.response]), errors: [] as string[] };
           }
           errors.push(...rangedErrors);
-          return { season, fixtures: dedupeFixtures([...existing, ...fastFixtures, ...(data?.response ?? [])]), errors };
+          return { season, fixtures: dedupeFixtures([...existing, ...fastFixtures, ...data.response]), errors };
         } catch (error) {
           errors.push(...describeRequestError(error));
           return { season, fixtures: dedupeFixtures([...existing, ...fastFixtures]), errors };
@@ -1076,27 +1078,27 @@ const BetAndFixturesScreen: React.FC = () => {
       throw new Error('Pre-match odds can only be captured before kickoff.');
     }
 
-    // Django returns stored, pre-kickoff canonical quotes. The browser no longer
-    // fetches or maps raw provider payloads.
-    let markets: ReturnType<typeof storedQuotesToMarkets>;
+    // The server already publishes a forecast with embedded, priced markets for
+    // every actionable fixture. Re-fetch that single prediction instead of
+    // recomputing anything in the browser.
+    let withOdds: FixturePrediction;
     try {
-      const response = await getOddsByFixture(fixture.fixture.id);
-      markets = storedQuotesToMarkets(response.data, fixture.fixture.id);
+      const response = await getPredictionsByFixture(fixture.fixture.id);
+      const rows = (response.data as { response?: PredictionEnvelopeRow[] })?.response ?? [];
+      const latest = predictionRowToFixturePrediction(rows[0]);
+      if (!latest) throw new Error('No published forecast is available for this fixture yet.');
+      withOdds = latest;
     } catch (error) {
-      throw new Error(describeOddsFailure(error));
+      if (error instanceof Error) throw error;
+      throw new Error(describePredictionsFailure(error));
     }
+    const markets: MarketOdds[] = withOdds.markets
+      .filter((market) => typeof market.decimalOdds === 'number' && market.decimalOdds > 1)
+      .map((market) => ({ marketId: market.marketId, decimalOdds: market.decimalOdds as number }));
     if (markets.length === 0) {
       throw new Error('No stored pre-match odds are available for this fixture.');
     }
 
-    const withOdds = predictFixture({
-      fixture,
-      allFixtures,
-      leaguesStandings,
-      odds: markets,
-      standingsAreCurrent: true,
-      now: capturedAt,
-    });
     const paperSelections = buildPaperSelections({
       fixtureId: fixture.fixture.id,
       kickoff,
@@ -1121,6 +1123,7 @@ const BetAndFixturesScreen: React.FC = () => {
       [fixture.fixture.id]: withOdds,
     }));
     setOddsLoadMessages((previous) => ({ ...previous, [fixture.fixture.id]: 'Odds refreshed from the prediction service.' }));
+
 
     const cache = await readPredictionsCache();
     cache.items.forEach(item => {
@@ -1250,47 +1253,63 @@ const BetAndFixturesScreen: React.FC = () => {
       leaguesStandingsLocal: standingsForPrediction
     });
 
-    // Statistical mode loads stored, pre-kickoff canonical quotes from Django.
-    // Odds failure never blocks the prediction calculation; those fixtures simply have
-    // probabilities without a verified value assessment.
-    const oddsByFixtureId = new Map<number, MarketOdds[]>();
+    // Statistical mode reads forecasts the server has already generated and
+    // published for each selected league's current season. The browser never
+    // recomputes a forecast; it only maps the stored output onto fixtures.
+    const publishedPredictions = new Map<number, FixturePrediction>();
     const oddsMessages: Record<number, string> = {};
     if (predictionMode === 'statistical') {
       setPredictionLoading(previous => ({ ...previous, stage: 'odds' }));
-      const now = Date.now();
-      const upcoming = predictionWindow.filter((fixture) => fixture.fixture.timestamp * 1000 > now);
-      const dates = Array.from(new Set(upcoming.map((fixture) => fixture.fixture.date.slice(0, 10))));
-      for (const date of dates) {
-        const dayFixtures = upcoming.filter((fixture) => fixture.fixture.date.slice(0, 10) === date);
-        try {
-          const response = await getOddsByDate(date);
-          dayFixtures.forEach((fixture) => {
-            const markets = storedQuotesToMarkets(response.data, fixture.fixture.id);
-            if (markets.length > 0) {
-              oddsByFixtureId.set(fixture.fixture.id, markets);
-              oddsMessages[fixture.fixture.id] = `Stored quotes available for ${markets.length} supported markets.`;
+      if (hasPredictionAccess === false) {
+        const message = 'An active prediction pass is required to view statistical forecasts.';
+        runLeagues.forEach((league) => {
+          runFailures[league.league.id] = { league, fixtureSeasons: [], standings: false, messages: [message] };
+        });
+        redirectToAccessPass(new PremiumRequiredError(message));
+      } else {
+        leagueLoop: for (const league of runLeagues) {
+          const season = league.seasons.find((entry) => entry.current)?.year ?? league.seasons[0]?.year;
+          if (!season) continue;
+          try {
+            const response = await getPredictionsByLeagueSeason({ leagueId: league.league.id, season });
+            const rows = (response.data as { response?: PredictionEnvelopeRow[] })?.response ?? [];
+            rows.forEach((row) => {
+              const prediction = predictionRowToFixturePrediction(row);
+              if (!prediction) return;
+              publishedPredictions.set(prediction.fixture.fixture.id, prediction);
+            });
+          } catch (error) {
+            const message = describePredictionsFailure(error);
+            runFailures[league.league.id] = { league, fixtureSeasons: [], standings: false, messages: [message] };
+            // A premium/session failure applies to every selected league; stop retrying.
+            if (error instanceof PremiumRequiredError || error instanceof SessionExpiredError || error instanceof SignInRequiredError) {
+              runLeagues.forEach((other) => { runFailures[other.league.id] = { league: other, fixtureSeasons: [], standings: false, messages: [message] }; });
+              if (error instanceof PremiumRequiredError) redirectToAccessPass(error);
+              break leagueLoop;
             }
-          });
-        } catch (error) {
-          const message = describeOddsFailure(error);
-          dayFixtures.forEach((fixture) => { oddsMessages[fixture.fixture.id] = message; });
-          // A premium/session failure applies to every fixture; stop retrying.
-          if (error instanceof PremiumRequiredError || error instanceof SessionExpiredError || error instanceof SignInRequiredError) {
-            upcoming.forEach((fixture) => { oddsMessages[fixture.fixture.id] = message; });
-            break;
           }
         }
       }
-      upcoming.forEach((fixture) => {
-        if (!oddsMessages[fixture.fixture.id]) {
-          oddsMessages[fixture.fixture.id] = 'No stored pre-match quotes are available for this fixture yet.';
+      const now = Date.now();
+      predictionWindow.forEach((fixture) => {
+        const prediction = publishedPredictions.get(fixture.fixture.id);
+        if (prediction) {
+          oddsMessages[fixture.fixture.id] = prediction.dataQuality?.oddsAvailable
+            ? (prediction.dataQuality?.oddsStale ? 'Stored quotes are stale; treat the value assessment with caution.' : 'Stored quotes available for the priced markets.')
+            : 'No stored pre-match quotes are available for this fixture yet.';
+        } else if (fixture.fixture.timestamp * 1000 <= now) {
+          oddsMessages[fixture.fixture.id] = 'Kickoff has passed; pre-match recommendations are closed.';
+        } else {
+          oddsMessages[fixture.fixture.id] = 'No published forecast yet; forecasts are generated within 48 hours of kickoff.';
         }
       });
-      predictionWindow
-        .filter((fixture) => fixture.fixture.timestamp * 1000 <= now)
-        .forEach((fixture) => { oddsMessages[fixture.fixture.id] = 'Kickoff has passed; pre-match recommendations are closed.'; });
     }
     setOddsLoadMessages(previous => retryFailures ? { ...previous, ...oddsMessages } : oddsMessages);
+    setFailedLeagueLoads(previous => {
+      const updated = { ...previous };
+      runIds.forEach(id => { delete updated[id]; });
+      return { ...updated, ...runFailures };
+    });
 
     setPredictionLoading(previous => ({ ...previous, stage: 'forecasts' }));
     await new Promise<void>(resolve => window.setTimeout(resolve, 0));
@@ -1298,25 +1317,9 @@ const BetAndFixturesScreen: React.FC = () => {
     // Statistical engine: calibrated probabilities + explanations for every fixture.
     // Guarded so an unexpected error in the engine cannot break the existing bet flow.
     try {
-      const baseEngineResults = predictFixturesWithEngine({
-        currentFixtures: predictionWindow,
-        allFixtures: mergedAll,
-        leaguesStandings: standingsForPrediction,
-        standingsAreCurrent: true,
-      });
-      const engineResults = baseEngineResults.map((basePrediction) => {
-        const fixtureId = basePrediction.fixture.fixture.id;
-        const odds = oddsByFixtureId.get(fixtureId);
-        if (!odds?.length) return basePrediction;
-        return predictFixture({
-          fixture: basePrediction.fixture,
-          allFixtures: mergedAll,
-          leaguesStandings: standingsForPrediction,
-          odds,
-          standingsAreCurrent: true,
-          now: Date.now(),
-        });
-      });
+      const engineResults = predictionWindow
+        .map((fixture) => publishedPredictions.get(fixture.fixture.id))
+        .filter((prediction): prediction is FixturePrediction => Boolean(prediction));
       engineResultsForCache = engineResults;
       const engineMap: Record<number, FixturePrediction> = retryFailures ? { ...enginePredictions } : {};
       engineResults.forEach((prediction) => {
@@ -1332,8 +1335,10 @@ const BetAndFixturesScreen: React.FC = () => {
       const newPaperSelections = engineResults.flatMap((prediction) => {
         const fixture = prediction.fixture;
         const kickoff = fixture.fixture.timestamp * 1000;
-        const odds = oddsByFixtureId.get(fixture.fixture.id);
-        if (!odds?.length || kickoff <= Date.now()) return [];
+        const odds: MarketOdds[] = prediction.markets
+          .filter((market) => typeof market.decimalOdds === 'number' && market.decimalOdds > 1)
+          .map((market) => ({ marketId: market.marketId, decimalOdds: market.decimalOdds as number }));
+        if (!odds.length || kickoff <= Date.now()) return [];
         return buildPaperSelections({
           fixtureId: fixture.fixture.id,
           kickoff,
@@ -1557,6 +1562,12 @@ const BetAndFixturesScreen: React.FC = () => {
                     ? 'Probabilities, price comparison, eligible picks and rejection reasons.'
                     : 'Original rule-based fixture matches; choose legacy markets below.'}
                 </p>
+                {predictionMode === 'statistical' && signedIn && hasPredictionAccess === false && (
+                  <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                    <span>An active prediction pass is required to view statistical forecasts.</span>
+                    <Link to="/access" className="rounded-lg bg-amber-400 px-3 py-1.5 font-bold text-slate-900 hover:bg-amber-300">Get a pass</Link>
+                  </div>
+                )}
               </div>
 
               <div className="rounded-2xl border border-slate-600 bg-slate-800 p-3">

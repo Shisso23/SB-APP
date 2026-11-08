@@ -28,7 +28,7 @@ test.each(Object.keys(FORECAST_HIGHLIGHTS) as ForecastId[])('%s uses inclusive r
   [undefined, null, NaN, Infinity, -1, 72, '0.8'].forEach(value => expect(highlightLevel(value, pref)).toBe('none'));
 });
 
-test('preserves user values without changing engine pick thresholds', () => {
+test('preserves user values, which the engine mirrors as its own pick thresholds', () => {
   expect(FORECAST_HIGHLIGHTS.home_win).toMatchObject({ suggest: .60 });
   expect(FORECAST_HIGHLIGHTS.away_win).toMatchObject({ suggest: .60 });
   expect(FORECAST_HIGHLIGHTS.home_win).not.toHaveProperty('strong');
@@ -37,8 +37,11 @@ test('preserves user values without changing engine pick thresholds', () => {
   expect(FORECAST_HIGHLIGHTS.away_over_0_5.suggest).toBe(.82);
   expect(FORECAST_HIGHLIGHTS.btts_yes.suggest).toBe(.72);
   expect(FORECAST_HIGHLIGHTS.over_3_5.suggest).toBe(.70);
-  expect(DEFAULT_PREDICTION_CONFIG.selection.perMarket.home_win?.minProbability).toBe(.5);
-  expect(DEFAULT_PREDICTION_CONFIG.selection.perMarket.over_3_5?.minProbability).toBe(.42);
+  // The engine's qualification gate is intentionally set to the same percentages
+  // the user configured for display, so a market only qualifies when it would
+  // also be highlighted (see src/config/prediction-config.ts).
+  expect(DEFAULT_PREDICTION_CONFIG.selection.perMarket.home_win?.minProbability).toBe(.60);
+  expect(DEFAULT_PREDICTION_CONFIG.selection.perMarket.over_3_5?.minProbability).toBe(.70);
   expect(FORECAST_HIGHLIGHTS).not.toHaveProperty('over_3_0');
 });
 

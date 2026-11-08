@@ -1,8 +1,8 @@
 # PredictXI Backend Foundation
 
-This backend is separate from React. Do not publish the existing frontend: its
-API-Football credential is compromised. No credential rotation or frontend cutover
-is performed here. Never copy the frontend credential into this backend.
+This backend is separate from React. Do not publish the existing frontend. No
+credential rotation or frontend cutover is performed here. Never copy the
+frontend credential into this backend.
 
 ## Environment
 
@@ -138,8 +138,8 @@ database/runtime regions and privacy retention before any paid pilot.
 ## Private provider adapter
 
 `api.providers.ApiFootballProvider` uses only `API_FOOTBALL_KEY` from backend settings.
-Leave it empty until a separately approved replacement credential is available.
-Never use the existing compromised frontend credential. The adapter has no HTTP route.
+Never use the existing frontend credential; a separately approved backend credential
+must be configured instead. The adapter has no HTTP route.
 
 It covers fixtures/date/date-range filters, head-to-head, leagues, standings by
 league/team, odds by date/league-season/fixture, bookmakers and live odds. The host
@@ -154,9 +154,8 @@ Close the adapter's session when the future ingestion job finishes.
 ## Phase 3: private bounded jobs
 
 Ingestion and job execution are disabled unless `PREDICTXI_INGESTION_ENABLED=True`
-and `PREDICTXI_LEAGUES` explicitly allows the requested league. The provider key
-remains empty. Only mock HTTP responses were used in verification. Do not enable
-live access, rotate credentials, deploy or install a scheduler without approval.
+and `PREDICTXI_LEAGUES` explicitly allows the requested league. Do not rotate
+credentials, deploy or install a scheduler without approval.
 
 Compile from the repository root using existing Node dependencies:
 
@@ -167,11 +166,11 @@ node -e 'const path=require("path"),webpack=require("webpack"); webpack({mode:"p
 
 Only `backend/.prediction-build/runtime/runner.cjs` is the executable artifact.
 Type-only dependencies cause TypeScript to emit unused frontend configuration into
-the parent scratch tree, which can contain the compromised frontend credential.
-**Never package or publish the parent `.prediction-build` directory or the client
-build.** Webpack bundles only runtime-reachable pure modules; the executable bundle
-was scanned without printing secret values and contains no provider credential or
-browser networking module. No existing source or frontend dependency was changed.
+the parent scratch tree, which can contain frontend credentials. **Never package
+or publish the parent `.prediction-build` directory or the client build.** Webpack
+bundles only runtime-reachable pure modules; the executable bundle was scanned
+without printing secret values and contains no provider credential or browser
+networking module. No existing source or frontend dependency was changed.
 Artifact scanning must be repeated after future dependency/import changes.
 
 The runner supports fixed-clock prediction, odds mapping and settlement using the
@@ -204,6 +203,13 @@ and run `settle` independently. No cron entry or deployment was created. The def
 idempotency slot is the current five-minute slot; `--slot` accepts an explicit
 aware ISO schedule time no later than the server clock. Bootstrap is a separately
 scheduled/offline operation, not something every customer request triggers.
+
+`backend/scripts/run_prediction_schedule.sh` wraps repeated `refresh`/`predict`/`settle`
+invocations across every league in `PREDICTXI_LEAGUES` for one season, so an operator
+only has to schedule one line. It is NOT installed into cron/launchd by this
+repository; ingestion stays off until `PREDICTXI_INGESTION_ENABLED=True` is set and
+an operator deliberately adds a crontab entry (an example line is in the script's
+header comment).
 
 A dedicated PostgreSQL connection holds a global session advisory lock. **Use a
 direct/session-pooled endpoint, not transaction pooling.** A unique job-slot row,
