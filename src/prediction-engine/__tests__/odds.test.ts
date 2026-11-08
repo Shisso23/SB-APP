@@ -14,7 +14,7 @@ const now = Date.UTC(2024, 0, 1);
 describe('odds', () => {
   it.each([undefined, NaN, Infinity, 0, -1, now + 1])('refuses unverifiable quote timestamp %s', (timestamp) => {
     const value = buildMarketValue({
-      marketId: 'over_2_5', modelProbability: 0.8,
+      marketId: 'over_2_5', modelProbability: 0.65,
       odds: { marketId: 'over_2_5', decimalOdds: 2.2, timestamp },
       marginAdjustedProbability: 0.45, config, now,
     });
@@ -58,11 +58,11 @@ describe('odds', () => {
     expect(over).toBeGreaterThan(under);
   });
 
-  it('gates a selection on probability alone; edge is informational only', () => {
-    // Model 80% (passes over_2_5's 75% threshold), odds 1.75, margin-adjusted 0.52 => edge +28pp.
+  it('gates a selection on probability AND edge', () => {
+    // Model 60%, odds 1.75 (raw implied 57.1%), margin-adjusted 0.52 => edge +8pp.
     const value = buildMarketValue({
       marketId: 'over_2_5',
-      modelProbability: 0.8,
+      modelProbability: 0.6,
       odds: { marketId: 'over_2_5', decimalOdds: 1.75, timestamp: now },
       marginAdjustedProbability: 0.52,
       config,
@@ -71,29 +71,29 @@ describe('odds', () => {
     expect(value.passedProbabilityThreshold).toBe(true);
     expect(value.passedEdgeThreshold).toBe(true);
     expect(value.qualifies).toBe(true);
-    expect(value.edge).toBeCloseTo(0.28, 4);
+    expect(value.edge).toBeCloseTo(0.08, 4);
   });
 
-  it('still qualifies a high-probability selection even when its edge is negative', () => {
+  it('rejects a selection whose edge is too small even with high probability', () => {
     const value = buildMarketValue({
       marketId: 'over_2_5',
-      modelProbability: 0.8,
+      modelProbability: 0.65,
       odds: { marketId: 'over_2_5', decimalOdds: 1.5, timestamp: now }, // implied .667
-      marginAdjustedProbability: 0.85,
+      marginAdjustedProbability: 0.66,
       config,
       now,
     });
     expect(value.passedProbabilityThreshold).toBe(true);
     expect(value.passedEdgeThreshold).toBe(false);
-    expect(value.edge).toBeCloseTo(-0.05, 4);
-    expect(value.qualifies).toBe(true);
+    expect(value.qualifies).toBe(false);
+    expect(value.rejectReasons.join(' ')).toMatch(/edge/i);
   });
 
   it('flags stale odds and refuses to qualify them', () => {
     const staleTimestamp = now - (config.odds.staleAfterMinutes + 60) * 60_000;
     const value = buildMarketValue({
       marketId: 'over_2_5',
-      modelProbability: 0.8,
+      modelProbability: 0.6,
       odds: { marketId: 'over_2_5', decimalOdds: 2.2, timestamp: staleTimestamp },
       marginAdjustedProbability: 0.45,
       config,
@@ -103,27 +103,28 @@ describe('odds', () => {
     expect(value.qualifies).toBe(false);
   });
 
-  it('still qualifies a positive no-vig edge even when the offered price has non-positive EV', () => {
-    const value = buildMarketValue({
-      marketId: 'over_2_5', modelProbability: 0.8,
-      odds: { marketId: 'over_2_5', decimalOdds: 1.1, timestamp: now },
-      marginAdjustedProbability: 0.7, config, now,
+  it('rejects a positive no-vig edge when the offered price has non-positive EV', () => {
+    [1.5, 1 / 0.6].forEach((decimalOdds) => {
+      const value = buildMarketValue({
+        marketId: 'over_2_5', modelProbability: 0.6,
+        odds: { marketId: 'over_2_5', decimalOdds, timestamp: now },
+        marginAdjustedProbability: 0.55, config, now,
+      });
+      expect(value.passedEdgeThreshold).toBe(true);
+      expect(value.qualifies).toBe(false);
+      expect(value.rejectReasons.join(' ')).toMatch(/expected value/);
     });
-    expect(value.passedProbabilityThreshold).toBe(true);
-    expect(value.passedEdgeThreshold).toBe(true);
-    expect(value.expectedValue).toBeLessThan(0);
-    expect(value.qualifies).toBe(true);
   });
 
-  it('qualifies a market without odds once its probability passes, odds remain unverifiable', () => {
+  it('never qualifies a market without odds and labels it accordingly', () => {
     const value = buildMarketValue({
       marketId: 'btts_yes',
-      modelProbability: 0.8,
+      modelProbability: 0.7,
       config,
       now,
       evidence: ['both teams scoring'],
     });
-    expect(value.qualifies).toBe(true);
+    expect(value.qualifies).toBe(false);
     expect(value.passedEdgeThreshold).toBe(false);
     expect(value.rejectReasons.join(' ')).toMatch(/no bookmaker odds/i);
     expect(value.evidence).toContain('both teams scoring');

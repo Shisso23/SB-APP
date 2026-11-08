@@ -129,7 +129,8 @@ describe('predictFixture (end-to-end)', () => {
       },
       samples: [6, 6, 6, 6],
       selections: [
-        { id: 'over_1_5', probability: 0.8026, edge: 0 },
+        { id: 'btts_yes', probability: 0.6112, edge: 0.2112, ev: 0.4669 },
+        { id: 'home_over_0_5', probability: 0.791, edge: 0.166, ev: 0.2656 },
       ],
       coldStart: {
         probabilities: {
@@ -185,8 +186,7 @@ describe('predictFixture (end-to-end)', () => {
     expect(withOdds.probabilities).toEqual(prediction.probabilities);
     expect(withOdds.dataQuality.oddsAvailable).toBe(true);
     expect(withOdds.dataQuality.oddsStale).toBe(true);
-    // btts_yes itself never qualifies: its price is unverifiable and its own probability is below threshold.
-    expect(withOdds.selections.some((s) => s.marketId === 'btts_yes')).toBe(false);
+    expect(withOdds.selections).toEqual([]);
     expect(withOdds.dataQuality.warnings.join(' ')).toMatch(/update time|freshness/);
   });
 
@@ -198,10 +198,9 @@ describe('predictFixture (end-to-end)', () => {
     });
   });
 
-  it('qualifies a market on probability alone when no odds are supplied for it', () => {
+  it('does not qualify anything without odds, but reports model probabilities', () => {
     expect(prediction.dataQuality.oddsAvailable).toBe(false);
-    expect(prediction.selections.map((m) => m.marketId)).toEqual(['over_1_5']);
-    expect(prediction.selections[0].passedEdgeThreshold).toBe(false);
+    expect(prediction.selections).toHaveLength(0);
     expect(prediction.markets.some((m) => m.modelProbability > 0)).toBe(true);
   });
 
@@ -263,19 +262,19 @@ describe('predictFixture (end-to-end)', () => {
       standingsAreCurrent: false,
       now: upcoming.fixture.timestamp,
       odds: [
-        { marketId: 'over_1_5', decimalOdds: 1.3, timestamp: upcoming.fixture.timestamp },
-        { marketId: 'under_1_5', decimalOdds: 3.4, timestamp: upcoming.fixture.timestamp },
+        { marketId: 'over_2_5', decimalOdds: 2.2, timestamp: upcoming.fixture.timestamp },
+        { marketId: 'under_2_5', decimalOdds: 1.7, timestamp: upcoming.fixture.timestamp },
+        { marketId: 'btts_yes', decimalOdds: 2.4, timestamp: upcoming.fixture.timestamp },
+        { marketId: 'btts_no', decimalOdds: 1.6, timestamp: upcoming.fixture.timestamp },
       ],
     });
 
     expect(withOdds.dataQuality.oddsAvailable).toBe(true);
-    expect(withOdds.selections.length).toBeGreaterThan(0);
     withOdds.selections.forEach((selection) => {
       expect(selection.qualifies).toBe(true);
+      expect(selection.expectedValue).toBeDefined();
+      expect(selection.marginAdjustedProbability).toBeDefined();
     });
-    const priced = withOdds.selections.find((s) => s.marketId === 'over_1_5');
-    expect(priced?.expectedValue).toBeDefined();
-    expect(priced?.marginAdjustedProbability).toBeDefined();
     // Ranked by EV descending.
     for (let i = 1; i < withOdds.selections.length; i += 1) {
       const prev = withOdds.selections[i - 1].expectedValue ?? -Infinity;

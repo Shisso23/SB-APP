@@ -1,4 +1,4 @@
-import { FixturePrediction, MARKET_LABELS } from '../prediction-engine/types';
+import { FixturePrediction, MARKET_IMPLICATIONS, MARKET_LABELS, MarketId } from '../prediction-engine/types';
 
 export interface ForecastPreference {
   label: string;
@@ -92,6 +92,28 @@ export const forecastProbability = (prediction: FixturePrediction, id: ForecastI
     const goals = side === 'total' ? line.home + line.away : line[side];
     return sum + (goals >= min && goals <= max ? line.probability : 0);
   }, 0);
+};
+
+export interface ImpliedHighlightResult {
+  level: 'strong' | 'suggested' | 'none';
+  /** Set when this forecast's own probability missed its threshold but every
+   * forecast in one of its MARKET_IMPLICATIONS groups independently passed. */
+  impliedBy?: ForecastId[];
+}
+/**
+ * Falls back to a logical implication when a forecast's own number misses its own
+ * threshold: if every forecast in one of its implying groups has already passed its
+ * own threshold, this forecast's event is logically guaranteed too, so it is
+ * suggested on that basis. Never relaxes a forecast's own threshold; only adds
+ * another way to satisfy it.
+ */
+export const impliedHighlightResult = (prediction: FixturePrediction, id: ForecastId): ImpliedHighlightResult => {
+  const own = highlightLevel(forecastProbability(prediction, id), FORECAST_HIGHLIGHTS[id]);
+  if (own !== 'none') return { level: own };
+  const groups = MARKET_IMPLICATIONS[id as MarketId];
+  const impliedBy = groups?.find(group =>
+    group.every(impliedId => highlightLevel(forecastProbability(prediction, impliedId), FORECAST_HIGHLIGHTS[impliedId]) !== 'none'));
+  return impliedBy ? { level: 'suggested', impliedBy: impliedBy as ForecastId[] } : { level: 'none' };
 };
 
 // Only active legacy registry options; commented-out options are not supported UI.

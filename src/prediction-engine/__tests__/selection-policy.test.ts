@@ -34,7 +34,7 @@ describe('selection policy: configurable thresholds are enforced', () => {
     expect(ranked).toHaveLength(1);
     expect(ranked[0].market).toBeDefined();
     const market = ranked[0].market!;
-    expect(market.passedEdgeThreshold).toBe(false); // no quoted price, so no verified betting value
+    expect(market.qualifies).toBe(false);
     expect(market.decimalOdds).toBeUndefined();
     expect(market.evidence.length).toBeGreaterThan(0);
     expect(['home_dnb', 'away_dnb', 'home_or_draw', 'away_or_draw']).not.toContain(market.marketId);
@@ -56,8 +56,8 @@ describe('selection policy: configurable thresholds are enforced', () => {
       marketId: 'home_over_0_5', modelProbability,
       odds: { marketId: 'home_over_0_5', decimalOdds, timestamp: NOW - 1 }, config, now: NOW,
     });
-    const lower = makeMarket(0.85, 1.5);
-    const higher = makeMarket(0.85, 2);
+    const lower = makeMarket(0.8, 1.5);
+    const higher = makeMarket(0.8, 2);
     const other = { ...prediction, fixture: { ...prediction.fixture, fixture: { ...prediction.fixture.fixture, id: 10000 } }, selections: [higher, lower] };
     const ranked = rankDirectPicks([{ ...prediction, selections: [lower] }, other], NOW - 1);
     expect(ranked.map((entry) => entry.prediction.fixture.fixture.id)).toEqual([10000, 9999]);
@@ -69,15 +69,13 @@ describe('selection policy: configurable thresholds are enforced', () => {
     expect(rankDirectPicks([{ ...prediction, selections: [{ ...higher, oddsTimestamp: NOW - 13 * 3600000 }] }], NOW - 1)).toEqual([]);
   });
 
-  it('no longer gates on minimum edge, even when configured strictly (edge is informational only)', () => {
+  it('honours a raised minimum edge (configurable)', () => {
     const strict = mergePredictionConfig({ selection: { defaultMinEdge: 0.25 } });
     const odds = { marketId: 'over_2_5' as const, decimalOdds: 2.2, timestamp: NOW };
-    const lenientValue = buildMarketValue({ marketId: 'over_2_5', modelProbability: 0.8, odds, marginAdjustedProbability: 0.7, config, now: NOW });
-    const strictValue = buildMarketValue({ marketId: 'over_2_5', modelProbability: 0.8, odds, marginAdjustedProbability: 0.7, config: strict, now: NOW });
-    expect(lenientValue.passedEdgeThreshold).toBe(true);   // edge 0.10 >= 0
-    expect(lenientValue.qualifies).toBe(true);
-    expect(strictValue.passedEdgeThreshold).toBe(false);   // edge 0.10 < 0.25
-    expect(strictValue.qualifies).toBe(true);              // but edge no longer gates qualification
+    const lenientValue = buildMarketValue({ marketId: 'over_2_5', modelProbability: 0.6, odds, marginAdjustedProbability: 0.45, config, now: NOW });
+    const strictValue = buildMarketValue({ marketId: 'over_2_5', modelProbability: 0.6, odds, marginAdjustedProbability: 0.45, config: strict, now: NOW });
+    expect(lenientValue.qualifies).toBe(true);   // edge 0.15 >= 0.03
+    expect(strictValue.qualifies).toBe(false);   // edge 0.15 < 0.25
   });
 
   it('honours a raised minimum probability (configurable)', () => {
@@ -87,7 +85,7 @@ describe('selection policy: configurable thresholds are enforced', () => {
     expect(value.qualifies).toBe(false);
   });
 
-  it('qualifies on probability alone even with poor odds, since edge is no longer required', () => {
+  it('handles high probability but poor odds (probability gate passes, edge fails)', () => {
     const value = buildMarketValue({
       marketId: 'over_1_5', modelProbability: 0.8,
       odds: { marketId: 'over_1_5', decimalOdds: 1.05, timestamp: NOW }, // implied 0.952
@@ -95,8 +93,8 @@ describe('selection policy: configurable thresholds are enforced', () => {
     });
     expect(value.passedProbabilityThreshold).toBe(true);
     expect(value.passedEdgeThreshold).toBe(false);
-    expect(value.qualifies).toBe(true);
-    expect(value.expectedValue!).toBeLessThan(0); // 0.8*1.05 - 1 = -0.16, still exposed for disclosure
+    expect(value.qualifies).toBe(false);
+    expect(value.expectedValue!).toBeLessThan(0); // 0.8*1.05 - 1 = -0.16
   });
 
   it('handles positive EV but weak data by abstaining via the quality gate', () => {
@@ -113,10 +111,7 @@ describe('selection policy: configurable thresholds are enforced', () => {
   });
 
   it('can abstain entirely (no qualifying market)', () => {
-    const noOdds = predictFixture(
-      { fixture: upcoming, allFixtures: history(), leaguesStandings: standings, now: NOW, standingsAreCurrent: false },
-      { selection: { perMarket: { over_1_5: { minProbability: 0.95 } } } }
-    );
+    const noOdds = predictFixture({ fixture: upcoming, allFixtures: history(), leaguesStandings: standings, now: NOW, standingsAreCurrent: false });
     expect(noOdds.selections).toHaveLength(0);
   });
 

@@ -76,8 +76,7 @@ describe('prediction engine — runnable example', () => {
 
   it('documents the configuration surface that controls thresholds', () => {
     // Thresholds live in one place and are overridable without touching engine code.
-    // Edge vs. market odds is informational only now; it is no longer a qualification gate.
-    expect(DEFAULT_PREDICTION_CONFIG.selection.defaultMinEdge).toBe(0);
+    expect(DEFAULT_PREDICTION_CONFIG.selection.defaultMinEdge).toBeGreaterThan(0);
     expect(DEFAULT_PREDICTION_CONFIG.recentWindow).toBe(20);
     expect(DEFAULT_PREDICTION_CONFIG.historySeasons).toBe(3);
     expect(standings.length).toBeGreaterThan(0);

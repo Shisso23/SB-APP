@@ -61,20 +61,15 @@ test('a qualifying forecast remains listed with limited history and no model sel
   expect(screen.getByText(/meets the 60% suggestion threshold/)).toBeInTheDocument();
 });
 
-test('variety is enabled by default, explains alternative choices and can return to strongest-only forecasts', async () => {
+test('always uses the strongest qualifying forecast per match and can return fewer matches', async () => {
   const predictions = [1, 2, 3].map(id => makeForecastBetPrediction({ now, id, markets: { home_win: .8, btts_yes: .75, over_2_5: .8 } }));
   const writeText = jest.fn().mockResolvedValue(undefined);
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
   render(<SuggestedBetList {...props} predictions={predictions} />);
-  expect(screen.getByRole('checkbox', { name: 'Vary bet options' })).toBeChecked();
-  expect(screen.getByText('3 market types')).toBeInTheDocument();
-  expect(screen.getAllByText(/Chosen for variety/)).toHaveLength(2);
+  expect(screen.getByText('1 market type')).toBeInTheDocument();
+  expect(screen.getByText(/Uses the strongest qualifying forecast for each match/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Copy list' }));
   expect(await screen.findByRole('status')).toHaveTextContent('List copied.');
-  expect(writeText).toHaveBeenCalledWith(expect.stringContaining('Chosen for variety; strongest qualifying option'));
-  fireEvent.click(screen.getByRole('checkbox', { name: 'Vary bet options' }));
-  expect(screen.getByText('1 market type')).toBeInTheDocument();
-  expect(screen.queryByText(/Chosen for variety/)).not.toBeInTheDocument();
   expect(screen.getAllByRole('listitem')).toHaveLength(3);
   expect(screen.getAllByText('Home win · 80.00%')).toHaveLength(3);
   expect(props.onTogglePick).not.toHaveBeenCalled();
@@ -85,9 +80,7 @@ test('requesting ten matches keeps ten qualifying entries even when their bet op
   const predictions = Array.from({ length: 10 }, (_, index) => makeForecastBetPrediction({ now, id: index + 1 }));
   render(<SuggestedBetList {...props} predictions={predictions} />);
   fireEvent.change(screen.getByLabelText('Suggested bet list size'), { target: { value: '10' } });
-  expect(screen.getByRole('checkbox', { name: 'Vary bet options' })).toBeChecked();
   expect(screen.getAllByRole('listitem')).toHaveLength(10);
   expect(screen.getAllByText('Home win · 80.00%')).toHaveLength(10);
   expect(screen.getByText('10 of up to 10 matches')).toBeInTheDocument();
-  expect(screen.getByText(/Repeats are allowed/)).toBeInTheDocument();
 });
