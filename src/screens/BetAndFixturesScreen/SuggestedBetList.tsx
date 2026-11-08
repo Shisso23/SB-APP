@@ -58,7 +58,7 @@ export const SuggestedBetList: React.FC<{
         </div>
         <ol className="mt-3 space-y-3">
           {suggestions.map((suggestion, index) => {
-            const { key, prediction, preference, probability, forecastId, market, priceStatus, historyLimited, diversityAlternative, family } = suggestion;
+            const { key, prediction, preference, probability, forecastId, market, priceStatus, historyLimited, diversityAlternative, family, derivedQualification } = suggestion;
             const fixture = prediction.fixture;
             const picked = selectedPickKeys.includes(key);
             return <li key={key} className="rounded-xl border border-slate-700 bg-slate-950/60 p-3">
@@ -71,6 +71,7 @@ export const SuggestedBetList: React.FC<{
               </div>
               <div className="mt-2 font-semibold text-cyan-100">{preference.label} · {(probability * 100).toFixed(2)}%</div>
               <p className="mt-1 text-[10px] text-slate-400">{FORECAST_FAMILY_LABELS[family]}</p>
+              {derivedQualification && <p className="mt-1 text-xs text-cyan-200">Qualifies via combined home/away scoring thresholds rather than its own percentage alone.</p>}
               {diversityAlternative && <p className="mt-2 text-xs text-cyan-200">Chosen for variety. Strongest qualifying option for this match: {diversityAlternative.label} ({(diversityAlternative.probability * 100).toFixed(2)}%).</p>}
               <ForecastHighlight probability={probability} preference={preference} progressive={forecastId === 'btts_yes'} />
               <p className="mt-2 text-xs text-slate-300">{preference.meaning}</p>

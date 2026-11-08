@@ -1,7 +1,12 @@
 import { DEFAULT_PREDICTION_CONFIG } from '../config/prediction-config';
-import { FORECAST_HIGHLIGHTS, FORECAST_FAMILIES, ForecastFamily, ForecastId, ForecastPreference, forecastProbability, highlightLevel } from '../config/forecast-highlights';
+import { FORECAST_HIGHLIGHTS, FORECAST_FAMILIES, ForecastFamily, ForecastId, ForecastPreference, derivedThresholdSupport, forecastProbability, highlightLevel } from '../config/forecast-highlights';
 import { FixturePrediction, MarketValue } from './types';
 import { isStale } from './odds';
+
+// Core/mainstream markets (1X2, BTTS, over 2.5) are preferred over narrower markets
+// (ranges, DNB, double chance, etc.) when both qualify for the same match.
+const CORE_FORECAST_IDS = new Set<ForecastId>(['home_win', 'draw', 'away_win', 'btts_yes', 'over_2_5']);
+const priorityTier = (id: ForecastId) => CORE_FORECAST_IDS.has(id) ? 0 : 1;
 
 export const DEFAULT_BET_LIST_SIZE = 5;
 export type ForecastPriceStatus = 'checked' | 'unqualified' | 'stale' | 'unpriced';
@@ -18,10 +23,13 @@ export interface ForecastBetSuggestion {
   priceStatus: ForecastPriceStatus;
   historyLimited: boolean;
   family: ForecastFamily;
+  /** True when this market only qualifies via `derivedThresholdSupport`, not its own threshold. */
+  derivedQualification: boolean;
   diversityAlternative?: { label: string; probability: number };
 }
 
 const compare = (a: ForecastBetSuggestion, b: ForecastBetSuggestion) =>
+  priorityTier(a.forecastId) - priorityTier(b.forecastId) ||
   b.relativeSurplus - a.relativeSurplus || b.probability - a.probability ||
   a.prediction.fixture.fixture.timestamp - b.prediction.fixture.fixture.timestamp ||
   a.prediction.fixture.fixture.id - b.prediction.fixture.fixture.id || a.forecastId.localeCompare(b.forecastId);
@@ -46,8 +54,14 @@ export const buildForecastBetList = (
     (Object.keys(FORECAST_HIGHLIGHTS) as ForecastId[]).forEach(forecastId => {
       const preference: ForecastPreference = FORECAST_HIGHLIGHTS[forecastId];
       const probability = forecastProbability(prediction, forecastId);
-      const level = highlightLevel(probability, preference);
-      if (level === 'none' || probability === undefined) return;
+      if (probability === undefined) return;
+      const ownLevel = highlightLevel(probability, preference);
+      // Additive: a market that misses its own threshold can still qualify when
+      // every market in a support group (e.g. both teams scoring 1+) independently
+      // clears its own threshold. This never lowers or bypasses the market's own cutoff.
+      const derivedQualification = ownLevel === 'none' && derivedThresholdSupport(prediction, forecastId);
+      const level = ownLevel !== 'none' ? ownLevel : derivedQualification ? 'suggested' : 'none';
+      if (level === 'none') return;
       const market = prediction.markets.find(entry => entry.marketId === forecastId);
       const hasQuote = market?.decimalOdds !== undefined && Number.isFinite(market.decimalOdds) && market.decimalOdds > 1;
       const fresh = hasQuote && !market?.oddsStale && !isStale(market?.oddsTimestamp, now, DEFAULT_PREDICTION_CONFIG.odds.staleAfterMinutes);
@@ -56,7 +70,7 @@ export const buildForecastBetList = (
       const candidate: ForecastBetSuggestion = {
         key: `${fixture.id}:${forecastId}`, prediction, forecastId, preference, probability,
         relativeSurplus: (probability - preference.suggest) / (1 - preference.suggest),
-        level, market, historyLimited, family: FORECAST_FAMILIES[forecastId],
+        level, market, historyLimited, family: FORECAST_FAMILIES[forecastId], derivedQualification,
         priceStatus: !hasQuote ? 'unpriced' : !fresh ? 'stale' : checked ? 'checked' : 'unqualified',
       };
       const previous = candidatesByKey.get(candidate.key);
@@ -184,6 +198,6 @@ export const formatForecastBetList = (suggestions: ForecastBetSuggestion[]) => [
     const { prediction, preference, probability, market, priceStatus } = suggestion;
     const fixture = prediction.fixture;
     const quote = priceStatus === 'unpriced' ? 'No available odds' : `Odds ${market?.decimalOdds?.toFixed(2)}${market?.bookmaker ? ` (${market.bookmaker})` : ''}`;
-    return `${index + 1}. ${fixture.teams.home.name} vs ${fixture.teams.away.name} | ${fixture.league.name} | ${fixture.fixture.date}\n${preference.label} | Forecast ${(probability * 100).toFixed(2)}% | Threshold ${(preference.suggest * 100).toFixed(0)}%\n${preference.meaning}\n${quote} | ${PRICE_STATUS_LABELS[priceStatus]}${preference.range ? '\nSource: base scoreline model, separate from prior-blended totals.' : ''}${suggestion.historyLimited ? '\nLimited team history; inspect the statistics.' : ''}${suggestion.diversityAlternative ? `\nChosen for variety; strongest qualifying option for this match: ${suggestion.diversityAlternative.label} (${(suggestion.diversityAlternative.probability * 100).toFixed(2)}%).` : ''}`;
+    return `${index + 1}. ${fixture.teams.home.name} vs ${fixture.teams.away.name} | ${fixture.league.name} | ${fixture.fixture.date}\n${preference.label} | Forecast ${(probability * 100).toFixed(2)}% | Threshold ${(preference.suggest * 100).toFixed(0)}%\n${preference.meaning}\n${quote} | ${PRICE_STATUS_LABELS[priceStatus]}${preference.range ? '\nSource: base scoreline model, separate from prior-blended totals.' : ''}${suggestion.derivedQualification ? '\nQualifies via combined home/away scoring thresholds rather than its own percentage alone.' : ''}${suggestion.historyLimited ? '\nLimited team history; inspect the statistics.' : ''}${suggestion.diversityAlternative ? `\nChosen for variety; strongest qualifying option for this match: ${suggestion.diversityAlternative.label} (${(suggestion.diversityAlternative.probability * 100).toFixed(2)}%).` : ''}`;
   }),
 ].join('\n\n');

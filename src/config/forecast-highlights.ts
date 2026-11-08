@@ -94,6 +94,40 @@ export const forecastProbability = (prediction: FixturePrediction, id: ForecastI
   }, 0);
 };
 
+/** Markets whose event is logically implied once every market in at least one of
+ * these groups independently clears its own threshold (e.g. both teams scoring 1+
+ * implies BTTS Yes and implies at least 2 total goals). Additive only: a market's
+ * own threshold is checked first and is never removed, lowered or bypassed for it.
+ */
+const DERIVED_SUPPORT: Partial<Record<ForecastId, ForecastId[][]>> = {
+  btts_yes: [['home_over_0_5', 'away_over_0_5']],
+  over_1_5: [['home_over_0_5', 'away_over_0_5']],
+  over_2_5: [['home_over_1_5', 'away_over_0_5'], ['away_over_1_5', 'home_over_0_5']],
+  over_3_5: [['home_over_1_5', 'away_over_1_5']],
+};
+
+/** Whether every market in at least one support group independently clears its own
+ * threshold for this prediction, implying `id`'s event without using `id`'s own probability.
+ */
+export const derivedThresholdSupport = (prediction: FixturePrediction, id: ForecastId): boolean => {
+  const groups = DERIVED_SUPPORT[id];
+  if (!groups) return false;
+  return groups.some(group => group.every(supportId =>
+    highlightLevel(forecastProbability(prediction, supportId), FORECAST_HIGHLIGHTS[supportId]) !== 'none'));
+};
+
+/** Own-threshold level, falling back to implied qualification via `derivedThresholdSupport`
+ * when the market does not already clear its own threshold. Never downgrades a market
+ * that already qualifies on its own probability.
+ */
+export const effectiveHighlightLevel = (
+  prediction: FixturePrediction, id: ForecastId, probability: unknown,
+): 'strong' | 'suggested' | 'none' => {
+  const own = highlightLevel(probability, FORECAST_HIGHLIGHTS[id]);
+  if (own !== 'none') return own;
+  return derivedThresholdSupport(prediction, id) ? 'suggested' : 'none';
+};
+
 // Only active legacy registry options; commented-out options are not supported UI.
 export const LEGACY_FORECAST_IDS: Record<number, ForecastId> = {
   0: 'btts_yes', 1: 'home_win', 2: 'home_over_1_5', 3: 'over_1_5', 4: 'over_2_5',

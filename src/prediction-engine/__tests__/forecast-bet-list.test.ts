@@ -190,3 +190,30 @@ test('does not invent matches or lower thresholds when fewer than ten matches qu
   expect(list).toHaveLength(7);
   expect(list.every(entry => entry.forecastId === 'home_win')).toBe(true);
 });
+
+test('derives BTTS, over 1.5 and over 2.5 qualification from component markets independently clearing their own thresholds', () => {
+  const btts = makeForecastBetPrediction({ now, markets: { home_over_0_5: .82, away_over_0_5: .82, btts_yes: .71 } });
+  expect(buildForecastBetList([btts], now)).toEqual(expect.arrayContaining([expect.objectContaining({ forecastId: 'btts_yes', derivedQualification: true })]));
+
+  const over15 = makeForecastBetPrediction({ now, markets: { home_over_0_5: .82, away_over_0_5: .82, over_1_5: .79 } });
+  expect(buildForecastBetList([over15], now).some(entry => entry.forecastId === 'over_1_5' && entry.derivedQualification)).toBe(true);
+
+  const over25 = makeForecastBetPrediction({ now, markets: { home_over_1_5: .7, away_over_0_5: .82, over_2_5: .74 } });
+  expect(buildForecastBetList([over25], now).some(entry => entry.forecastId === 'over_2_5' && entry.derivedQualification)).toBe(true);
+
+  // Does not derive when only one side of the support group clears its own threshold.
+  const incomplete = makeForecastBetPrediction({ now, markets: { home_over_0_5: .82, btts_yes: .71 } });
+  expect(buildForecastBetList([incomplete], now)).toHaveLength(0);
+
+  // Never downgrades a market that already clears its own threshold.
+  const ownThreshold = makeForecastBetPrediction({ now, markets: { btts_yes: .9 } });
+  expect(buildForecastBetList([ownThreshold], now)[0].derivedQualification).toBe(false);
+});
+
+test('prefers core markets (home/draw/away, BTTS, over 2.5) over narrower markets when both qualify', () => {
+  const prediction = makeForecastBetPrediction({ now, markets: { over_2_5: .76, total_2_5: .95 } });
+  const list = buildForecastBetList([prediction], now);
+  expect(list).toHaveLength(1);
+  expect(list[0].forecastId).toBe('over_2_5');
+});
+
