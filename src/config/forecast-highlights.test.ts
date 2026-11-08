@@ -1,4 +1,4 @@
-import { FORECAST_HIGHLIGHTS, ForecastPreference, ForecastId, forecastProbability, highlightLevel, LEGACY_FORECAST_IDS, visibleForecastPrediction } from './forecast-highlights';
+import { FORECAST_HIGHLIGHTS, ForecastPreference, ForecastId, derivedThresholdSupport, effectiveHighlightLevel, forecastProbability, highlightLevel, LEGACY_FORECAST_IDS, visibleForecastPrediction } from './forecast-highlights';
 import { SUPPORTED_MARKETS } from '../prediction-engine/markets';
 import { betOptions } from '../variables/variables';
 import { FixturePrediction, ScorelineProbability } from '../prediction-engine/types';
@@ -89,4 +89,31 @@ test('BTTS No is hidden from forecasts, ranked candidates and leading headlines 
   expect(visible.headline).toBe('');
   expect(original.markets).toHaveLength(2);
   expect(original.selections).toHaveLength(1);
+});
+
+test('derivedThresholdSupport implies BTTS Yes and goal totals once their component markets each clear their own threshold', () => {
+  const withMarkets = (entries: [ForecastId, number][], grid?: ScorelineProbability[]): FixturePrediction => ({
+    markets: entries.map(([marketId, modelProbability]) => ({ marketId, modelProbability })),
+    probabilities: { baseScorelines: grid, topScorelines: [] },
+  } as unknown as FixturePrediction);
+
+  expect(derivedThresholdSupport(withMarkets([['home_over_0_5', .82], ['away_over_0_5', .82]]), 'btts_yes')).toBe(true);
+  expect(derivedThresholdSupport(withMarkets([['home_over_0_5', .82], ['away_over_0_5', .82]]), 'over_1_5')).toBe(true);
+  // home_over_1_5/away_over_1_5 are base-grid ranges (home or away scores 2+), not raw markets.
+  const homeTwoPlus: ScorelineProbability[] = [{ home: 2, away: 0, probability: .75 }, { home: 0, away: 0, probability: .25 }];
+  const awayTwoPlus: ScorelineProbability[] = [{ home: 0, away: 2, probability: .75 }, { home: 0, away: 0, probability: .25 }];
+  const bothTwoPlus: ScorelineProbability[] = [{ home: 2, away: 2, probability: .75 }, { home: 0, away: 0, probability: .25 }];
+  expect(derivedThresholdSupport(withMarkets([['away_over_0_5', .82]], homeTwoPlus), 'over_2_5')).toBe(true);
+  expect(derivedThresholdSupport(withMarkets([['home_over_0_5', .82]], awayTwoPlus), 'over_2_5')).toBe(true);
+  expect(derivedThresholdSupport(withMarkets([], bothTwoPlus), 'over_3_5')).toBe(true);
+  // Only one side clearing its own threshold is not enough.
+  expect(derivedThresholdSupport(withMarkets([['home_over_0_5', .82]]), 'btts_yes')).toBe(false);
+  expect(derivedThresholdSupport(withMarkets([['home_over_0_5', .81999], ['away_over_0_5', .82]]), 'btts_yes')).toBe(false);
+  // A market with no configured support group never derives.
+  expect(derivedThresholdSupport(withMarkets([['home_over_0_5', .82], ['away_over_0_5', .82]]), 'home_win')).toBe(false);
+});
+
+test('effectiveHighlightLevel never downgrades a market that already clears its own threshold', () => {
+  const p = { markets: [{ marketId: 'btts_yes', modelProbability: .9 }], probabilities: { baseScorelines: undefined, topScorelines: [] } } as unknown as FixturePrediction;
+  expect(effectiveHighlightLevel(p, 'btts_yes', .9)).toBe('suggested');
 });
