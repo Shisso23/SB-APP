@@ -189,7 +189,7 @@ it('shows a paywall CTA and blocks the predictions fetch when no active pass exi
   expect(get.mock.calls.filter(([endpoint]) => endpoint === '/predictions/')).toHaveLength(0);
   expect(screen.getByRole('alert')).toHaveTextContent('An active prediction pass is required');
 });
-it('keeps forecasts first, removes model-pick sections, and updates the threshold bet list on model and filter changes', async () => {
+it('keeps the suggested bet list first for easy discovery, removes model-pick sections, and updates the threshold bet list on model and filter changes', async () => {
   await runInitialBatch();
   const forecasts = screen.getByText(/All forecasts and market details/).closest('details')!;
   expect(screen.queryByText('Model picks, rankings and explanations')).not.toBeInTheDocument();
@@ -197,7 +197,7 @@ it('keeps forecasts first, removes model-pick sections, and updates the threshol
   expect(screen.queryByRole('region', { name: 'Best available options' })).not.toBeInTheDocument();
   expect(forecasts).toHaveAttribute('open');
   const betList = screen.getByRole('region', { name: 'Suggested bet list' });
-  expect(forecasts.compareDocumentPosition(betList) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(betList.compareDocumentPosition(forecasts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(within(betList).getAllByRole('listitem')).toHaveLength(1);
   expect(forecasts.querySelector('[data-highlight]')).toBeTruthy();
   expect(forecasts).toHaveTextContent('2–5 total goals');
@@ -332,9 +332,14 @@ it('keeps forecasts usable and reports a genuine IndexedDB write failure', async
 
 it('expands or collapses individual fixtures and the full forecast list without removing forecasts', async () => {
   await runInitialBatch();
+  // Fixture cards start collapsed by default to keep the list compact; only the
+  // matchup header, league and kickoff time are visible until expanded.
+  const collapsedToggles = screen.getAllByRole('button', { name: /^Expand forecast for/ });
+  expect(collapsedToggles.length).toBeGreaterThan(1);
+  const contents = collapsedToggles.map(button => document.getElementById(button.getAttribute('aria-controls')!)!);
+  contents.forEach(content => expect(content).not.toBeVisible());
+  fireEvent.click(screen.getByRole('button', { name: 'Expand all', exact: true }));
   const toggles = screen.getAllByRole('button', { name: /^Collapse forecast for/ });
-  expect(toggles.length).toBeGreaterThan(1);
-  const contents = toggles.map(button => document.getElementById(button.getAttribute('aria-controls')!)!);
   contents.forEach(content => expect(content).toBeVisible());
   const probabilitiesBefore = contents.map(content => content.textContent);
   fireEvent.click(toggles[0]);

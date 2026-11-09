@@ -32,9 +32,15 @@ class ProviderFixtureSerializer(serializers.ModelSerializer):
         return {"id": fixture.league_id, "season": fixture.season}
 
     def get_teams(self, fixture):
+        # source_payload is the raw provider fixture JSON captured at ingestion;
+        # it still carries logos even though the canonical columns do not.
+        raw_teams = fixture.source_payload.get("teams") if isinstance(fixture.source_payload, dict) else None
+        raw_teams = raw_teams if isinstance(raw_teams, dict) else {}
+        home_logo = (raw_teams.get("home") or {}).get("logo") or ""
+        away_logo = (raw_teams.get("away") or {}).get("logo") or ""
         return {
-            "home": {"id": fixture.home_team_id, "name": fixture.home_team_name, "logo": "", "winner": None},
-            "away": {"id": fixture.away_team_id, "name": fixture.away_team_name, "logo": "", "winner": None},
+            "home": {"id": fixture.home_team_id, "name": fixture.home_team_name, "logo": home_logo, "winner": None},
+            "away": {"id": fixture.away_team_id, "name": fixture.away_team_name, "logo": away_logo, "winner": None},
         }
 
     def get_goals(self, fixture):

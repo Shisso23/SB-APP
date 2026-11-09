@@ -1799,6 +1799,15 @@ const BetAndFixturesScreen: React.FC = () => {
             </div>}
             <LeagueLoadErrors failures={Object.values(failedLeagueLoads)} warnings={fixtureLoadWarnings}
               loading={loadingBatch} retryingIds={retryingLeagueIds} onRetry={failures => handleBet(true, failures)} />
+            <SuggestedBetList
+              predictions={visibleEnginePredictions}
+              now={nowTick}
+              loading={loadingBatch}
+              statistical={predictionMode === 'statistical'}
+              selectedPickKeys={selectedStatisticalPickKeys}
+              onReview={prediction => onFixtureClick(prediction.fixture)()}
+              onTogglePick={toggleStatisticalPick}
+            />
             <details open aria-busy={loadingBatch} className="border-t border-slate-700 p-2">
               <summary className="cursor-pointer py-2 text-sm font-semibold text-slate-300">
                 {predictionMode === 'statistical' ? 'All forecasts and market details' : 'Legacy fixture results'} · {displayedFixtureIds.length} fixtures
@@ -1841,24 +1850,30 @@ const BetAndFixturesScreen: React.FC = () => {
                     const currentFixture = currentFixtures.find((f) => `${f.fixture.id}` === fixtureId);
                     if (!currentFixture) return null;
                     const enginePrediction = enginePredictions[Number(fixtureId)];
-                    const expanded = expandedForecasts[fixtureId] !== false;
+                    const expanded = expandedForecasts[fixtureId] === true;
                     const matchLabel = `${currentFixture.teams.home.name} vs ${currentFixture.teams.away.name}`;
 
                     return (
                       <div key={fixtureId} className="rounded-xl border border-slate-700/70 bg-slate-900 p-3">
-                        <div className="mb-2 flex items-center justify-between text-xs text-slate-300">
-                          <div>
-                            {!expanded && <div className="mb-1 font-semibold text-slate-100">{matchLabel}</div>}
-                            <div className="font-semibold text-slate-100">{currentFixture.league.name} ({currentFixture.league.country})</div>
-                            <div>{toMomentDate(currentFixture.fixture.date).format('DD MMMM YYYY HH:mm')}</div>
+                        <div className="flex flex-col gap-2 border-b border-slate-800/80 pb-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-slate-100">
+                            <div className="flex min-w-0 items-center gap-1.5">
+                              <img src={currentFixture.teams.home.logo} alt="" className="h-7 w-7 shrink-0 rounded-full bg-slate-800 object-contain p-0.5" />
+                              <span className="truncate">{currentFixture.teams.home.name}</span>
+                            </div>
+                            <span className="shrink-0 text-xs font-normal text-slate-500">vs</span>
+                            <div className="flex min-w-0 items-center gap-1.5">
+                              <img src={currentFixture.teams.away.logo} alt="" className="h-7 w-7 shrink-0 rounded-full bg-slate-800 object-contain p-0.5" />
+                              <span className="truncate">{currentFixture.teams.away.name}</span>
+                            </div>
                           </div>
-                          <div className="flex flex-wrap justify-end gap-2">
+                          <div className="flex shrink-0 flex-wrap items-center gap-2">
                           <button type="button" aria-expanded={expanded} aria-controls={`forecast-content-${fixtureId}`}
                             aria-label={`${expanded ? 'Collapse' : 'Expand'} forecast for ${matchLabel}`}
                             title={expanded ? 'Collapse forecast' : 'Expand forecast'}
                             onClick={() => setExpandedForecasts(previous => ({ ...previous, [fixtureId]: !expanded }))}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300">
-                            <svg aria-hidden="true" focusable="false" className={`h-5 w-5 ${expanded ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300">
+                            <svg aria-hidden="true" focusable="false" className={`h-4 w-4 ${expanded ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                           </button>
@@ -1871,7 +1886,13 @@ const BetAndFixturesScreen: React.FC = () => {
                           </div>
                         </div>
 
-                        <div id={`forecast-content-${fixtureId}`} hidden={!expanded}>
+                        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-400">
+                          <span>{currentFixture.league.name} ({currentFixture.league.country})</span>
+                          <span className="text-slate-600">·</span>
+                          <span>{toMomentDate(currentFixture.fixture.date).format('DD MMMM YYYY HH:mm')}</span>
+                        </div>
+
+                        <div id={`forecast-content-${fixtureId}`} hidden={!expanded} className="mt-2">
                         {predictionMode === 'statistical' && enginePrediction && (
                           <EnginePredictionPanel
                             prediction={enginePrediction}
@@ -1880,19 +1901,7 @@ const BetAndFixturesScreen: React.FC = () => {
                           />
                         )}
 
-                        <div className="flex flex-col gap-2 text-sm font-medium text-slate-100 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="flex items-center gap-2">
-                            <img src={currentFixture.teams.home.logo} className="h-5 w-5" />
-                            <div className="truncate">{currentFixture.teams.home.name}</div>
-                          </div>
-                          <div className="text-xs text-slate-500">vs</div>
-                          <div className="flex items-center gap-2 sm:justify-end">
-                            <img src={currentFixture.teams.away.logo} className="h-5 w-5" />
-                            <div className="truncate">{currentFixture.teams.away.name}</div>
-                          </div>
-                        </div>
-
-                        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                           {predictionMode === 'legacy' && groupedData[currentFixture.fixture.id]?.map((option) => {
                             const favorite = isFavoritePrediction(currentFixture.fixture.id, option.id);
                             return (
@@ -1923,15 +1932,6 @@ const BetAndFixturesScreen: React.FC = () => {
                 </div>
               )}
             </details>
-            <SuggestedBetList
-              predictions={visibleEnginePredictions}
-              now={nowTick}
-              loading={loadingBatch}
-              statistical={predictionMode === 'statistical'}
-              selectedPickKeys={selectedStatisticalPickKeys}
-              onReview={prediction => onFixtureClick(prediction.fixture)()}
-              onTogglePick={toggleStatisticalPick}
-            />
             {selectedPaperPicks.length > 0 && (
               <details className="mb-2 border-t border-slate-700/60 pt-2">
                 <summary className="cursor-pointer text-xs font-semibold text-slate-300">

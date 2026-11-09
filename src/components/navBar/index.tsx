@@ -48,7 +48,7 @@ export default function Navbar() {
             <img
               src={PREDICTXI_LOGO}
               alt={`${BRAND_NAME} logo`}
-              className="h-9 w-auto sm:h-10"
+              className="h-16 w-auto sm:h-20"
             />
           </Link>
 
