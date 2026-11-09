@@ -1528,7 +1528,7 @@ const BetAndFixturesScreen: React.FC = () => {
           <div className="mx-auto max-w-[1440px] px-4 py-4 sm:px-6">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div>
-                <h1 className="text-2xl font-bold tracking-tight text-white">BetSmart Prediction Desk</h1>
+                <h1 className="text-2xl font-bold tracking-tight text-white">PredictXI Prediction Desk</h1>
                 <p className="mt-1 text-sm text-slate-200">Search leagues fast, pick options, and run predictions for fixtures in your date window.</p>
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                   <span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-cyan-100">Selected leagues: {selectedBatch.length}/{MAX_BATCH}</span>

@@ -1,6 +1,7 @@
 import { predictFixture } from '../../src/prediction-engine/predict-fixture';
 import { mapApiFootballOdds } from '../../src/prediction-engine/odds-provider';
 import { settleSelection } from '../../src/prediction-engine/paper-tracking';
+import { buildForecastBetList, DEFAULT_BET_LIST_SIZE } from '../../src/prediction-engine/forecast-bet-list';
 import { DEFAULT_PREDICTION_CONFIG } from '../../src/config/prediction-config';
 
 const MAX_BYTES = 4 * 1024 * 1024;
@@ -46,6 +47,30 @@ process.stdin.on('end', () => {
           !Number.isInteger(request.awayGoals) || request.awayGoals < 0) throw new Error();
       result = request.selections.map((selection) => settleSelection(selection, {
         homeGoals: request.homeGoals, awayGoals: request.awayGoals, settledAt: fixedNow,
+      }));
+    } else if (request.operation === 'bet_list') {
+      // Official daily list selection. Deliberately delegates to the SAME
+      // `buildForecastBetList` the desk and custom lists use, so the published
+      // five-match list cannot diverge from the existing recommendation rules.
+      const predictions = request.predictions;
+      if (!Array.isArray(predictions) || predictions.length > 5000) throw new Error();
+      const limit = Number.isSafeInteger(request.limit) ? request.limit : DEFAULT_BET_LIST_SIZE;
+      if (limit < 0 || limit > DEFAULT_BET_LIST_SIZE) throw new Error();
+      result = buildForecastBetList(predictions, fixedNow, { limit }).map((suggestion) => ({
+        providerFixtureId: suggestion.prediction.fixture.fixture.id,
+        marketId: suggestion.forecastId,
+        marketLabel: suggestion.preference.label,
+        marketLine: suggestion.preference.range
+          ? `${suggestion.preference.range.min}-${suggestion.preference.range.max} ${suggestion.preference.range.side}`
+          : '',
+        probability: suggestion.probability,
+        explanation: suggestion.preference.meaning ?? '',
+        level: suggestion.level,
+        priceStatus: suggestion.priceStatus,
+        decimalOdds: Number.isFinite(suggestion.market?.decimalOdds) && (suggestion.market?.decimalOdds as number) > 1
+          ? (suggestion.market?.decimalOdds as number) : null,
+        bookmaker: suggestion.market?.bookmaker ?? '',
+        oddsTimestamp: Number.isFinite(suggestion.market?.oddsTimestamp) ? (suggestion.market?.oddsTimestamp as number) : null,
       }));
     } else {
       throw new Error();

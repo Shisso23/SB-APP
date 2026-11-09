@@ -18,6 +18,16 @@ class JobError(Exception):
     pass
 
 
+#: Job kinds the bounded worker will accept. `official_publish` and
+#: `official_reconcile` were added for the Phase 7 official daily list; they use
+#: the same slot/idempotency machinery so a retry or a second worker cannot run
+#: twice.
+JOB_KINDS = frozenset({
+    "bootstrap", "refresh", "predict", "settle",
+    "official_publish", "official_reconcile",
+})
+
+
 class JobBusy(JobError):
     pass
 
@@ -121,7 +131,7 @@ def claim_job(kind, scope, slot, policy=None):
     policy = policy or JobPolicy()
     if timezone.is_naive(slot):
         raise JobError("Job slots must be timezone-aware.")
-    if kind not in {"bootstrap", "refresh", "predict", "settle"}:
+    if kind not in JOB_KINDS:
         raise JobError("Unknown job kind.")
     with psycopg.connect(**connection.get_connection_params(), autocommit=True) as lock:
         if not lock.execute("SELECT pg_try_advisory_lock(%s)", (734912043190,)).fetchone()[0]:

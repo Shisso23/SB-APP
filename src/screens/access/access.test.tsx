@@ -132,7 +132,7 @@ describe('AccessPassesScreen', () => {
     });
     renderAt('/access', <AccessPassesScreen />);
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Buy this pass' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Get this pass' }));
 
     await waitFor(() => expect(checkoutMock).toHaveBeenCalledTimes(1));
     expect(checkoutMock.mock.calls[0][0]).toBe('pxi-30d');
@@ -148,7 +148,7 @@ describe('AccessPassesScreen', () => {
     checkoutMock.mockRejectedValue(new Error('network down'));
     renderAt('/access', <AccessPassesScreen />);
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Buy this pass' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Get this pass' }));
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('We could not start checkout. Please try again.');

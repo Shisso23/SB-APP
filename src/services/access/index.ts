@@ -115,13 +115,16 @@ export const formatPrice = (price: string, currency: string): string => {
  * Derive benefit lines from server-provided product facts only.
  *
  * Deliberately makes no marketing or performance claims - it restates the
- * duration and scope that the backend already declared.
+ * duration and scope that the backend already declared, plus the two
+ * commercial facts a buyer needs before paying: nothing auto-renews, and
+ * buying again extends rather than replaces.
  */
 export const describeBenefits = (product: { duration_days: number }): string[] => {
   const days = product.duration_days;
   return [
     `Full access for ${days} ${days === 1 ? 'day' : 'days'}`,
     'All premium predictions and markets',
-    'Access ends automatically when the pass expires',
+    'No auto-renewal — ends automatically',
+    'Buy again any time to extend your access',
   ];
 };

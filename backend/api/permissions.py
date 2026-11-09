@@ -50,3 +50,35 @@ class HasPredictionAccess(BasePermission):
 
     def has_permission(self, request, view):
         return has_prediction_access(request.user)
+
+def is_admin(user):
+    """True only for an active, authenticated Django staff or superuser.
+
+    ADMINISTRATIVE PERMISSION IS NOT MEMBERSHIP. `is_staff` is a server-side
+    Django flag that only a superuser or a database change can grant; it is never
+    derived from Firebase claims, an access pass, or a purchase. A paying member
+    is therefore never an admin, and an admin does not need a membership.
+
+    Deliberately strict: an inactive account is refused even if flagged staff, so
+    deactivating a user immediately removes administrative reach.
+    """
+    return bool(
+        user
+        and getattr(user, "is_authenticated", False)
+        and getattr(user, "is_active", False)
+        and (user.is_staff or user.is_superuser)
+    )
+
+
+class IsAdmin(BasePermission):
+    """Gate for every administrative endpoint.
+
+    Applied to generation, source-data refresh, publication and job management.
+    Nothing relies on the frontend hiding navigation: an ordinary user calling
+    these endpoints directly receives 403.
+    """
+
+    message = "Administrative access is required."
+
+    def has_permission(self, request, view):
+        return is_admin(request.user)

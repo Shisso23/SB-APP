@@ -180,3 +180,65 @@ PAYFAST_NOTIFY_NETWORKS = env.list("PAYFAST_NOTIFY_NETWORKS", default=[
 # Refuse values below PayFast's documented live minimum of ZAR 5.00 so a
 # misconfigured product cannot produce a checkout the gateway will reject.
 PAYFAST_MIN_AMOUNT = env("PAYFAST_MIN_AMOUNT", default="5.00")
+
+# ---------------------------------------------------------------------------
+# Official daily list + public history (Phase 7)
+#
+# Business *dates* are computed in a business timezone (default Johannesburg)
+# while every stored timestamp remains UTC. Publishing is scheduled, not
+# triggered by a request, and stays disabled until an operator enables it.
+# ---------------------------------------------------------------------------
+# Business timezone for daily publication dates and reconciliation windows.
+PREDICTXI_BUSINESS_TIMEZONE = env("PREDICTXI_BUSINESS_TIMEZONE", default="Africa/Johannesburg")
+# Leagues allowed for ingestion AND for the official daily list. Comma-separated
+# numeric API-Football league ids. Empty means "no leagues configured", which
+# refuses publication rather than silently drawing from every league.
+PREDICTXI_LEAGUES = env.list("PREDICTXI_LEAGUES", default=[])
+# Scheduled publication time (local business time) for each day's list. The hard
+# requirement is "before the earliest kickoff"; this is the target, not the rule.
+PREDICTXI_PUBLISH_HOUR = env.int("PREDICTXI_PUBLISH_HOUR", default=6)
+PREDICTXI_PUBLISH_MINUTE = env.int("PREDICTXI_PUBLISH_MINUTE", default=0)
+# The published list always shows this many fixtures, or nothing at all.
+PREDICTXI_OFFICIAL_LIST_SIZE = env.int("PREDICTXI_OFFICIAL_LIST_SIZE", default=5)
+# How long an unplayed selection stays unresolved before it is voided.
+PREDICTXI_POSTPONEMENT_HOURS = env.int("PREDICTXI_POSTPONEMENT_HOURS", default=48)
+# Cap on how many past business dates a single reconciliation pass rechecks.
+PREDICTXI_RECONCILE_MAX_DATES = env.int("PREDICTXI_RECONCILE_MAX_DATES", default=30)
+# Illustrative stake for the hypothetical examples. Never a deposit or balance.
+PREDICTXI_EXERCISE_STAKE = env("PREDICTXI_EXERCISE_STAKE", default="1000.00")
+# Public history page size.
+PREDICTXI_HISTORY_PAGE_SIZE = env.int("PREDICTXI_HISTORY_PAGE_SIZE", default=10)
+# How many of the most recent business dates the public history highlights, even
+# when a date has no published list (so gaps are visible rather than hidden).
+PREDICTXI_HISTORY_RECENT_DATES = env.int("PREDICTXI_HISTORY_RECENT_DATES", default=5)
+# Presentation threshold: how old stored forecasts may be before the UI flags a
+# league as stale. This is a display warning only - it is not a prediction or
+# selection rule and cannot change any forecast or betlist.
+PREDICTXI_STALE_AFTER_HOURS = env.int("PREDICTXI_STALE_AFTER_HOURS", default=24)
+
+# ---------------------------------------------------------------------------
+# Scheduled automation (Phase 3)
+#
+# Cron invokes `manage.py run_schedule --due` frequently; the due decision is made
+# in Django from the settings below, so schedules have ONE source of truth and the
+# crontab holds no times. Due times are evaluated in the business timezone above,
+# not the host's local time, so a UTC host behaves correctly.
+#
+# DISABLED BY DEFAULT: installing the cron entry changes nothing until an operator
+# sets PREDICTXI_AUTOMATION_ENABLED=True. Manual admin runs keep working either way.
+# ---------------------------------------------------------------------------
+PREDICTXI_AUTOMATION_ENABLED = env.bool("PREDICTXI_AUTOMATION_ENABLED", default=False)
+# Local business time for the daily generation pass.
+PREDICTXI_SCHEDULE_DAILY_TIME = env("PREDICTXI_SCHEDULE_DAILY_TIME", default="05:00")
+# Optional second pass close to kickoff. Empty disables it.
+PREDICTXI_SCHEDULE_REFRESH_TIME = env("PREDICTXI_SCHEDULE_REFRESH_TIME", default="")
+# How late a scheduled pass may still fire, so a missed cron tick is recovered
+# rather than skipped entirely. Paired with the per-(kind, date) uniqueness guard,
+# a late tick still runs the day's work exactly once.
+PREDICTXI_SCHEDULE_WINDOW_HOURS = env.int("PREDICTXI_SCHEDULE_WINDOW_HOURS", default=6)
+# Leagues processed per invocation. Bounds work per call; it does NOT change what
+# a run means, because league selection is a filter over eligible fixtures.
+PREDICTXI_BATCH_SIZE = env.int("PREDICTXI_BATCH_SIZE", default=4)
+# A RUNNING job older than this is treated as interrupted and failed, so a killed
+# process cannot wedge the queue behind the concurrency guard.
+PREDICTXI_STALE_JOB_HOURS = env.int("PREDICTXI_STALE_JOB_HOURS", default=3)

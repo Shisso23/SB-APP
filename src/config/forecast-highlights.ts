@@ -49,6 +49,20 @@ export const FORECAST_HIGHLIGHTS = {
 };
 export type ForecastId = keyof typeof FORECAST_HIGHLIGHTS;
 
+/**
+ * Does `FORECAST_HIGHLIGHTS` model this market id?
+ *
+ * `MARKET_IMPLICATIONS` is typed against `MarketId` from the prediction engine,
+ * which overlaps `ForecastId` without containing it: `MarketId` includes ids this
+ * config does not model (`btts_no`), and this config includes derived ids the
+ * engine does not model (`total_2_5`). Every id actually listed in
+ * `MARKET_IMPLICATIONS` IS modelled here, so this check always passes for
+ * reachable values; it expresses that invariant to the compiler rather than
+ * changing behaviour.
+ */
+const isModelledForecast = (id: MarketId): boolean =>
+  Object.prototype.hasOwnProperty.call(FORECAST_HIGHLIGHTS, id);
+
 export const FORECAST_FAMILY_LABELS = {
   result: 'Match result',
   team_scoring: 'Team to score',
@@ -112,8 +126,13 @@ export const impliedHighlightResult = (prediction: FixturePrediction, id: Foreca
   if (own !== 'none') return { level: own };
   const groups = MARKET_IMPLICATIONS[id as MarketId];
   const impliedBy = groups?.find(group =>
-    group.every(impliedId => highlightLevel(forecastProbability(prediction, impliedId), FORECAST_HIGHLIGHTS[impliedId]) !== 'none'));
-  return impliedBy ? { level: 'suggested', impliedBy: impliedBy as ForecastId[] } : { level: 'none' };
+    group.every(impliedId =>
+      isModelledForecast(impliedId) &&
+      highlightLevel(forecastProbability(prediction, impliedId as ForecastId), FORECAST_HIGHLIGHTS[impliedId as ForecastId]) !== 'none',
+    ));
+  return impliedBy
+    ? { level: 'suggested', impliedBy: impliedBy.filter(isModelledForecast) as ForecastId[] }
+    : { level: 'none' };
 };
 
 // Only active legacy registry options; commented-out options are not supported UI.

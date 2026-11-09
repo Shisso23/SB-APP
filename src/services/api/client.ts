@@ -93,4 +93,42 @@ apiClient.interceptors.response.use(
 export const apiGet = <T = EnvelopeResponse<unknown>>(path: string, config?: AxiosRequestConfig) =>
   apiClient.get<T>(path, config);
 
+/**
+ * Client for endpoints that are genuinely public.
+ *
+ * The authenticated `apiClient` attaches an ID token in a request interceptor
+ * and *fails the request* when no session exists. That is correct for premium
+ * data, but it would make public pages unusable to a signed-out visitor — so
+ * public reads use this client, which:
+ *
+ *  - never attaches an Authorization header,
+ *  - never triggers the sign-in or session-expired flows,
+ *  - still reuses the same base URL, timeout and error classification.
+ *
+ * Only endpoints the server has already made public may be called with it.
+ */
+export const publicClient = axios.create({
+  baseURL: `${apiConfig.baseUrl}${apiConfig.apiPrefix}`,
+  timeout: apiConfig.timeoutMs,
+  responseType: 'json',
+});
+
+publicClient.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError) => {
+    const status = error.response?.status;
+    if (status && status >= 500) {
+      return Promise.reject(new ApiRequestError('The service is temporarily unavailable.', status));
+    }
+    if (error.code === 'ECONNABORTED') {
+      return Promise.reject(new ApiRequestError('The request timed out. Please try again.'));
+    }
+    return Promise.reject(new ApiRequestError('Could not reach the service.'));
+  },
+);
+
+/** GET a public endpoint. No session required. */
+export const publicGet = <T = unknown>(path: string, config?: AxiosRequestConfig) =>
+  publicClient.get<T>(path, config);
+
 export { SignInRequiredError, SessionExpiredError };

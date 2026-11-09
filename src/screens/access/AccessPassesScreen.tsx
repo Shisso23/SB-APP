@@ -88,112 +88,179 @@ const AccessPassesScreen: React.FC = () => {
   const expiry = formatExpiry(me?.prediction_access_ends_at);
 
   return (
-    <div className="flex flex-grow flex-col items-center justify-start px-4 pb-16 pt-28 bg-gray-900 text-white">
-      <h1 className="text-2xl font-bold mb-2">Premium access</h1>
-      <p className="text-gray-300 mb-6 text-center max-w-xl">
-        Premium predictions are unlocked with a time-limited access pass. Passes are sold
-        and priced by PredictXI and are not a bet or a guarantee of results.
-      </p>
-
-      {accessState === 'active' && (
-        <div
-          role="status"
-          className="w-full max-w-xl mb-6 rounded-md border border-teal-500 bg-teal-900/40 px-4 py-3"
-        >
-          <p className="font-semibold text-teal-200">Your premium access is active.</p>
-          {remaining && <p className="text-sm text-teal-100">{remaining}</p>}
-          {expiry && (
-            <p className="text-sm text-teal-100">Access ends on {expiry}.</p>
-          )}
-        </div>
-      )}
-
-      {accessState === 'expired' && (
-        <div
-          role="status"
-          className="w-full max-w-xl mb-6 rounded-md border border-ui-gold bg-yellow-900/30 px-4 py-3"
-        >
-          <p className="font-semibold text-ui-gold">Your premium access has expired.</p>
-          {expiry && (
-            <p className="text-sm text-yellow-100">
-              It ended on {expiry}. Choose a pass below to continue.
-            </p>
-          )}
-        </div>
-      )}
-
-      {checkoutError && (
-        <p role="alert" className="w-full max-w-xl mb-4 rounded-md bg-red-900/40 px-4 py-3 text-red-100">
-          {checkoutError}
-        </p>
-      )}
-
-      {loading && (
-        <p role="status" className="text-gray-300">
-          Loading available passes…
-        </p>
-      )}
-
-      {!loading && loadError && (
-        <div className="text-center">
-          <p role="alert" className="mb-4 text-red-200">
-            {loadError}
+    <div className="flex flex-grow flex-col items-center justify-start bg-slate-50 px-4 pb-16 pt-10 text-slate-900">
+      <div className="w-full max-w-4xl">
+        <header className="mb-8 text-center">
+          <span className="text-xs font-bold uppercase tracking-widest text-teal-700">
+            Membership
+          </span>
+          <h1 className="mt-3 text-3xl font-extrabold tracking-tight">
+            Premium access
+          </h1>
+          <p className="mx-auto mt-3 max-w-2xl text-slate-600">
+            Premium predictions are unlocked with a time-limited access pass.
+            Passes are sold and priced by PredictXI and are not a bet or a
+            guarantee of results.
           </p>
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="rounded bg-gradient-to-r from-cyan-500 to-teal-500 px-5 py-2 font-semibold text-white"
+        </header>
+
+        {accessState === 'active' && (
+          <div
+            role="status"
+            className="mb-6 rounded-xl border border-teal-300 bg-teal-50 px-5 py-4"
           >
-            Try again
-          </button>
-        </div>
-      )}
+            <p className="font-semibold text-teal-900">
+              Your premium access is active.
+            </p>
+            {remaining && <p className="text-sm text-teal-800">{remaining}</p>}
+            {expiry && (
+              <p className="text-sm text-teal-800">Access ends on {expiry}.</p>
+            )}
+          </div>
+        )}
 
-      {!loading && !loadError && products && products.length === 0 && (
-        <div role="status" className="max-w-xl text-center text-gray-300">
-          <p className="font-semibold mb-1">No passes are on sale right now.</p>
-          <p className="text-sm">Please check back later.</p>
-        </div>
-      )}
+        {accessState === 'expired' && (
+          <div
+            role="status"
+            className="mb-6 rounded-xl border border-amber-300 bg-amber-50 px-5 py-4"
+          >
+            <p className="font-semibold text-amber-900">
+              Your premium access has expired.
+            </p>
+            {expiry && (
+              <p className="text-sm text-amber-800">
+                It ended on {expiry}. Choose a pass below to continue.
+              </p>
+            )}
+          </div>
+        )}
 
-      {!loading && !loadError && products && products.length > 0 && (
-        <ul className="w-full max-w-xl flex flex-col gap-4">
-          {products.map((product) => (
-            <li
-              key={product.code}
-              className="rounded-lg bg-gray-800 px-5 py-4 shadow-md flex flex-col gap-3"
+        {checkoutError && (
+          <p
+            role="alert"
+            className="mb-4 rounded-xl bg-red-50 px-5 py-4 text-red-800"
+          >
+            {checkoutError}
+          </p>
+        )}
+
+        {loading && (
+          <p role="status" className="text-center text-slate-600">
+            Loading available passes…
+          </p>
+        )}
+
+        {!loading && loadError && (
+          <div className="text-center">
+            <p role="alert" className="mb-4 text-red-700">
+              {loadError}
+            </p>
+            <button
+              type="button"
+              onClick={() => void load()}
+              className="rounded-xl bg-slate-900 px-5 py-2 font-semibold text-white transition hover:bg-slate-800"
             >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-semibold">{product.name}</h2>
-                  <p className="text-sm text-gray-300">
-                    {product.duration_days} {product.duration_days === 1 ? 'day' : 'days'} of access
+              Try again
+            </button>
+          </div>
+        )}
+
+        {!loading && !loadError && products && products.length === 0 && (
+          <div role="status" className="mx-auto max-w-xl text-center text-slate-600">
+            <p className="mb-1 font-semibold text-slate-800">
+              No passes are on sale right now.
+            </p>
+            <p className="text-sm">Please check back later.</p>
+          </div>
+        )}
+
+        {!loading && !loadError && products && products.length > 0 && (
+          <ul className="mx-auto grid w-full max-w-3xl list-none grid-cols-1 gap-5 sm:grid-cols-2">
+            {products.map((product) => (
+              <li
+                key={product.code}
+                className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-6 shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900">
+                      {product.name}
+                    </h2>
+                    <p className="text-sm text-slate-600">
+                      {product.duration_days}{" "}
+                      {product.duration_days === 1 ? "day" : "days"} of access
+                    </p>
+                  </div>
+                  {/* Price comes straight from the server; only the symbol is applied. */}
+                  <p className="whitespace-nowrap text-2xl font-extrabold tracking-tight text-slate-900">
+                    {formatPrice(product.price_amount, product.currency)}
                   </p>
                 </div>
-                {/* Price comes straight from the server; only the symbol is applied. */}
-                <p className="text-xl font-bold text-ui-gold whitespace-nowrap">
-                  {formatPrice(product.price_amount, product.currency)}
-                </p>
-              </div>
 
-              <ul className="list-disc list-inside text-sm text-gray-300">
-                {describeBenefits(product).map((benefit) => (
-                  <li key={benefit}>{benefit}</li>
-                ))}
-              </ul>
+                <ul className="flex-1 space-y-2.5 text-sm text-slate-700">
+                  {describeBenefits(product).map((benefit) => (
+                    <li key={benefit} className="flex gap-3">
+                      <span className="mt-0.5 text-teal-600">✓</span>
+                      <span>{benefit}</span>
+                    </li>
+                  ))}
+                </ul>
 
-              <button
-                type="button"
-                disabled={startingCode !== null}
-                onClick={() => void handleSelect(product)}
-                className="self-start rounded bg-gradient-to-r from-cyan-500 to-teal-500 px-5 py-2 font-semibold text-white disabled:opacity-60"
-              >
-                {startingCode === product.code ? 'Starting checkout…' : 'Buy this pass'}
-              </button>
+                <button
+                  type="button"
+                  disabled={startingCode !== null}
+                  onClick={() => void handleSelect(product)}
+                  className="w-full rounded-xl bg-slate-900 px-5 py-3 font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+                >
+                  {startingCode === product.code
+                    ? "Starting checkout…"
+                    : "Get this pass"}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {/* How passes work — always shown, including when signed out, when the
+            catalogue is empty, or when loading failed. Understanding the terms
+            should not depend on a successful API call. */}
+        <section className="mx-auto mt-12 max-w-3xl rounded-2xl border border-slate-200 bg-white p-6">
+          <h2 className="text-base font-bold text-slate-900">
+            How passes work
+          </h2>
+          <ul className="mt-4 space-y-3 text-sm text-slate-700">
+            <li className="flex gap-3">
+              <span className="mt-0.5 text-teal-600">✓</span>
+              <span>
+                Access begins the moment your payment is confirmed, not when
+                you next sign in.
+              </span>
             </li>
-          ))}
-        </ul>
-      )}
+            <li className="flex gap-3">
+              <span className="mt-0.5 text-teal-600">✓</span>
+              <span>
+                Passes do <strong className="font-semibold">not</strong>{" "}
+                auto-renew. A pass ends at the end of its term and nothing
+                further is charged.
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <span className="mt-0.5 text-teal-600">✓</span>
+              <span>
+                Buying another pass while yours is still active extends it —
+                your remaining time is not lost.
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <span className="mt-0.5 text-teal-600">✓</span>
+              <span>
+                Payment is handled by PayFast. PredictXI never sees or stores
+                your card details.
+              </span>
+            </li>
+          </ul>
+        </section>
+      </div>
     </div>
   );
 };

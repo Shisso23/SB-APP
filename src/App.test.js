@@ -36,8 +36,9 @@ test('renders the app shell and opens the prediction desk without real network r
   const App = require('./App').default;
 
   render(<Provider store={store}><App /></Provider>, { container: root });
-  expect(screen.getByRole('link', { name: 'PREDICTZ' })).toHaveAttribute('href', '/');
-  fireEvent.click(screen.getByRole('button', { name: 'Go to Bets' }));
-  expect(await screen.findByRole('heading', { name: 'BetSmart Prediction Desk' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'PredictXI home' })).toHaveAttribute('href', '/');
+  expect(screen.getByRole('img', { name: 'PredictXI logo' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Start making predictions' }));
+  expect(await screen.findByRole('heading', { name: 'PredictXI Prediction Desk' })).toBeInTheDocument();
   await waitFor(() => expect(screen.queryByRole('progressbar')).not.toBeInTheDocument());
 });

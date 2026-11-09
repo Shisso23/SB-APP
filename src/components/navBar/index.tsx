@@ -1,51 +1,112 @@
 import React from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import SignInScreen from "../auth/SignInScreen";
+import { BRAND_NAME, PREDICTXI_LOGO } from "../../assets/brand";
+import { getAdminStatus } from "../../services/admin";
 
+/**
+ * Top navigation.
+ *
+ * Uses a LIGHT surface because the master logo has an off-white background
+ * (#FDFAF7) and no alpha channel, so it cannot sit on a dark bar without
+ * looking like a pasted rectangle.
+ */
 export default function Navbar() {
   const [navbarOpen, setNavbarOpen] = React.useState(false);
-  const navigate = useNavigate();
+  // Admin navigation is shown only when the SERVER confirms staff access. The
+  // check is a convenience for the operator, never an access control: every admin
+  // endpoint independently enforces staff permission.
+  const [isAdmin, setIsAdmin] = React.useState(false);
 
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
-  const navigateToImagesForm = () => {
-  };
+  React.useEffect(() => {
+    let cancelled = false;
+    getAdminStatus()
+      .then((response) => {
+        if (!cancelled) setIsAdmin(Boolean(response.data?.isAdmin));
+      })
+      .catch(() => {
+        // Signed out, or not an admin: simply do not offer the link.
+        if (!cancelled) setIsAdmin(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const linkBase =
+    "text-sm font-medium text-slate-700 transition-colors hover:text-teal-700";
+
   return (
-      <nav className=" flex justify-between py-1 w-full sticky shadow-md bg-gray-900 top-0 left-0 right-0 z-10">
-        <div className="container px-4 mx-auto flex flex-wrap items-center justify-between">
-          <div className="w-full relative flex justify-between lg:w-auto lg:static lg:block lg:justify-start">
-            <Link to="/" className="text-lg sm:text-md grow:1 font-bold leading-relaxed inline-block mr-4 py-2 whitespace-nowrap uppercase text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-teal-500">
-              PREDICTZ
-            </Link>
-            <button
-              className="text-white cursor-pointer text-base leading-none px-3 py-1 border border-solid border-transparent rounded bg-gradient-to-r from-cyan-500 to-teal-500 block lg:hidden outline-none focus:outline-none"
-              type="button"
-              onClick={() => setNavbarOpen(!navbarOpen)}
-            >
-              <i className="fas fa-bars"></i>
-            </button>
-          </div>
-          <div
-            className={
-              "lg:flex flex-grow items-center" +
-              (navbarOpen ? " flex" : " hidden")
-            }
-            id="example-navbar-danger"
+    <nav className="sticky top-0 left-0 right-0 z-20 w-full border-b border-slate-200 bg-white/95 backdrop-blur shadow-sm">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between px-4 py-2.5 sm:px-6">
+        <div className="relative flex w-full items-center justify-between lg:static lg:block lg:w-auto lg:justify-start">
+          <Link
+            to="/"
+            className="flex items-center gap-2.5"
+            aria-label={`${BRAND_NAME} home`}
           >
-            <ul className="flex flex-col lg:flex-row list-none lg:ml-auto">
+            <img
+              src={PREDICTXI_LOGO}
+              alt={`${BRAND_NAME} logo`}
+              className="h-9 w-auto sm:h-10"
+            />
+          </Link>
+
+          <button
+            className="block rounded-md border border-slate-300 p-2 text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/50 lg:hidden"
+            type="button"
+            aria-label="Toggle navigation menu"
+            aria-expanded={navbarOpen}
+            onClick={() => setNavbarOpen(!navbarOpen)}
+          >
+            <svg
+              className="h-5 w-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path strokeLinecap="round" d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
+          </button>
+        </div>
+
+        <div
+          className={
+            "flex-grow items-center lg:flex" + (navbarOpen ? " flex" : " hidden")
+          }
+        >
+          <ul className="ml-auto flex list-none flex-col items-start gap-1 pt-3 lg:flex-row lg:items-center lg:gap-6 lg:pt-0">
+            <li className="nav-item flex items-center">
+              <Link to="/BetAndFixturesScreen" className={linkBase}>
+                Predictions
+              </Link>
+            </li>
+            <li className="nav-item flex items-center">
+              <Link to="/history" className={linkBase}>
+                History
+              </Link>
+            </li>
+            <li className="nav-item flex items-center">
+              <Link to="/access" className={linkBase}>
+                Premium
+              </Link>
+            </li>
+            {isAdmin ? (
               <li className="nav-item flex items-center">
                 <Link
-                  to="/access"
-                  className="mr-4 text-sm font-semibold text-white hover:text-teal-300"
+                  to="/admin"
+                  className="rounded-lg border border-teal-300 bg-teal-50 px-3 py-1 text-sm font-semibold text-teal-800 transition-colors hover:bg-teal-100"
                 >
-                  Premium
+                  Admin
                 </Link>
               </li>
-              <li className="nav-item flex items-center">
-                <SignInScreen />
-              </li>
-            </ul>
-          </div>
+            ) : null}            <li className="nav-item flex items-center pt-2 lg:pt-0">
+              <SignInScreen />
+            </li>
+          </ul>
         </div>
-      </nav>
+      </div>
+    </nav>
   );
 }

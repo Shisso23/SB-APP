@@ -92,6 +92,17 @@ hash_validator = RegexValidator(r"^[0-9a-f]{64}$", "A SHA-256 hex digest is requ
 
 class Prediction(SnapshotModel):
     fixture = models.ForeignKey(Fixture, on_delete=models.PROTECT, related_name="predictions")
+    # Which administrative/automated run produced this forecast.
+    #
+    # Purely informational provenance: it is NEVER read by the engine, and it does
+    # not participate in the uniqueness key (which stays fixture/engine/input/config
+    # based). Adding it therefore cannot change any forecast, and an older run can
+    # never be confused with a newer publication because revisions are ordered by
+    # `generated_at`/`id`, not by this link.
+    run = models.ForeignKey(
+        "AdminJob", null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="predictions",
+    )
     engine_version = models.CharField(max_length=100)
     input_hash = models.CharField(max_length=64, validators=[hash_validator])
     config_hash = models.CharField(max_length=64, validators=[hash_validator])
@@ -391,3 +402,272 @@ class Settlement(SnapshotModel):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["prediction", "market_id"], name="settlement_prediction_market_unique")]
+
+# ---------------------------------------------------------------------------
+# Official daily betting list (Phase 7)
+#
+# One published list per business date, shared by every user. This is
+# deliberately SEPARATE from user-generated/custom lists: a publication is an
+# immutable evidence record, whereas a custom list is a per-user draft.
+#
+# Immutability rules enforced by this schema:
+#   * `(business_date)` is unique, so a retried or concurrent job cannot publish
+#     a second list for the same day.
+#   * legs store their own copy of the selected market, probability, odds and
+#     the prediction they came from, so a later model run or a corrected result
+#     can never rewrite what was originally published.
+#   * corrections are appended to OfficialListCorrection as an audit trail; the
+#     leg row itself is never silently mutated.
+# ---------------------------------------------------------------------------
+
+
+class OfficialListStatus(models.TextChoices):
+    PENDING = "pending", "Pending"
+    WON = "won", "Won"
+    LOST = "lost", "Lost"
+    VOID = "void", "Void"
+    UNRESOLVED = "unresolved", "Unresolved"
+
+
+class LegStatus(models.TextChoices):
+    PENDING = "pending", "Pending"
+    WON = "won", "Won"
+    LOST = "lost", "Lost"
+    VOID = "void", "Void"
+    UNRESOLVED = "unresolved", "Unresolved"
+
+
+class OfficialDailyList(models.Model):
+    """An immutable published list for one business date.
+
+    A day with no suitable fixtures produces NO row at all (rather than an empty
+    or short list), so the public history can distinguish "not published" from
+    "published and later voided".
+    """
+
+    business_date = models.DateField(unique=True)
+    published_at = models.DateTimeField()
+    # Which configured leagues this publication was drawn from.
+    leagues = models.JSONField(default=list)
+    engine_version = models.CharField(max_length=120)
+    config_hash = models.CharField(max_length=128)
+    # Publication target for the date, kept for auditing late publications.
+    target_at = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=OfficialListStatus.choices,
+                              default=OfficialListStatus.PENDING)
+    # Reconciliation bookkeeping surfaced in admin.
+    last_checked_at = models.DateTimeField(null=True, blank=True)
+    last_check_error = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["-business_date"], name="official_list_date_desc")]
+        constraints = [
+            models.CheckConstraint(condition=~Q(engine_version=""), name="official_list_engine_nonempty"),
+        ]
+
+    def __str__(self):
+        return f"Official list {self.business_date} ({self.status})"
+
+
+class OfficialListLeg(models.Model):
+    """One fixture's single selected market inside a published list.
+
+    Every field needed to audit the selection *as published* is copied here, so
+    nothing depends on the current state of `Prediction`, odds or the engine.
+    """
+
+    official_list = models.ForeignKey(OfficialDailyList, on_delete=models.CASCADE, related_name="legs")
+    # Stable provider fixture id (matches Fixture.provider_id).
+    provider_fixture_id = models.PositiveBigIntegerField()
+    fixture = models.ForeignKey("Fixture", null=True, blank=True, on_delete=models.SET_NULL,
+                                related_name="official_legs")
+    # The prediction this leg was selected from; informational only.
+    prediction = models.ForeignKey("Prediction", null=True, blank=True, on_delete=models.SET_NULL,
+                                   related_name="official_legs")
+
+    league_id = models.PositiveIntegerField()
+    league_name = models.CharField(max_length=160, blank=True)
+    home_team_name = models.CharField(max_length=160)
+    away_team_name = models.CharField(max_length=160)
+    kickoff = models.DateTimeField()
+
+    market_id = models.CharField(max_length=60)
+    market_label = models.CharField(max_length=160, blank=True)
+    # Human-readable line/range, e.g. "Over 2.5" or "Total goals 2-5".
+    market_line = models.CharField(max_length=60, blank=True)
+    # Model probability at publication, as a fraction (0-1].
+    probability = models.DecimalField(max_digits=6, decimal_places=5)
+    explanation = models.CharField(max_length=400, blank=True)
+    engine_version = models.CharField(max_length=120, blank=True)
+
+    # Odds are nullable by design: a leg with no quoted price still shows the
+    # prediction and its result, but never a fabricated price.
+    decimal_odds = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    odds_bookmaker = models.CharField(max_length=120, blank=True)
+    odds_source = models.CharField(max_length=60, blank=True)
+    odds_captured_at = models.DateTimeField(null=True, blank=True)
+
+    status = models.CharField(max_length=20, choices=LegStatus.choices, default=LegStatus.PENDING)
+    home_goals = models.PositiveSmallIntegerField(null=True, blank=True)
+    away_goals = models.PositiveSmallIntegerField(null=True, blank=True)
+    settled_at = models.DateTimeField(null=True, blank=True)
+    # Why a leg is unresolved/void, shown to users (e.g. postponement policy).
+    resolution_note = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["official_list", "provider_fixture_id"],
+                                    name="official_leg_fixture_unique"),
+            models.CheckConstraint(condition=Q(probability__gt=0) & Q(probability__lte=1),
+                                   name="official_leg_probability_range"),
+            models.CheckConstraint(condition=Q(decimal_odds__isnull=True) | Q(decimal_odds__gte=1),
+                                   name="official_leg_odds_gte_one"),
+        ]
+
+    def __str__(self):
+        return f"{self.home_team_name} v {self.away_team_name} — {self.market_id}"
+
+
+class OfficialListCorrection(models.Model):
+    """Append-only audit trail for any administrative change to a publication.
+
+    A correction never edits history in place without a record: the reason, the
+    actor, and the before/after values are all captured here.
+    """
+
+    official_list = models.ForeignKey(OfficialDailyList, on_delete=models.CASCADE, related_name="corrections")
+    leg = models.ForeignKey(OfficialListLeg, null=True, blank=True, on_delete=models.SET_NULL,
+                            related_name="corrections")
+    reason = models.CharField(max_length=300)
+    actor = models.CharField(max_length=160, blank=True)
+    before = models.JSONField(default=dict)
+    after = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["official_list", "-created_at"], name="official_correction_recent")]
+
+    def __str__(self):
+        return f"Correction on {self.official_list.business_date}: {self.reason}"
+
+
+class DailyPreview(models.Model):
+    """The single cached free-preview featured match for a business date.
+
+    Selected once per day so every visitor sees the same preview, and so opening
+    the public page never triggers new forecasting or provider calls.
+    """
+
+    business_date = models.DateField(unique=True)
+    leg = models.ForeignKey(OfficialListLeg, null=True, blank=True, on_delete=models.SET_NULL,
+                            related_name="previews")
+    # Snapshot of the analysis shown publicly, frozen at selection time.
+    payload = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["-business_date"], name="preview_date_desc")]
+
+    def __str__(self):
+        return f"Daily preview {self.business_date}"
+
+
+# ---------------------------------------------------------------------------
+# Admin-managed prediction runs (Phase 8)
+#
+# Orchestration ONLY. This records *who asked for what, and when* so an admin run
+# can be tracked, audited and retried. It deliberately does not hold, recompute,
+# or reinterpret any prediction: forecasts and betlists are produced by the
+# existing engine entry point, unchanged.
+#
+# The job record is written and committed BEFORE the work is dispatched, so a
+# crash between the two leaves a visible queued job rather than a silent gap.
+# ---------------------------------------------------------------------------
+
+
+class AdminJobKind(models.TextChoices):
+    # Forecasting for a date across the selected leagues (league is a FILTER over
+    # the fixture set, never a partition of the run).
+    GENERATE = "generate", "Generate predictions"
+    # Refresh source data (fixtures/standings/odds) via the existing pipeline.
+    REFRESH = "refresh", "Refresh source data"
+    # Publish/refresh the official daily list from already-generated predictions.
+    PUBLISH = "publish", "Publish official list"
+
+
+class AdminJobStatus(models.TextChoices):
+    QUEUED = "queued", "Queued"
+    RUNNING = "running", "Running"
+    COMPLETED = "completed", "Completed"
+    FAILED = "failed", "Failed"
+    # Superseded by a newer run for the same date/kind before it started.
+    CANCELLED = "cancelled", "Cancelled"
+
+
+class AdminJob(models.Model):
+    """One administratively requested run. Auditable, executable off-request."""
+
+    kind = models.CharField(max_length=20, choices=AdminJobKind.choices)
+    status = models.CharField(max_length=20, choices=AdminJobStatus.choices,
+                              default=AdminJobStatus.QUEUED)
+    # Business date the run targets (predictions for this date).
+    target_date = models.DateField()
+    season = models.PositiveSmallIntegerField()
+    # Leagues the run covers. A FILTER over eligible fixtures, not a split.
+    leagues = models.JSONField(default=list)
+
+    # --- audit: who asked, and how ------------------------------------------
+    # Trigger is recorded so a scheduled run can never masquerade as an admin one.
+    trigger = models.CharField(max_length=20, default="admin")
+    # Stable identifier for a scheduled run, e.g. "daily-generate". Empty for a
+    # manual admin run. This is what makes a cron run attributable without needing
+    # a Celery task id.
+    schedule_id = models.CharField(max_length=80, blank=True)
+    # How the run was executed: "cron", "admin request", or an existing task
+    # executor. Recorded for diagnostics; never used for authorisation.
+    execution_mechanism = models.CharField(max_length=40, default="admin request")
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
+                                     on_delete=models.SET_NULL, related_name="admin_jobs")
+    # Stable identifier of the requesting admin, kept even if the row is removed.
+    requested_by_label = models.CharField(max_length=160, blank=True)
+
+    # --- execution bookkeeping ---------------------------------------------
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    error_code = models.CharField(max_length=200, blank=True)
+    # Human-readable summary recorded on success (counts, leagues covered).
+    summary = models.JSONField(default=dict)
+    # Per-league outcome, so the coverage dashboard can show partial success
+    # without re-deriving it from logs.
+    league_results = models.JSONField(default=dict)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["target_date", "kind", "-created_at"], name="adminjob_date_kind"),
+            models.Index(fields=["status", "created_at"], name="adminjob_status_time"),
+        ]
+        constraints = [
+            models.CheckConstraint(condition=~Q(trigger=""), name="adminjob_trigger_nonempty"),
+            # A run must target at least one league; an empty filter would be
+            # ambiguous between "all leagues" and "none".
+            models.CheckConstraint(condition=~Q(leagues=[]), name="adminjob_leagues_nonempty"),
+            # At most ONE in-flight run per (kind, target date).
+            #
+            # This is the duplicate/overlap guard: two admins pressing Predict for
+            # the same date cannot queue conflicting work, and a retried request
+            # cannot double-queue. Completed and failed runs are excluded from the
+            # constraint so history is preserved and a retry after failure is
+            # allowed.
+            models.UniqueConstraint(
+                fields=["kind", "target_date"],
+                condition=Q(status__in=["queued", "running"]),
+                name="adminjob_one_active_per_kind_date",
+            ),
+        ]
+
+    def __str__(self):
+        return f"AdminJob {self.pk} {self.kind} {self.target_date} [{self.status}]"
