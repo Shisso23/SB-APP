@@ -1529,7 +1529,7 @@ const BetAndFixturesScreen: React.FC = () => {
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div>
                 <h1 className="text-2xl font-bold tracking-tight text-white">PredictXI Prediction Desk</h1>
-                <p className="mt-1 text-sm text-slate-200">Search leagues fast, pick options, and run predictions for fixtures in your date window.</p>
+                <p className="mt-1 text-sm text-slate-200">Search leagues fast, pick options, and view published forecasts for fixtures in your date window.</p>
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                   <span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-cyan-100">Selected leagues: {selectedBatch.length}/{MAX_BATCH}</span>
                   {predictionMode === 'legacy' && (
@@ -1771,7 +1771,7 @@ const BetAndFixturesScreen: React.FC = () => {
             </div>
 
             <div className="rounded-2xl border border-slate-600 bg-slate-900 p-4">
-              <div className="mb-2 text-xs text-slate-200">Run predictions for fixtures between:</div>
+              <div className="mb-2 text-xs text-slate-200">Published forecasts for fixtures between:</div>
               <div className="mb-3 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm font-semibold text-slate-200">
                 {predictionRangeLabel}
               </div>

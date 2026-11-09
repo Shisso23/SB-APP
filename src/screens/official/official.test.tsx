@@ -259,9 +259,11 @@ describe('public history screen', () => {
     });
     renderScreen();
     await screen.findByRole('heading', { name: 'Track record' });
-    // Two null rates -> two em dashes, and no misleading 0.0%.
-    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2);
-    expect(screen.queryByText('0.0%')).not.toBeInTheDocument();
+    // Both rates are labelled distinctly, and a null rate is an em dash rather
+    // than a misleading 0%.
+    expect(screen.getByText('Betlist win rate')).toBeInTheDocument();
+    expect(screen.getByText('Selection win rate')).toBeInTheDocument();
+    expect(screen.queryByText('0%')).not.toBeInTheDocument();
   });
 
   it('explains how forecasts work and states their limitations', async () => {
@@ -336,5 +338,70 @@ describe('presentation helpers', () => {
   it('renders a business date without a timezone shift', () => {
     // Must not become the 9th or 11th in any local timezone.
     expect(formatBusinessDate('2026-03-10')).toBe('10 March 2026');
+  });
+});
+describe('per-list tally', () => {
+  const { tallyList, formatRatio } = jest.requireActual('../../services/official/presentation');
+
+  it('counts each outcome and rates only settled selections', () => {
+    const tally = tallyList([
+      { status: 'won' }, { status: 'won' }, { status: 'lost' },
+      { status: 'void' }, { status: 'pending' },
+    ]);
+    expect(tally.won).toBe(2);
+    expect(tally.lost).toBe(1);
+    expect(tally.void).toBe(1);
+    expect(tally.pending).toBe(1);
+    expect(tally.total).toBe(5);
+    // 2 / (2 + 1) — void and pending must not move the denominator.
+    expect(tally.rate).toBeCloseTo(2 / 3);
+  });
+
+  it('returns no rate when nothing has settled, rather than 0%', () => {
+    const tally = tallyList([{ status: 'pending' }, { status: 'void' }]);
+    // An unsettled list must never be shown as a failure.
+    expect(tally.rate).toBeNull();
+    expect(formatRatio(tally.rate)).toBe('—');
+  });
+
+  it('handles an all-won and an all-lost list', () => {
+    expect(tallyList([{ status: 'won' }, { status: 'won' }]).rate).toBe(1);
+    expect(tallyList([{ status: 'lost' }, { status: 'lost' }]).rate).toBe(0);
+  });
+
+  it('excludes unresolved from the rate', () => {
+    const tally = tallyList([{ status: 'won' }, { status: 'unresolved' }]);
+    expect(tally.unresolved).toBe(1);
+    expect(tally.rate).toBe(1);
+  });
+});
+
+describe('list cards show their own win percentage', () => {
+  it('renders the per-list rate and counts', async () => {
+    const mixed = publishedList({
+      legs: [
+        { ...publishedList().legs[0], providerFixtureId: 1, status: 'won' },
+        { ...publishedList().legs[0], providerFixtureId: 2, status: 'won' },
+        { ...publishedList().legs[0], providerFixtureId: 3, status: 'lost' },
+      ],
+    });
+    mockAll({ today: mixed, history: historyOf([mixed]) });
+    renderScreen();
+    // 2 won / 3 settled = 67%. The card appears in both the today and history
+    // sections, so both instances are expected.
+    expect((await screen.findAllByText('67%')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/2 won \/ 3 settled/).length).toBeGreaterThan(0);
+  });
+
+  it('shows a dash for a list with nothing settled yet', async () => {
+    const pending = publishedList({
+      status: 'pending',
+      legs: [{ ...publishedList().legs[0], status: 'pending' }],
+    });
+    mockAll({ today: pending, history: historyOf([pending]) });
+    renderScreen();
+    expect((await screen.findAllByText('This list')).length).toBeGreaterThan(0);
+    // No fabricated 0%.
+    expect(screen.queryByText('0%')).not.toBeInTheDocument();
   });
 });

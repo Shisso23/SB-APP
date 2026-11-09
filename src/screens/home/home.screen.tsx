@@ -58,7 +58,7 @@ const capabilities: Capability[] = [
   {
     title: "Your shortlist, your leagues",
     body:
-      "Filter to the competitions you actually follow and see only the fixtures and markets that are ready to be assessed.",
+      "Pick the competitions you care about and see only the fixtures and markets already forecast and published.",
     icon: <StrokeIcon d="M4 6h16M7 12h10M10 18h4" />,
   },
 ];
@@ -66,14 +66,15 @@ const capabilities: Capability[] = [
 const steps = [
   {
     n: "01",
-    title: "Pick your competitions",
-    body: "Choose the leagues you follow. Nothing is pre-selected for you.",
+    title: "Our team generates the forecasts",
+    body:
+      "Every morning, before the earliest kickoff, forecasts are generated for the leagues we cover and stored as a permanent record.",
   },
   {
     n: "02",
-    title: "Review the assessment",
+    title: "You browse them by league",
     body:
-      "Each fixture shows the model's lean, the supporting form, and how much data sits behind it.",
+      "Open any covered competition and see the model's lean, the supporting form, and how much data sits behind it.",
   },
   {
     n: "03",
@@ -164,7 +165,7 @@ const HomeScreen: React.FC = () => {
                 onClick={goToPredictions}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900/40 focus:ring-offset-2"
               >
-                Start making predictions
+                See today’s predictions
                 <svg
                   className="h-4 w-4"
                   viewBox="0 0 24 24"
@@ -247,20 +248,20 @@ const HomeScreen: React.FC = () => {
                 Start here
               </span>
               <h2 className="mt-4 text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
-                This is where you make your predictions
+                View today’s predictions — no account needed
               </h2>
               <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-300 sm:text-base">
-                Everything begins on the Prediction Desk. Pick your leagues,
-                choose the markets you care about, and set your date window.
-                Three steps and you will have assessments on screen.
+                Forecasts are generated for you each morning, before the earliest
+                kickoff, and stored as a permanent record. Open the Prediction Desk,
+                pick a competition, and read them straight away.
               </p>
 
-              {/* Explicit numbered steps, matched to what the desk actually does */}
+              {/* Explicit steps, matched to what a visitor actually does */}
               <ol className="mt-6 grid gap-4 sm:grid-cols-3">
                 {[
-                  { n: "1", t: "Choose leagues", b: "Select the competitions you follow." },
-                  { n: "2", t: "Pick your markets", b: "Goals, results, both teams to score." },
-                  { n: "3", t: "Set the date window", b: "Then run predictions for those fixtures." },
+                  { n: "1", t: "Open the desk", b: "No sign-up needed to look around." },
+                  { n: "2", t: "Pick a competition", b: "Choose from the leagues we cover." },
+                  { n: "3", t: "Read the forecast", b: "Probability, reasoning and sample size." },
                 ].map((s) => (
                   <li key={s.n} className="flex gap-3">
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-500 text-xs font-bold text-white">
@@ -551,10 +552,11 @@ const HomeScreen: React.FC = () => {
         <div className="mx-auto max-w-7xl px-6 py-16 lg:py-20">
           <div className="max-w-2xl">
             <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              How an assessment is made
+              How these forecasts are made
             </h2>
             <p className="mt-3 text-slate-600">
-              Three steps, and the last one is yours.
+              Generated for you each morning — then frozen. Three steps, and the
+              last one is yours.
             </p>
           </div>
 
@@ -613,11 +615,12 @@ const HomeScreen: React.FC = () => {
       <section className="border-t border-slate-200 bg-white">
         <div className="mx-auto max-w-3xl px-6 py-16 text-center lg:py-20">
           <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
-            Ready to make your first prediction?
+            Ready to see today’s forecasts?
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-slate-600">
-            The Prediction Desk is the starting point. Choose your leagues and
-            markets, and the assessments are generated for you.
+            Open the Prediction Desk and pick a competition. Everything you see
+            has already been generated and published — nothing is calculated
+            while you browse.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <motion.button

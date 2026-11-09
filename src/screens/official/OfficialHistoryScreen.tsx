@@ -20,9 +20,11 @@ import {
   formatOdds,
   formatProbability,
   formatRate,
+  formatRatio,
   formatScore,
   formatTimestamp,
   presentHypothetical,
+  tallyList,
 } from '../../services/official/presentation';
 
 /**
@@ -66,6 +68,7 @@ const Metric: React.FC<{ label: string; value: string; hint?: string }> = ({ lab
 const ListCard: React.FC<{ list: OfficialList }> = ({ list }) => {
   const status = describeListStatus(list.status);
   const money = presentHypothetical(list.hypothetical);
+  const tally = tallyList(list.legs ?? []);
 
   if (!list.published) {
     return (
@@ -113,6 +116,44 @@ const ListCard: React.FC<{ list: OfficialList }> = ({ list }) => {
             </div>
           </div>
         ) : null}
+      </div>
+
+      {/* Per-list tally. Every outcome is counted, and the percentage uses the
+          same won / (won + lost) rule as the overall metric, so void and
+          unresolved selections never distort it. */}
+      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl bg-slate-50 px-4 py-3 text-sm">
+        <div>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            This list
+          </span>{' '}
+          <span className="font-bold tabular-nums text-slate-900">{formatRatio(tally.rate)}</span>
+          <span className="ml-1 text-xs text-slate-500">
+            ({tally.won} won / {tally.won + tally.lost} settled)
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
+          <span className="inline-flex items-center gap-1">
+            <span aria-hidden="true">✓</span> {tally.won} won
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span aria-hidden="true">✕</span> {tally.lost} lost
+          </span>
+          {tally.void > 0 ? (
+            <span className="inline-flex items-center gap-1">
+              <span aria-hidden="true">⊘</span> {tally.void} void
+            </span>
+          ) : null}
+          {tally.unresolved > 0 ? (
+            <span className="inline-flex items-center gap-1">
+              <span aria-hidden="true">?</span> {tally.unresolved} unresolved
+            </span>
+          ) : null}
+          {tally.pending > 0 ? (
+            <span className="inline-flex items-center gap-1">
+              <span aria-hidden="true">⋯</span> {tally.pending} pending
+            </span>
+          ) : null}
+        </div>
       </div>
 
       <div className="mt-4 overflow-x-auto">
@@ -300,18 +341,20 @@ const OfficialHistoryScreen: React.FC = () => {
               <section aria-labelledby="metrics-heading">
                 <h2 id="metrics-heading" className="text-lg font-bold tracking-tight">Track record</h2>
                 <p className="mt-1 text-sm text-slate-600">
-                  Void, pending and unresolved lists are counted separately and excluded from both rates.
+                  Two different things are measured. A <strong className="font-semibold">betlist</strong> is
+                  all five selections taken together; a <strong className="font-semibold">selection</strong> is
+                  one match. Void, pending and unresolved are counted separately and excluded from both rates.
                 </p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <Metric
-                    label="Full-list win rate"
+                    label="Betlist win rate"
                     value={formatRate(lists.win_rate)}
-                    hint={`${lists.won} won / ${lists.denominator} settled`}
+                    hint={`${lists.won} lists won / ${lists.denominator} settled`}
                   />
                   <Metric
-                    label="Selection hit rate"
+                    label="Selection win rate"
                     value={formatRate(selections.hit_rate)}
-                    hint={`${selections.won} won / ${selections.denominator} settled`}
+                    hint={`${selections.won} selections won / ${selections.denominator} settled`}
                   />
                   <Metric label="Void" value={String(lists.void)} hint="Excluded from both rates" />
                   <Metric

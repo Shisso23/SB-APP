@@ -134,3 +134,42 @@ export const presentHypothetical = (value: HypotheticalResult | undefined): Mone
 /** Final score for a leg, or a dash when the fixture has no result yet. */
 export const formatScore = (home: number | null, away: number | null): string =>
   home === null || away === null ? '—' : `${home}–${away}`;
+/**
+ * Tally a single list's selections into won/lost/void/unresolved counts, plus the
+ * selection win rate for that list.
+ *
+ * The rate uses the same denominator rule as the overall metric — won / (won +
+ * lost) — so void, pending and unresolved selections never inflate or deflate it.
+ * Returns `rate: null` when nothing is settled yet, rather than 0%, so an
+ * unsettled list is never displayed as a failure.
+ */
+export interface ListTally {
+  won: number;
+  lost: number;
+  void: number;
+  unresolved: number;
+  pending: number;
+  total: number;
+  /** won / (won + lost), or null when nothing has settled. */
+  rate: number | null;
+}
+
+export const tallyList = (legs: Array<{ status: string }>): ListTally => {
+  const tally: ListTally = {
+    won: 0, lost: 0, void: 0, unresolved: 0, pending: 0, total: legs.length, rate: null,
+  };
+  for (const leg of legs) {
+    if (leg.status === 'won') tally.won += 1;
+    else if (leg.status === 'lost') tally.lost += 1;
+    else if (leg.status === 'void') tally.void += 1;
+    else if (leg.status === 'unresolved') tally.unresolved += 1;
+    else tally.pending += 1;
+  }
+  const settled = tally.won + tally.lost;
+  tally.rate = settled > 0 ? tally.won / settled : null;
+  return tally;
+};
+
+/** Format a numeric rate (0–1) as a percentage, or an em dash when absent. */
+export const formatRatio = (value: number | null): string =>
+  value === null || !Number.isFinite(value) ? '—' : `${(value * 100).toFixed(0)}%`;
