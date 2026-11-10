@@ -1,0 +1,136 @@
+# DigitalOcean App Platform spec for the PredictXI Django backend.
+#
+# This is a starting point, not a push-button file: replace every `TODO`
+# placeholder (GitHub repo, allowed hosts/domains, CORS origins) and fill in
+# the SECRET-typed env vars in the DO control panel (or `doctl apps update`)
+# before deploying — nothing sensitive is committed here.
+#
+# Deploy with:
+#   doctl apps create --spec app.yaml
+#   doctl apps update <app-id> --spec app.yaml
+#
+# Components:
+#   web      - gunicorn serving the REST API (predictxi.wsgi:application)
+#   migrate  - runs `manage.py migrate` before each deploy (PRE_DEPLOY job)
+#   schedule - cron-style trigger for the official-list/automation pipeline
+#              (`manage.py run_schedule --due`, see api/admin_schedule.py)
+#   ingest   - cron-style trigger for the bounded prediction-engine sweep
+#              (bootstrap/refresh/predict/settle across PREDICTXI_LEAGUES,
+#              see scripts/run_prediction_schedule.sh)
+#
+# `schedule` and `ingest` are both safe to invoke frequently and no-op when
+# nothing is due/enabled, so a shared five-minute cron is intentional.
+name: predictxi-backend
+region: nyc
+
+envs:
+  - key: DJANGO_SECRET_KEY
+    type: SECRET
+    scope: RUN_TIME
+  - key: DJANGO_DEBUG
+    value: "False"
+    scope: RUN_TIME
+  - key: DJANGO_ALLOWED_HOSTS
+    # TODO: the app's *.ondigitalocean.app hostname plus any custom domain,
+    # comma-separated, e.g. "predictxi-backend-abcde.ondigitalocean.app,api.predictxi.com"
+    value: "REPLACE_ME.ondigitalocean.app"
+    scope: RUN_TIME
+  - key: DATABASE_URL
+    # postgresql://user:pass@host:port/dbname?sslmode=require
+    # TODO: point at your managed Postgres cluster's connection string.
+    type: SECRET
+    scope: RUN_TIME
+  - key: API_FOOTBALL_KEY
+    type: SECRET
+    scope: RUN_TIME
+
+services:
+  - name: web
+    github:
+      repo: Shisso23/PredictXI-backend
+      branch: main
+      deploy_on_push: true
+    run_command: ./scripts/start_web.sh
+    http_port: 8080
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-1gb
+    health_check:
+      http_path: /api/v1/health/
+      initial_delay_seconds: 10
+      period_seconds: 15
+      timeout_seconds: 5
+      failure_threshold: 3
+    envs:
+      - key: DJANGO_CORS_ALLOWED_ORIGINS
+        # TODO: the deployed frontend origin(s), comma-separated.
+        value: "https://REPLACE_ME"
+        scope: RUN_TIME
+      - key: DJANGO_CSRF_TRUSTED_ORIGINS
+        value: "https://REPLACE_ME"
+        scope: RUN_TIME
+      - key: FIREBASE_PROJECT_ID
+        value: "REPLACE_ME"
+        scope: RUN_TIME
+      - key: FIREBASE_CREDENTIALS_FILE
+        value: ".secrets/firebase-service-account.json"
+        scope: RUN_TIME
+      - key: FIREBASE_CREDENTIALS_JSON
+        # Full contents of the Firebase service-account JSON file, as one
+        # line. start_web.sh writes it to FIREBASE_CREDENTIALS_FILE on boot.
+        type: SECRET
+        scope: RUN_TIME
+      - key: PAYFAST_ENABLED
+        value: "False"
+        scope: RUN_TIME
+
+jobs:
+  - name: migrate
+    kind: PRE_DEPLOY
+    github:
+      repo: Shisso23/PredictXI-backend
+      branch: main
+    run_command: python manage.py migrate --noinput
+    instance_size_slug: apps-s-1vcpu-1gb
+
+  - name: schedule
+    kind: SCHEDULED
+    schedule:
+      cron: "*/5 * * * *"
+      time_zone: "UTC"
+    github:
+      repo: Shisso23/PredictXI-backend
+      branch: main
+    run_command: python manage.py run_schedule --due
+    instance_size_slug: apps-s-1vcpu-1gb
+    envs:
+      - key: PREDICTXI_AUTOMATION_ENABLED
+        # TODO: flip to True once the official-list schedule has been
+        # reviewed; everything stays inert while this is False.
+        value: "False"
+        scope: RUN_TIME
+
+  - name: ingest
+    kind: SCHEDULED
+    schedule:
+      cron: "*/5 * * * *"
+      time_zone: "UTC"
+    github:
+      repo: Shisso23/PredictXI-backend
+      branch: main
+    run_command: ./scripts/run_prediction_schedule.sh
+    instance_size_slug: apps-s-1vcpu-1gb
+    envs:
+      - key: PYTHON_BIN
+        # The buildpack puts `python` on PATH directly; there is no
+        # `.venv` in this environment (unlike local dev).
+        value: "python"
+        scope: RUN_TIME
+      - key: PREDICTXI_INGESTION_ENABLED
+        # TODO: flip to True once PREDICTXI_LEAGUES is populated and the
+        # API-Football key/quota has been confirmed for production.
+        value: "False"
+        scope: RUN_TIME
+      - key: PREDICTXI_LEAGUES
+        # TODO: comma-separated allowed league ids, e.g. "39,140,78"
+        value: ""
+        scope: RUN_TIME

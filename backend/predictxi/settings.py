@@ -10,7 +10,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load the git-ignored local backend env file when present.
 #
-# This is backend/.env (NOT the frontend root .env) and is optional: real
+# This is this repo's own .env (NOT the PredictXI frontend's .env, which lives in
+# a separate repository) and is optional: real
 # environments should inject variables directly. Existing variables always win, so
 # a deployed environment is never overridden by a stray local file. Set
 # DJANGO_IGNORE_LOCAL_ENV_FILE=1 to skip it entirely (used by configuration tests
@@ -100,7 +101,7 @@ FIREBASE_PROJECT_ID = env("FIREBASE_PROJECT_ID", default="predcitz-backend")
 # Resolution order (first non-empty wins):
 #   1. FIREBASE_CREDENTIALS_FILE  - explicit project setting (preferred)
 #   2. GOOGLE_APPLICATION_CREDENTIALS - the standard Google SDK variable
-# The file is PRIVATE. Keep it under backend/.secrets/ (git-ignored, mode 600) and
+# The file is PRIVATE. Keep it under .secrets/ (git-ignored, mode 600) and
 # never commit it. An empty value means "use Application Default Credentials".
 FIREBASE_CREDENTIALS_FILE = (
     env("FIREBASE_CREDENTIALS_FILE", default="")

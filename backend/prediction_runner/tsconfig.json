@@ -8,7 +8,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "strict": false,
-    "rootDir": "../..",
+    "rootDir": "..",
     "outDir": "../.prediction-build",
     "noEmitOnError": true
   },

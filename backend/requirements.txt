@@ -5,3 +5,5 @@ psycopg[binary]==3.3.6
 django-environ==0.14.0
 django-cors-headers==4.9.0
 requests==2.34.2
+# Production WSGI server (see Procfile / scripts/start_web.sh).
+gunicorn==27.0.0

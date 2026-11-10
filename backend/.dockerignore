@@ -1,0 +1,10 @@
+.venv/
+.secrets/
+.env
+.env.*
+!.env.example
+logs/
+__pycache__/
+*.py[cod]
+.prediction-build/
+.git/

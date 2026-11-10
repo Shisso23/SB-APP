@@ -1,8 +1,8 @@
-import { predictFixture } from '../../src/prediction-engine/predict-fixture';
-import { mapApiFootballOdds } from '../../src/prediction-engine/odds-provider';
-import { settleSelection } from '../../src/prediction-engine/paper-tracking';
-import { buildForecastBetList, DEFAULT_BET_LIST_SIZE } from '../../src/prediction-engine/forecast-bet-list';
-import { DEFAULT_PREDICTION_CONFIG } from '../../src/config/prediction-config';
+import { predictFixture } from './engine/prediction-engine/predict-fixture';
+import { mapApiFootballOdds } from './engine/prediction-engine/odds-provider';
+import { settleSelection } from './engine/prediction-engine/paper-tracking';
+import { buildForecastBetList, DEFAULT_BET_LIST_SIZE } from './engine/prediction-engine/forecast-bet-list';
+import { DEFAULT_PREDICTION_CONFIG } from './engine/config/prediction-config';
 
 const MAX_BYTES = 4 * 1024 * 1024;
 let size = 0;

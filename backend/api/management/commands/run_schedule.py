@@ -5,8 +5,8 @@ Cron calls this frequently; the *due* decision is made in Django (see
 second source of truth.
 
     # every 5 minutes: fire whatever is due
-    */5 * * * * cd /srv/sb-app/backend && \\
-      /srv/sb-app/backend/.venv/bin/python manage.py run_schedule --due >> /var/log/predictxi-schedule.log 2>&1
+    */5 * * * * cd /srv/predictxi-backend && \\
+      /srv/predictxi-backend/.venv/bin/python manage.py run_schedule --due >> /var/log/predictxi-schedule.log 2>&1
 
 Exit codes:
 
