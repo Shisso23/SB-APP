@@ -14,13 +14,13 @@ comes from a third-party provider, **API-Football** (api-sports.io). Payments ar
 through **PayFast**, a South African payment gateway. Users sign in with **Firebase
 Authentication** (Google's identity service).
 
-The system has two halves:
+The system has two halves, in two separate repositories:
 
-- **Frontend** — a React web app (`src/`) that users interact with directly: browsing fixtures,
-  viewing predictions, and buying access.
-- **Backend** — a Django REST API (`backend/`) that owns all data, business rules, pricing, and
-  the connection to API-Football and PayFast. The frontend never talks to API-Football or
-  PayFast directly; it only ever talks to our own backend.
+- **Frontend** — a React web app (`src/`, this repository, https://github.com/Shisso23/SB-APP)
+  that users interact with directly: browsing fixtures, viewing predictions, and buying access.
+- **Backend** — a Django REST API (https://github.com/Shisso23/PredictXI-backend) that owns all
+  data, business rules, pricing, and the connection to API-Football and PayFast. The frontend
+  never talks to API-Football or PayFast directly; it only ever talks to our own backend.
 
 ---
 
@@ -55,7 +55,7 @@ fetched by that job ahead of time and stored in our own database. This has two c
    **ID token** (a signed JWT).
 2. Every request to our backend includes that token as `Authorization: Bearer <token>`.
 3. The backend verifies the token's signature directly with Firebase on every request
-   (`backend/api/authentication.py`) — it never trusts anything in the token except the verified
+   (`api/authentication.py` in the backend repo) — it never trusts anything in the token except the verified
    user ID. On first sign-in, a matching `User` row is created automatically.
 4. Once identity is established, the request is routed to a read-only endpoint
    (fixtures, leagues, standings, odds, predictions) which queries PostgreSQL directly — **no
@@ -145,7 +145,7 @@ needs to be put in place for production — suggested cadence:
 
 ### Which leagues are enabled
 
-A single setting, `PREDICTXI_LEAGUES` (in `backend/.env`), is a flat allow-list of league IDs.
+A single setting, `PREDICTXI_LEAGUES` (in the backend repo's `.env`), is a flat allow-list of league IDs.
 **Only leagues on this list can ever be ingested or appear in the app.** This exists specifically
 so the ingestion job can never accidentally fetch (and spend quota on) a league nobody asked for.
 
@@ -353,10 +353,10 @@ than losing it.
   plan cap.
 
 **Not yet in place:**
-- An automated recurring scheduler for the ingestion job. `backend/scripts/run_prediction_schedule.sh`
-  wraps the bounded `refresh`/`predict`/`settle` invocations for every allowed league into one
-  script, but it is not installed into any cron/launchd schedule — an operator must deliberately
-  enable it.
+- An automated recurring scheduler for the ingestion job. `scripts/run_prediction_schedule.sh`
+  (in the backend repo) wraps the bounded `refresh`/`predict`/`settle` invocations for every
+  allowed league into one script, but it is not installed into any cron/launchd schedule — an
+  operator must deliberately enable it.
 - Production PayFast merchant credentials (sandbox credentials are a temporary stand-in).
 - A dedicated response-caching layer (intentionally deferred — see §4 — until there's a measured
   need).

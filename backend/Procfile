@@ -1,4 +1,0 @@
-web: ./scripts/start_web.sh
-migrate: python manage.py migrate --noinput
-schedule: python manage.py run_schedule --due
-ingest: ./scripts/run_prediction_schedule.sh
