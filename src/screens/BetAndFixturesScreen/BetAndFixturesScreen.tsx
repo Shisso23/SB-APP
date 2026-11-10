@@ -1801,7 +1801,6 @@ const BetAndFixturesScreen: React.FC = () => {
               loading={loadingBatch} retryingIds={retryingLeagueIds} onRetry={failures => handleBet(true, failures)} />
             <SuggestedBetList
               predictions={visibleEnginePredictions}
-              now={nowTick}
               loading={loadingBatch}
               statistical={predictionMode === 'statistical'}
               selectedPickKeys={selectedStatisticalPickKeys}

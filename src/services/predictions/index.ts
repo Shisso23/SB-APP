@@ -10,7 +10,8 @@
  * never computes a forecast itself; it only reads what the server has already
  * published for a fixture.
  */
-import { apiGet } from '../api/client';
+import { apiClient, apiGet } from '../api/client';
+import { FixturePrediction } from '../../prediction-engine/types';
 
 const endpoint = '/predictions/';
 
@@ -41,3 +42,82 @@ export interface PredictionsPayload {
   errors?: unknown;
   response?: PredictionEnvelopeRow[];
 }
+
+/**
+ * Server-computed display preference for a market: the SAME label/meaning/
+ * threshold wording `FORECAST_HIGHLIGHTS` always showed, just sourced from the
+ * server instead of a local copy. `isRange` is a boolean (not the structured
+ * range) because every renderer only ever checked it for truthiness.
+ */
+export interface MarketPreference {
+  label: string;
+  meaning: string;
+  suggest: number;
+  strong: number | null;
+  isRange: boolean;
+}
+
+export type HighlightLevel = 'strong' | 'suggested' | 'none';
+export type BetListPriceStatus = 'checked' | 'unqualified' | 'stale' | 'unpriced';
+
+/** One ranked entry from `POST /predictions/bet-list/`. */
+export interface BetListSuggestion {
+  providerFixtureId: number;
+  marketId: string;
+  marketLabel: string;
+  marketLine: string;
+  probability: number;
+  explanation: string;
+  level: HighlightLevel;
+  preference: MarketPreference;
+  family: string;
+  historyLimited: boolean;
+  impliedBy?: string[];
+  priceStatus: BetListPriceStatus;
+  decimalOdds: number | null;
+  bookmaker: string;
+  oddsTimestamp: number | null;
+}
+
+interface BetListResponse {
+  errors: unknown[];
+  results: number;
+  response: BetListSuggestion[];
+}
+
+/**
+ * Server-computed "Suggested bet list": the SAME ranked selection the public
+ * Official Daily List uses. Pass the caller's own already-fetched predictions
+ * directly; nothing is re-fetched or recomputed from a database lookup.
+ */
+export const getSuggestedBetList = async ({ predictions, limit }: { predictions: FixturePrediction[]; limit?: number }) => {
+  return apiClient.post<BetListResponse>(`${endpoint}bet-list/`, { predictions, limit });
+};
+
+/** Per-market suggested/strong/none display level for one fixture. */
+export interface MarketHighlight {
+  level: HighlightLevel;
+  probability: number | null;
+  preference: MarketPreference;
+  impliedBy?: string[];
+}
+
+export interface HighlightLevelsRow {
+  providerFixtureId: number;
+  markets: Record<string, MarketHighlight>;
+}
+
+interface HighlightLevelsResponse {
+  errors: unknown[];
+  results: number;
+  response: HighlightLevelsRow[];
+}
+
+/**
+ * Server-computed per-market highlight levels for the caller's own already-
+ * fetched predictions, via the SAME canonical thresholds the Official Daily
+ * List and Suggested Bet List both use.
+ */
+export const getHighlightLevels = async ({ predictions }: { predictions: FixturePrediction[] }) => {
+  return apiClient.post<HighlightLevelsResponse>(`${endpoint}highlights/`, { predictions });
+};

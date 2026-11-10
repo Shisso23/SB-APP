@@ -2,19 +2,23 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { predictFixture } from '../../prediction-engine/predict-fixture';
+import { buildForecastBetList } from '../../prediction-engine/forecast-bet-list';
 import { EnginePredictionPanel } from './BetAndFixturesScreen';
 import BetAndFixturesScreen from './BetAndFixturesScreen';
-import { apiGet } from '../../services/api/client';
+import { apiClient, apiGet } from '../../services/api/client';
 import { makeFixture } from '../../prediction-engine/test-support/fixture-builders';
 import { readPaperRecord, writePaperRecord } from '../../prediction-engine/paper-store';
 import { createEmptyPaperRecord } from '../../prediction-engine/paper-tracking';
 import { readPredictionsCache, writePredictionsCache, clearPredictionsCache } from '../../services/prediction-cache';
 import { writeBrowserCache, resetMemoryBrowserCache } from '../../services/test-support/memory-browser-cache';
+import { FORECAST_HIGHLIGHTS, ForecastPreference, impliedHighlightResult, forecastProbability, ForecastId } from '../../config/forecast-highlights';
+import { FixturePrediction } from '../../prediction-engine/types';
 jest.mock('../../services/browser-cache', () => require('../../services/test-support/memory-browser-cache'));
 
 jest.mock('../../services/api/client', () => ({
   __esModule: true,
   apiGet: jest.fn(),
+  apiClient: { post: jest.fn() },
   PremiumRequiredError: class PremiumRequiredError extends Error {},
   SessionExpiredError: class SessionExpiredError extends Error {},
   SignInRequiredError: class SignInRequiredError extends Error {},
@@ -47,6 +51,53 @@ const mockLeaguesState = {
   isLoadingLeagues: false,
 };
 const get = apiGet as jest.Mock;
+const post = apiClient.post as jest.Mock;
+
+/** Wire-format mapping matching the backend's real `bet_list`/`highlight_levels`
+ * operations exactly (see PredictXI-backend's prediction_runner/run.ts), so this
+ * mock exercises the same request/response contract as production - just
+ * computed in-process via the still-present engine modules instead of a real
+ * HTTP round trip to a compiled runner subprocess. */
+const preferenceWire = (forecastId: ForecastId) => {
+  const preference: ForecastPreference = FORECAST_HIGHLIGHTS[forecastId];
+  return { label: preference.label, meaning: preference.meaning, suggest: preference.suggest, strong: preference.strong ?? null, isRange: Boolean(preference.range) };
+};
+const mockBetListResponse = (predictions: FixturePrediction[], limit?: number) => ({
+  data: {
+    errors: [], results: 0,
+    response: buildForecastBetList(predictions, Date.now(), { limit }).map((suggestion) => ({
+      providerFixtureId: suggestion.prediction.fixture.fixture.id,
+      marketId: suggestion.forecastId,
+      marketLabel: suggestion.preference.label,
+      marketLine: suggestion.preference.range ? `${suggestion.preference.range.min}-${suggestion.preference.range.max} ${suggestion.preference.range.side}` : '',
+      probability: suggestion.probability,
+      explanation: suggestion.preference.meaning ?? '',
+      level: suggestion.level,
+      preference: preferenceWire(suggestion.forecastId),
+      family: suggestion.family,
+      historyLimited: suggestion.historyLimited,
+      ...(suggestion.impliedBy ? { impliedBy: suggestion.impliedBy } : {}),
+      priceStatus: suggestion.priceStatus,
+      decimalOdds: Number.isFinite(suggestion.market?.decimalOdds) && (suggestion.market?.decimalOdds as number) > 1 ? (suggestion.market?.decimalOdds as number) : null,
+      bookmaker: suggestion.market?.bookmaker ?? '',
+      oddsTimestamp: Number.isFinite(suggestion.market?.oddsTimestamp) ? (suggestion.market?.oddsTimestamp as number) : null,
+    })),
+  },
+});
+const mockHighlightsResponse = (predictions: FixturePrediction[]) => ({
+  data: {
+    errors: [], results: predictions.length,
+    response: predictions.map((prediction) => ({
+      providerFixtureId: prediction.fixture.fixture.id,
+      markets: (Object.keys(FORECAST_HIGHLIGHTS) as ForecastId[]).reduce((acc, forecastId) => {
+        const { level, impliedBy } = impliedHighlightResult(prediction, forecastId);
+        const probability = forecastProbability(prediction, forecastId);
+        acc[forecastId] = { level, probability: probability === undefined ? null : probability, preference: preferenceWire(forecastId), ...(impliedBy ? { impliedBy } : {}) };
+        return acc;
+      }, {} as Record<string, unknown>),
+    })),
+  },
+});
 let resultFinished: boolean;
 let failRefresh: boolean;
 let activeSeasonRequests: number;
@@ -64,11 +115,17 @@ beforeEach(async () => {
   resetMemoryBrowserCache();
   localStorage.clear();
   get.mockReset();
+  post.mockReset();
   mockDispatch.mockClear();
   mockAuth.user = { email: 'test@example.com' };
   resultFinished = false;
   failRefresh = false;
   activeSeasonRequests = 0;
+  post.mockImplementation((path: string, body: { predictions: FixturePrediction[]; limit?: number }) => {
+    if (path === '/predictions/bet-list/') return Promise.resolve(mockBetListResponse(body.predictions, body.limit));
+    if (path === '/predictions/highlights/') return Promise.resolve(mockHighlightsResponse(body.predictions));
+    throw new Error(`Unexpected test POST request: ${path}`);
+  });
   get.mockImplementation((endpoint, options) => {
     if (endpoint === '/me/') {
       return Promise.resolve({ data: { has_prediction_access: true, prediction_access_ends_at: '2099-01-01' } });
@@ -198,7 +255,7 @@ it('keeps the suggested bet list first for easy discovery, removes model-pick se
   expect(forecasts).toHaveAttribute('open');
   const betList = screen.getByRole('region', { name: 'Suggested bet list' });
   expect(betList.compareDocumentPosition(forecasts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(within(betList).getAllByRole('listitem')).toHaveLength(1);
+  expect(await within(betList).findAllByRole('listitem')).toHaveLength(1);
   expect(forecasts.querySelector('[data-highlight]')).toBeTruthy();
   expect(forecasts).toHaveTextContent('2–5 total goals');
   expect(forecasts).toHaveTextContent('3–6 total goals');
