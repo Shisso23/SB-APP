@@ -182,6 +182,18 @@ const renderPredictionDesk = async () => {
   return rendered;
 };
 
+/** The batched per-market highlight fetch (see BetAndFixturesScreen's
+ * highlightsByFixtureId effect) is a genuine network round trip, unlike the
+ * synchronous computation it replaced. Real test fixtures here always produce
+ * a defined probability for every market (verified: predictFixture never
+ * leaves `markets`/`probabilities.baseScorelines` empty, even with no fixture
+ * history), so "no 'Probability unavailable' placeholder remains" is a
+ * reliable, generic signal that batch has settled - used wherever a test
+ * captures or compares forecast panel content. */
+const awaitHighlightsSettled = async () => {
+  await waitFor(() => expect(screen.queryAllByText('Probability unavailable')).toHaveLength(0));
+};
+
 const runInitialBatch = async () => {
   await renderPredictionDesk();
   fireEvent.click((await screen.findAllByRole('button', { name: /Premier League/ }))[0]);
@@ -191,6 +203,7 @@ const runInitialBatch = async () => {
   await waitFor(() => expect(screen.getByRole('button', { name: 'Bet (run predictions)' })).not.toBeDisabled());
   expect(activeSeasonRequests).toBe(1);
   expect(readPaperRecord().selections[0].settled).toBeUndefined();
+  await awaitHighlightsSettled();
   return screen.getByRole('button', { name: 'Bet (run predictions)' });
 };
 
@@ -266,7 +279,7 @@ it('keeps the suggested bet list first for easy discovery, removes model-pick se
   expect(betList).toHaveTextContent('Legacy rules do not supply forecast probabilities');
   expect(screen.getByText(/Legacy fixture results/).closest('details')!.querySelector('[data-highlight]')).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Statistical', exact: true }));
-  expect(screen.getByText(/All forecasts and market details/).closest('details')!.querySelectorAll('[data-highlight]')).toHaveLength(statisticalBadges);
+  await waitFor(() => expect(screen.getByText(/All forecasts and market details/).closest('details')!.querySelectorAll('[data-highlight]')).toHaveLength(statisticalBadges));
   // A date range with no assessed fixtures must remove the previous highlights.
   const dates = screen.getAllByRole('textbox').filter(input => (input as HTMLInputElement).value.match(/^\d{2}\/\d{2}\/\d{4}$/));
   expect(dates.length).toBeGreaterThanOrEqual(2);
@@ -432,7 +445,7 @@ it('shows progress while a request is pending and removes the loader when predic
   await act(async () => { release(); });
   await screen.findByRole('button', { name: 'Bet (run predictions)' });
   expect(screen.queryByRole('region', { name: 'Prediction loading' })).not.toBeInTheDocument();
-  expect(screen.getAllByText('2–5 total goals').length).toBeGreaterThan(0);
+  expect((await screen.findAllByText('2–5 total goals')).length).toBeGreaterThan(0);
 });
 
 it('keeps existing forecasts visible while refreshing and clears the loader after a failed data request', async () => {
@@ -514,6 +527,7 @@ const runRetryBatch = async () => {
   await waitFor(() => expect(screen.getByRole('button', { name: 'Bet (run predictions)' })).toBeEnabled());
   fireEvent.click(screen.getByRole('button', { name: 'Bet (run predictions)' }));
   await screen.findByRole('button', { name: 'Bet (run predictions)' });
+  await awaitHighlightsSettled();
 };
 
 it('retries only a failed league and season, preserves successful forecasts, and clears only recovered failures', async () => {
@@ -531,6 +545,7 @@ it('retries only a failed league and season, preserves successful forecasts, and
   let before = get.mock.calls.length;
   fireEvent.click(screen.getByRole('button', { name: 'Retry Bundesliga', exact: true }));
   await screen.findByRole('button', { name: 'Bet (run predictions)' });
+  await awaitHighlightsSettled();
   let fixtureRequests = get.mock.calls.slice(before).filter(([endpoint]) => endpoint === '/fixtures/');
   expect(fixtureRequests).toHaveLength(1);
   expect(fixtureRequests[0][1].params).toMatchObject({ league: 78, season: currentYear });
@@ -542,6 +557,7 @@ it('retries only a failed league and season, preserves successful forecasts, and
   before = get.mock.calls.length;
   fireEvent.click(screen.getByRole('button', { name: 'Retry La Liga', exact: true }));
   await screen.findByRole('button', { name: 'Bet (run predictions)' });
+  await awaitHighlightsSettled();
   fixtureRequests = get.mock.calls.slice(before).filter(([endpoint]) => endpoint === '/fixtures/');
   expect(fixtureRequests).toHaveLength(1);
   expect(fixtureRequests[0][1].params).toMatchObject({ league: 140, season: currentYear - 1 });
