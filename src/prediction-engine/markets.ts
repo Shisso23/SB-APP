@@ -9,6 +9,7 @@ import {
   TeamFormAnalysis,
 } from './types';
 import { buildMarketValue, computeMarginAdjustedOverUnder } from './odds';
+import { evaluateGoalTotalSupport } from './goal-support';
 import { opponentStrengthEvidence } from './opponent-strength';
 import { formatPercent } from './math-utils';
 
@@ -233,7 +234,7 @@ export const buildMarkets = ({
       ...dataQualityWarnings,
     ];
 
-    return buildMarketValue({
+    const market = buildMarketValue({
       marketId,
       modelProbability,
       odds: oddsById.get(marketId),
@@ -242,6 +243,17 @@ export const buildMarkets = ({
       now,
       evidence,
     });
+
+    // Goal totals (over 1.5 / over 2.5) additionally require logical support from the
+    // team-scoring probabilities. This is a veto only: the market's own thresholds are
+    // checked first and unchanged, and a supported market is never altered.
+    const support = evaluateGoalTotalSupport({ marketId, probabilities, config });
+    if (support.required && !support.supported) {
+      market.qualifies = false;
+      market.rejectReasons.push(...support.reasons);
+    }
+
+    return market;
   });
 
   const selections = rankSelections(markets, config, quality);

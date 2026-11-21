@@ -89,6 +89,29 @@ export interface PredictionConfig {
     minComputableMarkets: number;
     /** Maximum number of ranked selections returned. */
     maxSelections: number;
+    /**
+     * Logical supporting-evidence validation for goal-total markets (over 1.5 / over
+     * 2.5). A goal-total selection must be backed by the team-scoring probabilities;
+     * clearing its own threshold alone is not enough. This is a veto on top of the
+     * existing per-market thresholds, which are never lowered or bypassed.
+     */
+    goalSupport: {
+      /** Whether the goal-total supporting-evidence veto is applied. */
+      enabled: boolean;
+      /**
+       * A single team's scoring probability (team over 0.5) at or above this value
+       * counts as "strongly expected to score". Default 0.85 matches the existing
+       * `strong` display band for team-goal markets and sits above both team-to-score
+       * display thresholds (0.82).
+       */
+      strongTeamScoreProbability: number;
+      /**
+       * Minimum probability of a team scoring 2+ goals (from the complete base
+       * scoreline grid) for the "2+1" over 2.5 support route. Default 0.70 matches the
+       * configured home/away over 1.5 suggestion threshold.
+       */
+      teamTwoPlusMinProbability: number;
+    };
   };
   /** Odds freshness. */
   odds: {
@@ -172,6 +195,11 @@ export const DEFAULT_PREDICTION_CONFIG: PredictionConfig = {
     minVenueSample: 3,
     minComputableMarkets: 3,
     maxSelections: 8,
+    goalSupport: {
+      enabled: true,
+      strongTeamScoreProbability: 0.85,
+      teamTwoPlusMinProbability: 0.7,
+    },
   },
   odds: {
     staleAfterMinutes: 720,
