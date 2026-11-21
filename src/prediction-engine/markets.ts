@@ -10,6 +10,7 @@ import {
   TeamFormAnalysis,
 } from './types';
 import { buildMarketValue, computeMarginAdjustedOverUnder } from './odds';
+import { evaluateGoalTotalSupport } from './goal-support';
 import { opponentStrengthEvidence } from './opponent-strength';
 import { formatPercent } from './math-utils';
 
@@ -246,6 +247,19 @@ export const buildMarkets = ({
   });
 
   applyMarketImplications(markets);
+
+  // Over 1.5 / Over 2.5 additionally require logical support from the team-scoring
+  // probabilities (see `evaluateGoalTotalSupport`). This is a veto only: it is applied
+  // after MARKET_IMPLICATIONS so an implied qualification is checked too, it never
+  // lowers or bypasses the existing probability/edge/odds thresholds, and every other
+  // market is left untouched.
+  markets.forEach((market) => {
+    const support = evaluateGoalTotalSupport({ marketId: market.marketId, probabilities, config });
+    if (support.required && !support.supported) {
+      market.qualifies = false;
+      market.rejectReasons.push(...support.reasons);
+    }
+  });
 
   const selections = rankSelections(markets, config, quality);
 
