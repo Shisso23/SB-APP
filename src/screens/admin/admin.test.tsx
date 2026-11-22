@@ -13,15 +13,23 @@ import React from 'react';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
+import type { User } from 'firebase/auth';
 
 import AdminScreen from './AdminScreen';
 import * as service from '../../services/admin';
 import { ApiRequestError } from '../../services/api/client';
 import type { AdminJob, CoverageResponse, LeagueCoverage } from '../../services/admin/types';
+import { AuthProvider } from '../../services/auth/AuthProvider';
+import { subscribeToAuthChanges } from '../../services/auth/firebase';
 
 jest.mock('../../services/admin');
+jest.mock('../../services/auth/firebase');
 
 const mocked = service as jest.Mocked<typeof service>;
+const mockedSubscribe = subscribeToAuthChanges as jest.MockedFunction<typeof subscribeToAuthChanges>;
+const adminUser = { uid: 'admin' } as User;
+const otherUser = { uid: 'other' } as User;
+let authListener: (user: User | null) => void;
 
 const league = (overrides: Partial<LeagueCoverage> = {}): LeagueCoverage => ({
   leagueId: 39,
@@ -74,12 +82,19 @@ const job = (overrides: Partial<AdminJob> = {}): AdminJob => ({
 const renderScreen = () =>
   render(
     <MemoryRouter>
-      <AdminScreen />
+      <AuthProvider>
+        <AdminScreen />
+      </AuthProvider>
     </MemoryRouter>,
   );
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockedSubscribe.mockImplementation((listener) => {
+    authListener = listener;
+    listener(adminUser);
+    return jest.fn();
+  });
   mocked.getAdminStatus.mockResolvedValue({
     data: { isAdmin: true, isMember: false, configuredLeagues: [39] },
   } as never);
@@ -131,6 +146,77 @@ describe('membership product management', () => {
 });
 
 describe('admin screen access', () => {
+  it('waits for the persisted Firebase session before checking access after refresh', async () => {
+    mockedSubscribe.mockImplementationOnce((listener) => {
+      authListener = listener;
+      return jest.fn();
+    });
+
+    renderScreen();
+    expect(screen.getByRole('status')).toHaveTextContent('Checking access');
+    expect(mocked.getAdminStatus).not.toHaveBeenCalled();
+    expect(screen.queryByText('Admin access required')).not.toBeInTheDocument();
+
+    act(() => authListener(adminUser));
+    expect(await screen.findByRole('heading', { name: 'Prediction workflow' })).toBeInTheDocument();
+    expect(mocked.getAdminStatus).toHaveBeenCalledTimes(1);
+  });
+
+  it('checks current permissions when a signed-out visitor signs in', async () => {
+    mockedSubscribe.mockImplementationOnce((listener) => {
+      authListener = listener;
+      listener(null);
+      return jest.fn();
+    });
+    renderScreen();
+    expect(screen.getByText('Admin access required')).toBeInTheDocument();
+    expect(mocked.getAdminStatus).not.toHaveBeenCalled();
+
+    act(() => authListener(adminUser));
+    expect(await screen.findByRole('heading', { name: 'Prediction workflow' })).toBeInTheDocument();
+  });
+
+  it('removes the admin dashboard immediately on sign-out', async () => {
+    renderScreen();
+    await screen.findByRole('heading', { name: 'Prediction workflow' });
+
+    act(() => authListener(null));
+    expect(screen.getByText('Admin access required')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Prediction workflow' })).not.toBeInTheDocument();
+  });
+
+  it('ignores a previous account access response after switching accounts', async () => {
+    let resolvePrevious: (response: Awaited<ReturnType<typeof service.getAdminStatus>>) => void;
+    mocked.getAdminStatus.mockImplementationOnce(() => new Promise((resolve) => {
+      resolvePrevious = resolve;
+    }));
+    mocked.getAdminStatus.mockResolvedValueOnce({
+      data: { isAdmin: false, isMember: true, configuredLeagues: [] },
+    } as never);
+    renderScreen();
+
+    act(() => authListener(otherUser));
+    await screen.findByText('Admin access required');
+    await act(async () => {
+      resolvePrevious({ data: { isAdmin: true, isMember: false, configuredLeagues: [39] } } as never);
+    });
+    expect(mocked.getAdminStatus).toHaveBeenCalledTimes(2);
+    expect(screen.getByText('Admin access required')).toBeInTheDocument();
+    expect(mocked.getAdminCoverage).not.toHaveBeenCalled();
+  });
+
+  it('reports a connection failure and retries without falsely denying admin access', async () => {
+    mocked.getAdminStatus.mockRejectedValueOnce(new ApiRequestError('Unavailable', 503));
+    renderScreen();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('We could not check admin access');
+    expect(screen.queryByText('Admin access required')).not.toBeInTheDocument();
+    expect(mocked.getAdminCoverage).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: 'Retry access check' }));
+    expect(await screen.findByRole('heading', { name: 'Prediction workflow' })).toBeInTheDocument();
+    expect(mocked.getAdminStatus).toHaveBeenCalledTimes(2);
+  });
+
   it('shows a plain refusal to a non-admin and loads no admin data', async () => {
     mocked.getAdminStatus.mockResolvedValue({
       data: { isAdmin: false, isMember: true, configuredLeagues: [] },

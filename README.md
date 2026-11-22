@@ -26,6 +26,11 @@ The [admin screen](src/screens/admin/AdminScreen.tsx) queues backend jobs:
   across configured leagues for the chosen date; existing lists are not overwritten.
 - **Refresh view** reloads the dashboard without requesting prediction work.
 
+On a page refresh, admin access waits for Firebase to restore the signed-in user
+before asking the backend for current permissions. Signing out or switching
+accounts clears the previous account's dashboard and access result. Connection
+failures offer an access-check retry rather than reporting an admin denial.
+
 Queued/running jobs and coverage update automatically, even after reopening the
 page. Queued means waiting for the backend worker. The current scheduled worker
 has a 15-minute interval; longer waits require checking that worker's deployment,

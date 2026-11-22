@@ -15,6 +15,8 @@ import type {
 } from '../../services/admin/types';
 import IngestionSchedulePanel from './IngestionSchedulePanel';
 import AccessProductsPanel from './AccessProductsPanel';
+import { useAuth } from '../../services/auth/AuthProvider';
+import { PremiumRequiredError, SessionExpiredError, SignInRequiredError } from '../../services/api/client';
 
 /**
  * Administrative prediction workflow.
@@ -68,9 +70,35 @@ const todayIso = () => {
   return `${part('year')}-${part('month')}-${part('day')}`;
 };
 
+const AccessChecking: React.FC = () => (
+  <div className="mx-auto max-w-5xl px-4 pt-10 text-slate-600">
+    <p role="status">Checking access…</p>
+  </div>
+);
+
+const AccessDenied: React.FC = () => (
+  <div className="mx-auto max-w-2xl px-4 pt-16 text-center">
+    <h1 className="text-2xl font-bold tracking-tight text-slate-900">Admin access required</h1>
+    <p className="mt-3 text-slate-600">
+      This area is limited to authorised administrators. Membership does not grant access to it.
+    </p>
+  </div>
+);
+
 const AdminScreen: React.FC = () => {
+  const { user, initialising } = useAuth();
+  if (initialising) return <AccessChecking />;
+  if (!user) return <AccessDenied />;
+
+  // Remount on account changes so access and dashboard data cannot carry over.
+  return <AuthenticatedAdminScreen key={user.uid} />;
+};
+
+const AuthenticatedAdminScreen: React.FC = () => {
   const [status, setStatus] = useState<AdminStatusResponse | null>(null);
   const [checking, setChecking] = useState(true);
+  const [accessError, setAccessError] = useState<string | null>(null);
+  const [accessAttempt, setAccessAttempt] = useState(0);
 
   const [targetDate, setTargetDate] = useState<string>(todayIso());
   const [selectedLeagues, setSelectedLeagues] = useState<number[]>([]);
@@ -86,13 +114,20 @@ const AdminScreen: React.FC = () => {
   /** Ask the server whether this user is an admin. Never inferred locally. */
   useEffect(() => {
     let cancelled = false;
+    setChecking(true);
+    setAccessError(null);
     (async () => {
       try {
         const response = await getAdminStatus();
         if (!cancelled) setStatus(response.data);
-      } catch {
-        // A signed-out visitor cannot read this; treat as "not an admin".
-        if (!cancelled) setStatus({ isAdmin: false, isMember: false, configuredLeagues: [] });
+      } catch (caught) {
+        if (cancelled) return;
+        if (caught instanceof SignInRequiredError || caught instanceof SessionExpiredError
+            || caught instanceof PremiumRequiredError) {
+          setStatus({ isAdmin: false, isMember: false, configuredLeagues: [] });
+        } else {
+          setAccessError('We could not check admin access. Please try again.');
+        }
       } finally {
         if (!cancelled) setChecking(false);
       }
@@ -100,7 +135,7 @@ const AdminScreen: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [accessAttempt]);
 
   const loadCoverage = useCallback(async (date: string) => {
     try {
@@ -201,25 +236,28 @@ const AdminScreen: React.FC = () => {
     }
   };
 
-  if (checking) {
+  if (checking) return <AccessChecking />;
+
+  if (accessError) {
     return (
-      <div className="mx-auto max-w-5xl px-4 pt-10 text-slate-600">
-        <p role="status">Checking access…</p>
+      <div className="mx-auto max-w-2xl px-4 pt-16 text-center">
+        <p role="alert" className="text-rose-700">{accessError}</p>
+        <button
+          type="button"
+          className="mt-4 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700"
+          onClick={() => {
+            setChecking(true);
+            setAccessAttempt((attempt) => attempt + 1);
+          }}
+        >
+          Retry access check
+        </button>
       </div>
     );
   }
 
   if (!status?.isAdmin) {
-    // A plain refusal. The server enforces this independently; nothing here is
-    // an access control.
-    return (
-      <div className="mx-auto max-w-2xl px-4 pt-16 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Admin access required</h1>
-        <p className="mt-3 text-slate-600">
-          This area is limited to authorised administrators. Membership does not grant access to it.
-        </p>
-      </div>
-    );
+    return <AccessDenied />;
   }
 
   return (
