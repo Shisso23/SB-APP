@@ -25,9 +25,12 @@ jest.mock('../../services/access', () => {
 });
 
 import {
+  clearCheckoutAttempt,
   getAccessProducts,
   getMe,
   getPurchaseStatus,
+  readCheckoutAttempt,
+  rememberCheckoutAttempt,
   startCheckout,
 } from '../../services/access';
 import AccessPassesScreen from './AccessPassesScreen';
@@ -57,6 +60,7 @@ const noAccess = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  clearCheckoutAttempt();
 });
 
 const renderAt = (path: string, ui: React.ReactElement, state?: unknown) =>
@@ -205,6 +209,21 @@ describe('PayFastRedirectScreen', () => {
 });
 
 describe('PayFastResultScreen - a redirect is never proof of payment', () => {
+  it('recovers the owner-scoped purchase attempt after the PayFast full-page redirect', async () => {
+    rememberCheckoutAttempt(7);
+    meMock.mockResolvedValue({ data: noAccess });
+    statusMock.mockResolvedValue({
+      data: { id: 7, status: 'declined', product_code: 'pxi-30d' },
+    });
+
+    renderAt('/access/result?status=success', <PayFastResultScreen />);
+
+    expect(await screen.findByText('Payment was not completed')).toBeInTheDocument();
+    expect(statusMock).toHaveBeenCalledWith(7);
+    expect(readCheckoutAttempt()).toBeNull();
+    expect(screen.queryByText('Payment confirmed')).not.toBeInTheDocument();
+  });
+
   it('does NOT show active access when only the success hint is present', async () => {
     // Browser arrived with ?status=success, but the server says no access.
     meMock.mockResolvedValue({ data: noAccess });

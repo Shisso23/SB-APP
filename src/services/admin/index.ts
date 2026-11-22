@@ -18,6 +18,8 @@ import type {
   AdminStatusResponse,
   CoverageResponse,
   IngestionScheduleResponse,
+  ManualPredictionResponse,
+  ManualBetListPreview,
 } from './types';
 
 const base = '/admin/';
@@ -33,6 +35,18 @@ export const setAdminAccessProductActive = (code: string, isActive: boolean) =>
 
 /** Whether to render the Admin section, and the configured league list. */
 export const getAdminStatus = () => apiGet<AdminStatusResponse>(`${base}status/`);
+
+export const predictAdminManualLeague = (date: string, leagueId: number) =>
+  apiClient.post<ManualPredictionResponse>(`${base}manual/predictions/`, { date, leagueId });
+
+export const previewAdminManualList = (date: string, predictionIds: number[]) =>
+  apiClient.post<ManualBetListPreview>(`${base}manual/bet-list/`, { date, predictionIds });
+
+export const publishAdminManualList = (preview: ManualBetListPreview) =>
+  apiClient.put<{ published: boolean; date: string; listId: number }>(`${base}manual/bet-list/`, {
+    date: preview.date, predictionIds: preview.predictionIds, selectionHash: preview.selectionHash,
+    confirm_publish: true,
+  });
 
 /**
  * Per-league coverage for a date.

@@ -10,7 +10,7 @@
  * All API calls are mocked; no test performs a real request.
  */
 import React from 'react';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import type { User } from 'firebase/auth';
@@ -18,7 +18,7 @@ import type { User } from 'firebase/auth';
 import AdminScreen from './AdminScreen';
 import * as service from '../../services/admin';
 import { ApiRequestError } from '../../services/api/client';
-import type { AdminJob, CoverageResponse, LeagueCoverage } from '../../services/admin/types';
+import type { AdminJob, CoverageResponse, LeagueCoverage, ManualBetListPreview } from '../../services/admin/types';
 import { AuthProvider } from '../../services/auth/AuthProvider';
 import { subscribeToAuthChanges } from '../../services/auth/firebase';
 
@@ -109,6 +109,82 @@ beforeEach(() => {
       runs: [],
     },
   } as never);
+});
+
+const manualPreview: ManualBetListPreview = {
+  date: '2026-11-22', predictionIds: [1, 2, 3, 4, 5], requiredSize: 5,
+  canPublish: true, reason: '', selectionHash: 'server-preview-hash',
+  suggestions: [1, 2, 3, 4, 5].map(id => ({
+    predictionId: id, providerFixtureId: 500 + id,
+    homeTeam: `Home ${id}`, awayTeam: `Away ${id}`, kickoff: '2026-11-22T15:00:00Z',
+    marketId: 'over_2_5', marketLabel: 'Over 2.5', probability: 0.8,
+    decimalOdds: null, bookmaker: '',
+  })),
+};
+
+describe('manual daily publication without jobs', () => {
+  const prepareMocks = () => {
+    mocked.predictAdminManualLeague.mockResolvedValue({
+      data: {
+        date: manualPreview.date, leagueId: 39, leagueName: 'Premier League', season: 2026,
+        predictionIds: manualPreview.predictionIds,
+        forecasts: manualPreview.suggestions.map(pick => ({ ...pick, id: pick.predictionId })),
+      },
+    } as never);
+    mocked.previewAdminManualList.mockResolvedValue({ data: manualPreview } as never);
+  };
+
+  it('predicts and publishes immediately despite failed jobs, only after confirmation', async () => {
+    prepareMocks();
+    mocked.getAdminJobs.mockResolvedValue({ data: { jobs: [job({ status: 'failed' })] } } as never);
+    mocked.publishAdminManualList.mockResolvedValue({ data: { published: true, date: manualPreview.date, listId: 5 } } as never);
+    renderScreen();
+    await userEvent.click(await screen.findByRole('checkbox', { name: /League 39/ }));
+    const panel = within(screen.getByRole('region', { name: 'Manual daily bet list (no jobs)' }));
+    await userEvent.click(panel.getByRole('button', { name: 'Predict manually and preview' }));
+    const publish = await panel.findByRole('button', { name: 'Publish manual daily bet list' });
+    expect(publish).toBeDisabled();
+    expect(mocked.predictAdminManualLeague).toHaveBeenCalledWith(expect.any(String), 39);
+    expect(mocked.previewAdminManualList).toHaveBeenCalledWith(expect.any(String), [1, 2, 3, 4, 5]);
+    expect(mocked.startAdminRun).not.toHaveBeenCalled();
+    expect(mocked.publishAdminManualList).not.toHaveBeenCalled();
+    await userEvent.click(panel.getByRole('checkbox', { name: /confirm publication/ }));
+    await userEvent.click(publish);
+    await waitFor(() => expect(mocked.publishAdminManualList).toHaveBeenCalledWith(manualPreview));
+    expect(await panel.findByRole('link', { name: 'View published history' })).toHaveAttribute('href', '/history');
+    expect(mocked.startAdminRun).not.toHaveBeenCalled();
+  });
+
+  it('clears a preview when league selection changes and refuses short lists', async () => {
+    prepareMocks();
+    mocked.previewAdminManualList.mockResolvedValue({
+      data: { ...manualPreview, canPublish: false, reason: 'Only 4 distinct fixtures qualified; 5 are required.', suggestions: manualPreview.suggestions.slice(0, 4) },
+    } as never);
+    renderScreen();
+    const selection = await screen.findByRole('checkbox', { name: /League 39/ });
+    await userEvent.click(selection);
+    const panel = within(screen.getByRole('region', { name: 'Manual daily bet list (no jobs)' }));
+    await userEvent.click(panel.getByRole('button', { name: 'Predict manually and preview' }));
+    expect(await panel.findByRole('alert')).toHaveTextContent('Only 4 distinct fixtures qualified');
+    expect(panel.getByRole('button', { name: 'Publish manual daily bet list' })).toBeDisabled();
+    await userEvent.click(selection);
+    await waitFor(() => expect(panel.queryByText(/Daily bet list preview/)).not.toBeInTheDocument());
+    expect(mocked.publishAdminManualList).not.toHaveBeenCalled();
+  });
+
+  it('reports direct provider failures without queueing or offering publication', async () => {
+    mocked.predictAdminManualLeague.mockRejectedValueOnce(
+      new ApiRequestError('Unavailable', 503, { detail: 'Provider request budget exhausted; retry later.' }),
+    );
+    renderScreen();
+    await userEvent.click(await screen.findByRole('checkbox', { name: /League 39/ }));
+    const panel = within(screen.getByRole('region', { name: 'Manual daily bet list (no jobs)' }));
+    await userEvent.click(panel.getByRole('button', { name: 'Predict manually and preview' }));
+    expect(await panel.findByRole('alert')).toHaveTextContent('Provider request budget exhausted');
+    expect(panel.queryByRole('button', { name: 'Publish manual daily bet list' })).not.toBeInTheDocument();
+    expect(mocked.startAdminRun).not.toHaveBeenCalled();
+    expect(mocked.previewAdminManualList).not.toHaveBeenCalled();
+  });
 });
 
 describe('membership product management', () => {

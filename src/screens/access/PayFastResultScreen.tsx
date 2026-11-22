@@ -3,10 +3,12 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 import {
   accessStateOf,
+  clearCheckoutAttempt,
   describeRemaining,
   formatExpiry,
   getMe,
   getPurchaseStatus,
+  readCheckoutAttempt,
 } from '../../services/access';
 import type { MeResponse, PurchaseStatus, PurchaseStatusResponse } from '../../services/access/types';
 
@@ -51,11 +53,10 @@ const PayFastResultScreen: React.FC = () => {
   const navigate = useNavigate();
 
   const hint = hintFromSearch(location.search);
-  // `attempt` may be supplied by the checkout screen via state, which lets us
-  // show live purchase status. It is optional: after a real PayFast redirect
-  // the browser is state-less, and `/me/` alone is sufficient to decide access.
+  // The attempt comes from router state, or from this tab's session after the
+  // full-page PayFast redirect. It is optional: `/me/` alone decides access.
   const initialState = location.state as { attemptId?: number } | null;
-  const attemptId = initialState?.attemptId;
+  const [attemptId] = useState(() => initialState?.attemptId ?? readCheckoutAttempt() ?? undefined);
 
   const [me, setMe] = useState<MeResponse | null>(null);
   const [purchase, setPurchase] = useState<PurchaseStatusResponse | null>(null);
@@ -147,6 +148,10 @@ const PayFastResultScreen: React.FC = () => {
   }, [refresh, hint]);
 
   const accessState = accessStateOf(me);
+  const finished = accessState === 'active' || hint === 'cancelled' || (purchase ? isTerminalBad(purchase.status) : false);
+  useEffect(() => {
+    if (finished) clearCheckoutAttempt();
+  }, [finished]);
   const remaining = describeRemaining(me);
   const expiry = formatExpiry(me?.prediction_access_ends_at);
 
@@ -197,6 +202,13 @@ const PayFastResultScreen: React.FC = () => {
           You can safely leave this page - access activates as soon as the payment is verified.
         </p>
         <PrimaryButton onClick={() => void retry()}>Refresh status</PrimaryButton>
+        <button
+          type="button"
+          onClick={() => navigate('/predictions')}
+          className="mt-3 block w-full text-sm underline text-gray-300"
+        >
+          Return to PredictXI
+        </button>
       </Shell>
     );
   }
@@ -231,6 +243,13 @@ const PayFastResultScreen: React.FC = () => {
         className="mt-3 text-sm underline text-teal-300"
       >
         Check again
+      </button>
+      <button
+        type="button"
+        onClick={() => navigate('/predictions')}
+        className="mt-3 block w-full text-sm underline text-gray-300"
+      >
+        Return to PredictXI
       </button>
     </Shell>
   );

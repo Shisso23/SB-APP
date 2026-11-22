@@ -63,6 +63,42 @@ export const newIdempotencyKey = (): string => {
   return `pxi-${Date.now().toString(36)}-${random}`;
 };
 
+const CHECKOUT_ATTEMPT_KEY = 'predictxi.checkoutAttempt';
+const CHECKOUT_ATTEMPT_TTL_MS = 2 * 60 * 60 * 1000;
+
+/**
+ * Remember which attempt this tab handed to PayFast.
+ *
+ * PayFast's return/cancel redirect is a full page load, so router state is
+ * lost. The id lets the result screen poll the owner-scoped status endpoint.
+ * It is not a secret and grants nothing: access is still read only from `/me/`.
+ */
+export const rememberCheckoutAttempt = (attemptId: number) => {
+  try {
+    sessionStorage.setItem(CHECKOUT_ATTEMPT_KEY, JSON.stringify({ attemptId, startedAt: Date.now() }));
+  } catch {
+    // Storage may be unavailable; the result screen still works from `/me/`.
+  }
+};
+
+export const readCheckoutAttempt = (now: number = Date.now()): number | null => {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(CHECKOUT_ATTEMPT_KEY) ?? 'null');
+    if (Number.isInteger(saved?.attemptId) && now - saved.startedAt < CHECKOUT_ATTEMPT_TTL_MS) return saved.attemptId;
+  } catch {
+    // Treat unreadable storage as no pending checkout.
+  }
+  return null;
+};
+
+export const clearCheckoutAttempt = () => {
+  try {
+    sessionStorage.removeItem(CHECKOUT_ATTEMPT_KEY);
+  } catch {
+    // Nothing to clear.
+  }
+};
+
 /** True when the current entitlement window has a future end date. */
 export const isAccessActive = (me: MeResponse | null): boolean =>
   Boolean(me?.has_prediction_access && me.prediction_access_ends_at);

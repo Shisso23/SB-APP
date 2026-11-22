@@ -15,6 +15,7 @@ import type {
 } from '../../services/admin/types';
 import IngestionSchedulePanel from './IngestionSchedulePanel';
 import AccessProductsPanel from './AccessProductsPanel';
+import ManualPredictionPanel from './ManualPredictionPanel';
 import { useAuth } from '../../services/auth/AuthProvider';
 import { PremiumRequiredError, SessionExpiredError, SignInRequiredError } from '../../services/api/client';
 
@@ -105,6 +106,7 @@ const AuthenticatedAdminScreen: React.FC = () => {
   const [coverage, setCoverage] = useState<CoverageResponse | null>(null);
   const [jobs, setJobs] = useState<AdminJob[]>([]);
   const [busy, setBusy] = useState(false);
+  const [manualBusy, setManualBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [coverageError, setCoverageError] = useState<string | null>(null);
@@ -293,6 +295,7 @@ const AuthenticatedAdminScreen: React.FC = () => {
               <input
                 type="date"
                 value={targetDate}
+                disabled={manualBusy}
                 onChange={(event) => setTargetDate(event.target.value)}
                 className="mt-1 block rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900"
               />
@@ -316,6 +319,7 @@ const AuthenticatedAdminScreen: React.FC = () => {
                         id={inputId}
                         type="checkbox"
                         checked={checked}
+                        disabled={manualBusy}
                         onChange={() => toggleLeague(row.leagueId)}
                         className="h-4 w-4"
                       />
@@ -333,6 +337,7 @@ const AuthenticatedAdminScreen: React.FC = () => {
               <div className="mt-2 flex gap-2 text-xs">
                 <button
                   type="button"
+                  disabled={manualBusy}
                   onClick={() => setSelectedLeagues(eligibleLeagues)}
                   className="rounded-lg border border-slate-300 px-3 py-1 font-semibold text-slate-700 hover:bg-slate-50"
                 >
@@ -340,6 +345,7 @@ const AuthenticatedAdminScreen: React.FC = () => {
                 </button>
                 <button
                   type="button"
+                  disabled={manualBusy}
                   onClick={() => setSelectedLeagues([])}
                   className="rounded-lg border border-slate-300 px-3 py-1 font-semibold text-slate-700 hover:bg-slate-50"
                 >
@@ -399,6 +405,9 @@ const AuthenticatedAdminScreen: React.FC = () => {
           </p>
         </section>
 
+        <ManualPredictionPanel date={targetDate} leagues={selectedLeagues}
+          onBusyChange={setManualBusy}
+          onPublished={() => { void loadCoverage(targetDate); }} />
         <IngestionSchedulePanel date={targetDate} configuredLeagues={status.configuredLeagues} />
         <AccessProductsPanel />
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { predictFixture } from '../../prediction-engine/predict-fixture';
 import { buildForecastBetList } from '../../prediction-engine/forecast-bet-list';
@@ -292,7 +292,11 @@ it('shows a paywall CTA and blocks the predictions fetch when no active pass exi
     if (endpoint === '/me/') return Promise.resolve({ data: { has_prediction_access: false, prediction_access_ends_at: null } });
     return implementation(endpoint, options);
   });
-  await renderPredictionDesk();
+  const Location = () => {
+    const location = useLocation();
+    return <span data-testid="location">{location.pathname}:{JSON.stringify(location.state)}</span>;
+  };
+  render(<MemoryRouter><BetAndFixturesScreen /><Location /></MemoryRouter>);
   await waitFor(() => expect(screen.getByText(/An active prediction pass is required/)).toBeInTheDocument());
   expect(screen.getByRole('link', { name: 'Get a pass' })).toHaveAttribute('href', '/access');
   fireEvent.click((await screen.findAllByRole('button', { name: /Premier League/ }))[0]);
@@ -300,8 +304,44 @@ it('shows a paywall CTA and blocks the predictions fetch when no active pass exi
   await waitFor(() => expect(run).not.toBeDisabled());
   fireEvent.click(run);
   await waitFor(() => expect(screen.getByRole('button', { name: 'Bet (run predictions)' })).not.toBeDisabled());
+  expect(get.mock.calls.filter(([endpoint]) => endpoint === '/me/')).not.toHaveLength(0);
+  expect(get.mock.calls.filter(([endpoint]) => endpoint === '/fixtures/' || endpoint === '/standings/')).toHaveLength(0);
   expect(get.mock.calls.filter(([endpoint]) => endpoint === '/predictions/')).toHaveLength(0);
   expect(screen.getByRole('alert')).toHaveTextContent('An active prediction pass is required');
+  expect(screen.getByTestId('location')).toHaveTextContent('/access:{"reason":"premium-required"}');
+});
+
+it('does not fetch fixtures in legacy mode without an active pass', async () => {
+  const implementation = get.getMockImplementation();
+  if (!implementation) throw new Error('Missing API fixture mock');
+  get.mockImplementation((endpoint, options) => {
+    if (endpoint === '/me/') return Promise.resolve({ data: { has_prediction_access: false, prediction_access_ends_at: null } });
+    return implementation(endpoint, options);
+  });
+  await renderPredictionDesk();
+  await waitFor(() => expect(screen.getByText(/An active prediction pass is required/)).toBeInTheDocument());
+  fireEvent.click(screen.getByRole('button', { name: 'Legacy rules', exact: true }));
+  fireEvent.click((await screen.findAllByRole('button', { name: /Premier League/ }))[0]);
+  fireEvent.click(screen.getByRole('button', { name: 'Bet (run predictions)' }));
+  expect(get.mock.calls.filter(([endpoint]) => endpoint === '/fixtures/' || endpoint === '/standings/')).toHaveLength(0);
+  expect(screen.getByRole('alert')).toHaveTextContent('An active prediction pass is required');
+});
+
+it('does not fetch fixtures while access is still being checked in legacy mode', async () => {
+  const implementation = get.getMockImplementation();
+  if (!implementation) throw new Error('Missing API fixture mock');
+  get.mockImplementation((endpoint, options) => {
+    if (endpoint === '/me/') return new Promise(() => {});
+    return implementation(endpoint, options);
+  });
+  render(<MemoryRouter><BetAndFixturesScreen /></MemoryRouter>);
+  fireEvent.click(screen.getByRole('button', { name: 'Legacy rules', exact: true }));
+  fireEvent.click((await screen.findAllByRole('button', { name: /Premier League/ }))[0]);
+  const run = screen.getByRole('button', { name: 'Bet (run predictions)' });
+  await waitFor(() => expect(run).not.toBeDisabled());
+  fireEvent.click(run);
+  expect(get.mock.calls.filter(([endpoint]) => endpoint === '/fixtures/' || endpoint === '/standings/')).toHaveLength(0);
+  expect(screen.getByRole('alert')).toHaveTextContent('Checking prediction access');
 });
 it('keeps the suggested bet list first for easy discovery, removes model-pick sections, and updates the threshold bet list on model and filter changes', async () => {
   await runInitialBatch();

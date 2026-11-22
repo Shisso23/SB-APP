@@ -965,7 +965,7 @@ const BetAndFixturesScreen: React.FC = () => {
     if (!cacheReady) return;
     // Initial asynchronous hydration must not trigger a prediction run.
     if (!initialCacheRestored.current) { initialCacheRestored.current = true; return; }
-    if (selectedBatch.length > 0 && predictionMode === 'legacy') handleBet()
+    if (selectedBatch.length > 0 && predictionMode === 'legacy' && hasPredictionAccess === true) handleBet()
   }, [cacheReady, fromDate.toString(), toDate.toString()])
 
   useEffect(() => {
@@ -1235,6 +1235,16 @@ const BetAndFixturesScreen: React.FC = () => {
       setFixtureLoadWarnings([betDisabledReason || 'Sign in to run predictions.']);
       return;
     }
+    if (hasPredictionAccess !== true) {
+      if (hasPredictionAccess === false) {
+        const message = 'An active prediction pass is required to view statistical forecasts.';
+        setFixtureLoadWarnings([message]);
+        redirectToAccessPass(new PremiumRequiredError(message));
+      } else {
+        setFixtureLoadWarnings(['Checking prediction access. Please try again.']);
+      }
+      return;
+    }
     predictionRunInFlight.current = true;
     const runOwner = user?.uid;
     const runIds = new Set(runLeagues.map(league => league.league.id));
@@ -1345,33 +1355,25 @@ const BetAndFixturesScreen: React.FC = () => {
     const oddsMessages: Record<number, string> = {};
     if (predictionMode === 'statistical') {
       setPredictionLoading(previous => ({ ...previous, stage: 'odds' }));
-      if (hasPredictionAccess === false) {
-        const message = 'An active prediction pass is required to view statistical forecasts.';
-        runLeagues.forEach((league) => {
+      leagueLoop: for (const league of runLeagues) {
+        const season = league.seasons.find((entry) => entry.current)?.year ?? league.seasons[0]?.year;
+        if (!season) continue;
+        try {
+          const response = await getPredictionsByLeagueSeason({ leagueId: league.league.id, season });
+          const rows = (response.data as { response?: PredictionEnvelopeRow[] })?.response ?? [];
+          rows.forEach((row) => {
+            const prediction = predictionRowToFixturePrediction(row);
+            if (!prediction) return;
+            publishedPredictions.set(prediction.fixture.fixture.id, prediction);
+          });
+        } catch (error) {
+          const message = describePredictionsFailure(error);
           runFailures[league.league.id] = { league, fixtureSeasons: [], standings: false, messages: [message] };
-        });
-        redirectToAccessPass(new PremiumRequiredError(message));
-      } else {
-        leagueLoop: for (const league of runLeagues) {
-          const season = league.seasons.find((entry) => entry.current)?.year ?? league.seasons[0]?.year;
-          if (!season) continue;
-          try {
-            const response = await getPredictionsByLeagueSeason({ leagueId: league.league.id, season });
-            const rows = (response.data as { response?: PredictionEnvelopeRow[] })?.response ?? [];
-            rows.forEach((row) => {
-              const prediction = predictionRowToFixturePrediction(row);
-              if (!prediction) return;
-              publishedPredictions.set(prediction.fixture.fixture.id, prediction);
-            });
-          } catch (error) {
-            const message = describePredictionsFailure(error);
-            runFailures[league.league.id] = { league, fixtureSeasons: [], standings: false, messages: [message] };
-            // A premium/session failure applies to every selected league; stop retrying.
-            if (error instanceof PremiumRequiredError || error instanceof SessionExpiredError || error instanceof SignInRequiredError) {
-              runLeagues.forEach((other) => { runFailures[other.league.id] = { league: other, fixtureSeasons: [], standings: false, messages: [message] }; });
-              if (error instanceof PremiumRequiredError) redirectToAccessPass(error);
-              break leagueLoop;
-            }
+          // A premium/session failure applies to every selected league; stop retrying.
+          if (error instanceof PremiumRequiredError || error instanceof SessionExpiredError || error instanceof SignInRequiredError) {
+            runLeagues.forEach((other) => { runFailures[other.league.id] = { league: other, fixtureSeasons: [], standings: false, messages: [message] }; });
+            if (error instanceof PremiumRequiredError) redirectToAccessPass(error);
+            break leagueLoop;
           }
         }
       }

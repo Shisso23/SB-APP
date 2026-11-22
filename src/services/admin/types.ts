@@ -36,6 +36,44 @@ export interface AdminStatusResponse {
   configuredLeagues: number[];
 }
 
+export interface ManualForecast {
+  id: number;
+  providerFixtureId: number;
+  homeTeam: string;
+  awayTeam: string;
+  kickoff: string;
+}
+
+export interface ManualPredictionResponse {
+  date: string;
+  leagueId: number;
+  leagueName: string;
+  season: number;
+  predictionIds: number[];
+  forecasts: ManualForecast[];
+}
+
+export interface ManualBetListPreview {
+  date: string;
+  predictionIds: number[];
+  requiredSize: number;
+  canPublish: boolean;
+  reason: string;
+  selectionHash: string;
+  suggestions: {
+    predictionId: number;
+    providerFixtureId: number;
+    homeTeam: string;
+    awayTeam: string;
+    kickoff: string;
+    marketId: string;
+    marketLabel: string;
+    probability: number;
+    decimalOdds: string | null;
+    bookmaker: string;
+  }[];
+}
+
 export interface AdminAccessProduct {
   code: string;
   name: string;
