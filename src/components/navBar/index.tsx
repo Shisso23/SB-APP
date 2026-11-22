@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import SignInScreen from "../auth/SignInScreen";
 import { BRAND_NAME, PREDICTXI_LOGO } from "../../assets/brand";
 import { getAdminStatus } from "../../services/admin";
+import { subscribeToAuthChanges } from "../../services/auth/firebase";
 
 /**
  * Top navigation.
@@ -20,16 +21,28 @@ export default function Navbar() {
 
   React.useEffect(() => {
     let cancelled = false;
-    getAdminStatus()
-      .then((response) => {
-        if (!cancelled) setIsAdmin(Boolean(response.data?.isAdmin));
-      })
-      .catch(() => {
-        // Signed out, or not an admin: simply do not offer the link.
+    // Wait for Firebase's real auth state before checking admin status.
+    // On a fresh load/refresh, Firebase rehydrates a persisted session
+    // asynchronously; calling getAdminStatus() before that resolves would
+    // read `currentUser` as null and fail closed on a genuinely signed-in
+    // admin, with no retry since this effect only runs once.
+    const unsubscribe = subscribeToAuthChanges((user) => {
+      if (!user) {
         if (!cancelled) setIsAdmin(false);
-      });
+        return;
+      }
+      getAdminStatus()
+        .then((response) => {
+          if (!cancelled) setIsAdmin(Boolean(response.data?.isAdmin));
+        })
+        .catch(() => {
+          // Not an admin, or the check failed: simply do not offer the link.
+          if (!cancelled) setIsAdmin(false);
+        });
+    });
     return () => {
       cancelled = true;
+      unsubscribe();
     };
   }, []);
 
