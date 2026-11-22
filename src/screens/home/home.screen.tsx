@@ -467,7 +467,7 @@ const HomeScreen: React.FC = () => {
               <p className="mt-5 text-3xl font-extrabold tracking-tight text-slate-900">
                 Passes
                 <span className="ml-1 text-sm font-medium text-slate-500">
-                  from R5
+                  choose a pass
                 </span>
               </p>
               <ul className="mt-6 space-y-3 text-sm text-slate-700">

@@ -36,6 +36,20 @@ export interface AdminStatusResponse {
   configuredLeagues: number[];
 }
 
+export interface AdminAccessProduct {
+  code: string;
+  name: string;
+  price_amount: string;
+  currency: string;
+  duration_days: number;
+  is_active: boolean;
+}
+
+export interface AdminAccessProductsResponse {
+  products: AdminAccessProduct[];
+  minimumPrice: string;
+}
+
 /** Read-only publication state per league, for browse and admin views. */
 export type FreshnessState = 'current' | 'stale' | 'empty';
 

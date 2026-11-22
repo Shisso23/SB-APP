@@ -16,6 +16,7 @@ import { MemoryRouter } from 'react-router-dom';
 
 import AdminScreen from './AdminScreen';
 import * as service from '../../services/admin';
+import { ApiRequestError } from '../../services/api/client';
 import type { AdminJob, CoverageResponse, LeagueCoverage } from '../../services/admin/types';
 
 jest.mock('../../services/admin');
@@ -84,6 +85,7 @@ beforeEach(() => {
   } as never);
   mocked.getAdminCoverage.mockResolvedValue({ data: coverageOf([league()]) } as never);
   mocked.getAdminJobs.mockResolvedValue({ data: { jobs: [] } } as never);
+  mocked.getAdminAccessProducts.mockResolvedValue({ data: { products: [], minimumPrice: '5.00' } } as never);
   mocked.getIngestionSchedule.mockResolvedValue({
     data: {
       date: '2026-03-10', selectedLeagues: [], effectiveLeagues: [39],
@@ -92,6 +94,40 @@ beforeEach(() => {
       runs: [],
     },
   } as never);
+});
+
+describe('membership product management', () => {
+  it('creates an immediately active product only after confirmation', async () => {
+    mocked.createAdminAccessProduct.mockResolvedValue({
+      data: { code: 'pass-30', name: 'Monthly pass', price_amount: '49.00', currency: 'ZAR', duration_days: 30, is_active: true },
+    } as never);
+    renderScreen();
+    const create = await screen.findByRole('button', { name: 'Create active product' });
+    expect(create).toBeDisabled();
+    await userEvent.type(screen.getByLabelText('Product code'), 'pass-30');
+    await userEvent.type(screen.getByLabelText('Product name'), 'Monthly pass');
+    await userEvent.type(screen.getByLabelText(/Price \(ZAR/), '49.00');
+    await userEvent.type(screen.getByLabelText('Duration (days)'), '30');
+    await userEvent.click(screen.getByRole('checkbox', { name: /confirm this product/i }));
+    await userEvent.click(create);
+    await waitFor(() => expect(mocked.createAdminAccessProduct).toHaveBeenCalledWith({
+      code: 'pass-30', name: 'Monthly pass', price_amount: '49.00', duration_days: 30, confirm_activation: true,
+    }));
+    expect(await screen.findByText(/Monthly pass \(pass-30\).*Active/)).toBeInTheDocument();
+  });
+
+  it('changes availability and reports backend validation failures', async () => {
+    const product = { code: 'pass-30', name: 'Monthly pass', price_amount: '49.00', currency: 'ZAR', duration_days: 30, is_active: true };
+    mocked.getAdminAccessProducts.mockResolvedValue({ data: { products: [product], minimumPrice: '5.00' } } as never);
+    mocked.setAdminAccessProductActive.mockResolvedValueOnce({ data: { ...product, is_active: false } } as never);
+    mocked.setAdminAccessProductActive.mockRejectedValueOnce(new ApiRequestError('Rejected', 400, { detail: 'Price is below the minimum.' }));
+    renderScreen();
+    await userEvent.click(await screen.findByRole('button', { name: 'Deactivate Monthly pass (pass-30)' }));
+    expect(await screen.findByText(/Monthly pass \(pass-30\).*Inactive/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Activate Monthly pass (pass-30)' }));
+    expect(await screen.findByText('Price is below the minimum.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Activate Monthly pass (pass-30)' })).toBeEnabled();
+  });
 });
 
 describe('admin screen access', () => {

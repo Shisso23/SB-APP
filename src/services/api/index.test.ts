@@ -106,6 +106,16 @@ describe('api client failure mapping', () => {
     expect((serverError as Error).message).toMatch(/temporarily unavailable/i);
   });
 
+  it('retains validation details for callers without changing the generic error message', async () => {
+    const client = await load();
+    const adapters = (client.apiClient.interceptors.response as unknown as { handlers: Array<{ rejected: (error: unknown) => Promise<never> }> }).handlers;
+    const details = { price_amount: ['Price must be at least 5.00 ZAR.'] };
+    const error = await adapters[0].rejected({ response: { status: 400, data: details } })
+      .catch((caught: InstanceType<typeof client.ApiRequestError>) => caught);
+    expect(error.validationErrors).toEqual(details);
+    expect(error.message).not.toContain('5.00');
+  });
+
   it('does not echo server details in error messages', async () => {
     const client = await load();
     const adapters = (client.apiClient.interceptors.response as unknown as { handlers: Array<{ rejected: (error: unknown) => Promise<never> }> }).handlers;

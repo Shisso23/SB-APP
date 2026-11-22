@@ -26,11 +26,13 @@ export class PremiumRequiredError extends Error {
 /** Request failed for a non-auth reason (network, 5xx, validation). */
 export class ApiRequestError extends Error {
   public readonly status?: number;
+  public readonly validationErrors?: unknown;
 
-  constructor(message: string, status?: number) {
+  constructor(message: string, status?: number, validationErrors?: unknown) {
     super(message);
     this.name = 'ApiRequestError';
     this.status = status;
+    this.validationErrors = validationErrors;
   }
 }
 
@@ -77,7 +79,7 @@ apiClient.interceptors.response.use(
       return Promise.reject(new PremiumRequiredError());
     }
     if (status === 400) {
-      return Promise.reject(new ApiRequestError('The request was rejected. Check the selected filters.', status));
+      return Promise.reject(new ApiRequestError('The request was rejected. Check the selected filters.', status, error.response?.data));
     }
     if (status && status >= 500) {
       return Promise.reject(new ApiRequestError('The prediction service is temporarily unavailable.', status));

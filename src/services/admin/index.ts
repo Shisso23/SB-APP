@@ -10,6 +10,8 @@
  */
 import { apiClient, apiGet } from '../api/client';
 import type {
+  AdminAccessProduct,
+  AdminAccessProductsResponse,
   AdminJobDetail,
   AdminJobsResponse,
   AdminRunResponse,
@@ -19,6 +21,15 @@ import type {
 } from './types';
 
 const base = '/admin/';
+
+export const getAdminAccessProducts = () => apiGet<AdminAccessProductsResponse>(`${base}access-products/`);
+
+export const createAdminAccessProduct = (input: {
+  code: string; name: string; price_amount: string; duration_days: number; confirm_activation: boolean;
+}) => apiClient.post<AdminAccessProduct>(`${base}access-products/`, input);
+
+export const setAdminAccessProductActive = (code: string, isActive: boolean) =>
+  apiClient.patch<AdminAccessProduct>(`${base}access-products/${encodeURIComponent(code)}/`, { is_active: isActive });
 
 /** Whether to render the Admin section, and the configured league list. */
 export const getAdminStatus = () => apiGet<AdminStatusResponse>(`${base}status/`);

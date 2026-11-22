@@ -14,6 +14,7 @@ import type {
   CoverageStatus,
 } from '../../services/admin/types';
 import IngestionSchedulePanel from './IngestionSchedulePanel';
+import AccessProductsPanel from './AccessProductsPanel';
 
 /**
  * Administrative prediction workflow.
@@ -361,6 +362,7 @@ const AdminScreen: React.FC = () => {
         </section>
 
         <IngestionSchedulePanel date={targetDate} configuredLeagues={status.configuredLeagues} />
+        <AccessProductsPanel />
 
         {/* Coverage */}
         <section aria-labelledby="coverage-heading" className="mt-8">
