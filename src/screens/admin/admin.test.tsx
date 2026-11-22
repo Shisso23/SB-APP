@@ -84,6 +84,14 @@ beforeEach(() => {
   } as never);
   mocked.getAdminCoverage.mockResolvedValue({ data: coverageOf([league()]) } as never);
   mocked.getAdminJobs.mockResolvedValue({ data: { jobs: [] } } as never);
+  mocked.getIngestionSchedule.mockResolvedValue({
+    data: {
+      date: '2026-03-10', selectedLeagues: [], effectiveLeagues: [39],
+      timezone: 'Africa/Johannesburg',
+      schedules: [{ name: 'daily', times: ['04:00'], modes: ['leagues', 'bootstrap', 'refresh'] }],
+      runs: [],
+    },
+  } as never);
 });
 
 describe('admin screen access', () => {
@@ -223,6 +231,41 @@ describe('job tracking', () => {
     } as never);
     renderScreen();
     expect(await screen.findByText(/already completed this five-minute slot: predict/i)).toBeInTheDocument();
+  });
+
+  describe('scheduled ingestion', () => {
+    it('saves selected leagues without changing the manual prediction selection', async () => {
+      mocked.saveIngestionSchedule.mockResolvedValue({
+        data: { date: '2026-03-10', selectedLeagues: [39], effectiveLeagues: [39] },
+      } as never);
+      renderScreen();
+      await userEvent.click(await screen.findByRole('checkbox', { name: 'Scheduled league 39' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Save ingestion schedule' }));
+      await waitFor(() => expect(mocked.saveIngestionSchedule).toHaveBeenCalledWith(expect.any(String), [39]));
+      expect(screen.getByRole('checkbox', { name: /League 39 \(4 eligible\)/ })).not.toBeChecked();
+      expect(await screen.findByText('Ingestion selection saved.')).toBeInTheDocument();
+      expect(screen.getByText(/04:00 SAST/)).toBeInTheDocument();
+    });
+
+    it('shows per-league fetched counts and failures from ingestion history', async () => {
+      mocked.getIngestionSchedule.mockResolvedValue({
+        data: {
+          date: '2026-03-10', selectedLeagues: [39], effectiveLeagues: [39],
+          timezone: 'Africa/Johannesburg', schedules: [],
+          runs: [{
+            id: 8, schedule: 'odds', status: 'failed', leagues: [39], error: '1 ingestion step(s) failed.',
+            scheduledAt: '2026-03-10T10:00:00Z', startedAt: '2026-03-10T10:01:00Z',
+            finishedAt: '2026-03-10T10:02:00Z',
+            results: { leagues: { '39': { refresh: { status: 'completed', recordsFetched: 7 },
+              odds: { status: 'failed', error: 'Provider unavailable' } } } },
+          }],
+        },
+      } as never);
+      renderScreen();
+      expect(await screen.findByText(/7 fetched/)).toBeInTheDocument();
+      expect(screen.getByText(/Provider unavailable/)).toBeInTheDocument();
+      expect(screen.getByText(/1 ingestion step\(s\) failed/)).toBeInTheDocument();
+    });
   });
 
   it('does not erase a refused action when automatic coverage polling succeeds', async () => {

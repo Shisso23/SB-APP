@@ -15,6 +15,7 @@ import type {
   AdminRunResponse,
   AdminStatusResponse,
   CoverageResponse,
+  IngestionScheduleResponse,
 } from './types';
 
 const base = '/admin/';
@@ -64,3 +65,11 @@ export const getAdminJobs = (targetDate?: string, limit = 25) => {
 
 /** One run's status, polled while it is not terminal. */
 export const getAdminJob = (jobId: number) => apiGet<AdminJobDetail>(`${base}jobs/${jobId}/`);
+
+export const getIngestionSchedule = (date: string) =>
+  apiGet<IngestionScheduleResponse>(`${base}ingestion-schedule/?${new URLSearchParams({ date }).toString()}`);
+
+export const saveIngestionSchedule = (date: string, leagues: number[]) =>
+  apiClient.put<Pick<IngestionScheduleResponse, 'date' | 'selectedLeagues' | 'effectiveLeagues'>>(
+    `${base}ingestion-schedule/`, { date, leagues },
+  );

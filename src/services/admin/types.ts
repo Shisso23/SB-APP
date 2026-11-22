@@ -100,3 +100,34 @@ export interface AdminJobsResponse {
 export interface AdminJobDetail extends AdminJob {
   isTerminal: boolean;
 }
+
+export interface IngestionStep {
+  status: 'completed' | 'skipped' | 'failed';
+  recordsFetched?: number;
+  error?: string;
+}
+
+export interface IngestionRun {
+  id: number;
+  schedule: string;
+  scheduledAt: string;
+  startedAt: string;
+  finishedAt: string | null;
+  status: string;
+  leagues: number[];
+  error: string;
+  results: {
+    global?: Record<string, IngestionStep>;
+    leagues?: Record<string, Record<string, IngestionStep>>;
+  };
+}
+
+export interface IngestionScheduleResponse {
+  date: string;
+  selectedLeagues: number[];
+  effectiveLeagues: number[];
+  selectionError?: string;
+  timezone: string;
+  schedules: { name: string; times: string[]; modes: string[] }[];
+  runs: IngestionRun[];
+}

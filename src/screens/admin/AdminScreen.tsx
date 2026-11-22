@@ -13,6 +13,7 @@ import type {
   CoverageResponse,
   CoverageStatus,
 } from '../../services/admin/types';
+import IngestionSchedulePanel from './IngestionSchedulePanel';
 
 /**
  * Administrative prediction workflow.
@@ -58,7 +59,13 @@ const StatusPill: React.FC<{ label: string; glyph: string; className: string }> 
   </span>
 );
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
+const todayIso = () => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(new Date());
+  const part = (type: string) => parts.find((value) => value.type === type)?.value ?? '';
+  return `${part('year')}-${part('month')}-${part('day')}`;
+};
 
 const AdminScreen: React.FC = () => {
   const [status, setStatus] = useState<AdminStatusResponse | null>(null);
@@ -243,7 +250,7 @@ const AdminScreen: React.FC = () => {
           <h2 id="controls-heading" className="text-lg font-bold tracking-tight">Run controls</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-[auto_1fr]">
             <label className="text-sm font-medium text-slate-700">
-              Prediction date
+              Workflow date (SAST)
               <input
                 type="date"
                 value={targetDate}
@@ -352,6 +359,8 @@ const AdminScreen: React.FC = () => {
             take up to 15 minutes to start. A job that stays queued longer needs its worker checked.
           </p>
         </section>
+
+        <IngestionSchedulePanel date={targetDate} configuredLeagues={status.configuredLeagues} />
 
         {/* Coverage */}
         <section aria-labelledby="coverage-heading" className="mt-8">
