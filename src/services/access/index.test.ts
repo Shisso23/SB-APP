@@ -17,9 +17,11 @@ import {
   describeRemaining,
   formatPrice,
   isAccessActive,
+  predictionHorizonOf,
   newIdempotencyKey,
   startCheckout,
 } from './index';
+import { MeResponse } from './types';
 
 const get = apiGet as jest.Mock;
 const post = (apiClient as unknown as { post: jest.Mock }).post;
@@ -56,6 +58,38 @@ it('requires both the flag and an end date to consider access active', () => {
   expect(isAccessActive(null)).toBe(false);
   expect(isAccessActive({ has_prediction_access: true, prediction_access_ends_at: null } as never)).toBe(false);
   expect(isAccessActive({ has_prediction_access: false, prediction_access_ends_at: '2099-01-01' } as never)).toBe(false);
+});
+
+const grantStart = Date.UTC(2026, 10, 22, 8);
+const oneDayMe: MeResponse = {
+  id: 1, firebase_uid: 'test-user', is_admin: false, has_prediction_access: true,
+  prediction_access_starts_at: new Date(grantStart).toISOString(),
+  prediction_access_ends_at: new Date(grantStart + 86_400_000).toISOString(),
+  prediction_horizon_ends_at: new Date(grantStart + 86_400_000).toISOString(),
+};
+
+it('keeps a one-day pass anchored to activation and expires it without a fresh me request', () => {
+  const later = grantStart + 12 * 3_600_000;
+  expect(predictionHorizonOf(oneDayMe, later)).toBe(grantStart + 86_400_000);
+  expect(isAccessActive(oneDayMe, later)).toBe(true);
+  const expiry = grantStart + 86_400_000;
+  expect(isAccessActive(oneDayMe, expiry)).toBe(false);
+  expect(predictionHorizonOf(oneDayMe, expiry + 1)).toBe(expiry + 1);
+});
+
+it('caps longer memberships at seven days and honors an earlier server cutoff', () => {
+  const longExpiry = new Date(grantStart + 30 * 86_400_000).toISOString();
+  const longMe = { ...oneDayMe, prediction_access_ends_at: longExpiry, prediction_horizon_ends_at: longExpiry };
+  expect(predictionHorizonOf(longMe, grantStart)).toBe(grantStart + 7 * 86_400_000);
+  expect(predictionHorizonOf({ ...longMe, prediction_horizon_ends_at: oneDayMe.prediction_horizon_ends_at }, grantStart))
+    .toBe(grantStart + 86_400_000);
+  expect(predictionHorizonOf({ ...longMe, prediction_horizon_ends_at: 'invalid' }, grantStart)).toBe(grantStart);
+  expect(predictionHorizonOf(null, grantStart)).toBe(grantStart);
+});
+
+it('reserves unlimited prediction dates for server-confirmed admins', () => {
+  expect(predictionHorizonOf({ ...oneDayMe, is_admin: true, prediction_horizon_ends_at: null }, grantStart)).toBeNull();
+  expect(predictionHorizonOf({ ...oneDayMe, prediction_horizon_ends_at: null }, grantStart)).toBe(grantStart + 86_400_000);
 });
 
 it('describes remaining time only when active', () => {

@@ -88,6 +88,8 @@ export interface MeResponse {
   id: number;
   firebase_uid: string;
   has_prediction_access: boolean;
+  is_admin: boolean;
+  prediction_horizon_ends_at: string | null;
   prediction_access_starts_at: string | null;
   prediction_access_ends_at: string | null;
 }

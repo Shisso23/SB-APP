@@ -367,8 +367,10 @@ it('keeps the suggested bet list first for easy discovery, removes model-pick se
   // A date range with no assessed fixtures must remove the previous highlights.
   const dates = screen.getAllByRole('textbox').filter(input => (input as HTMLInputElement).value.match(/^\d{2}\/\d{2}\/\d{4}$/));
   expect(dates.length).toBeGreaterThanOrEqual(2);
+  const emptyDay = new Date(Date.now() + 3 * 86_400_000);
+  const emptyDate = `${String(emptyDay.getMonth() + 1).padStart(2, '0')}/${String(emptyDay.getDate()).padStart(2, '0')}/${emptyDay.getFullYear()}`;
   await act(async () => {
-    fireEvent.change(dates[0], { target: { value: '01/01/2099' } });
+    fireEvent.change(dates[0], { target: { value: emptyDate } });
     fireEvent.blur(dates[0]);
   });
   await waitFor(() => expect(screen.getByText(/All forecasts and market details/).closest('details')!.querySelector('[data-highlight]')).toBeNull());
@@ -412,7 +414,7 @@ it('restores statistical forecasts from the backend after remount without regene
   expect(screen.queryByText(/BTTS No/)).not.toBeInTheDocument();
 });
 
-it('restores a saved date range and legacy results, and clearing removes both caches', async () => {
+it('clamps a restored date range to seven days, restores legacy results, and clearing removes both caches', async () => {
   await runInitialBatch();
   const cache = await readPredictionsCache();
   const view = cache.view;
@@ -433,7 +435,10 @@ it('restores a saved date range and legacy results, and clearing removes both ca
   await renderPredictionDesk();
   await waitFor(() => expect(screen.getByText(/Legacy fixture results/).textContent).not.toContain('0 fixtures'));
   expect(screen.getByDisplayValue('01/01/2020')).toBeInTheDocument();
-  expect(screen.getByDisplayValue('01/01/2099')).toBeInTheDocument();
+  const lastDay = new Date(Date.now() + 7 * 86_400_000);
+  const lastDate = `${String(lastDay.getMonth() + 1).padStart(2, '0')}/${String(lastDay.getDate()).padStart(2, '0')}/${lastDay.getFullYear()}`;
+  expect(screen.getByDisplayValue(lastDate)).toBeInTheDocument();
+  expect(screen.queryByDisplayValue('01/01/2099')).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Clear predictions' }));
   await waitFor(async () => expect((await readPredictionsCache()).items).toHaveLength(0));
   const clearedCache = await readPredictionsCache();
@@ -442,6 +447,87 @@ it('restores a saved date range and legacy results, and clearing removes both ca
   expect(localStorage.getItem('predictionView_v1')).toBeNull();
   cleanup();
   await renderPredictionDesk();
+  expect(screen.getByText(/Legacy fixture results/)).toHaveTextContent('0 fixtures');
+});
+
+it('locks calendar days beyond a one-day pass expiry', async () => {
+  const originalGet = get.getMockImplementation()!;
+  const expiry = new Date(Date.now() + 2 * 3_600_000);
+  get.mockImplementation((endpoint, options) => endpoint === '/me/'
+    ? Promise.resolve({ data: { has_prediction_access: true, is_admin: false,
+      prediction_access_starts_at: new Date(expiry.getTime() - 86_400_000).toISOString(),
+      prediction_access_ends_at: expiry.toISOString(), prediction_horizon_ends_at: expiry.toISOString() } })
+    : originalGet(endpoint, options));
+  const { container } = await renderPredictionDesk();
+  await screen.findByText(/Eligible kickoffs must be before/);
+  const dates = screen.getAllByRole('textbox').filter(input =>
+    (input as HTMLInputElement).value.match(/^\d{2}\/\d{2}\/\d{4}$/));
+  fireEvent.click(dates[0]);
+  const blockedDay = new Date(expiry);
+  blockedDay.setDate(blockedDay.getDate() + 1);
+  if (blockedDay.getMonth() !== new Date().getMonth()) {
+    expect(container.querySelector('.react-datepicker__navigation--next')).toBeNull();
+  } else {
+    const day = String(blockedDay.getDate()).padStart(3, '0');
+    expect(container.querySelector(`.react-datepicker__day--${day}:not(.react-datepicker__day--outside-month)`))
+      .toHaveAttribute('aria-disabled', 'true');
+  }
+});
+
+it('blocks a new prediction run when the pass expires while the desk stays open', async () => {
+  let now = Date.now();
+  const clock = jest.spyOn(Date, 'now').mockImplementation(() => now);
+  try {
+    const expiry = now + 2 * 3_600_000;
+    const originalGet = get.getMockImplementation()!;
+    get.mockImplementation((endpoint, options) => endpoint === '/me/'
+      ? Promise.resolve({ data: { has_prediction_access: true, is_admin: false,
+        prediction_access_ends_at: new Date(expiry).toISOString(),
+        prediction_horizon_ends_at: new Date(expiry).toISOString() } })
+      : originalGet(endpoint, options));
+    await renderPredictionDesk();
+    await screen.findByText(/Eligible kickoffs must be before/);
+    fireEvent.click((await screen.findAllByRole('button', { name: /Premier League/ }))[0]);
+    now = expiry;
+    await screen.findByText(/An active prediction pass is required/);
+    get.mockClear();
+    const run = screen.getByRole('button', { name: 'Bet (run predictions)' });
+    await waitFor(() => expect(run).not.toBeDisabled());
+    fireEvent.click(run);
+    expect(get.mock.calls.filter(([endpoint]) =>
+      ['/fixtures/', '/standings/', '/predictions/'].includes(endpoint))).toHaveLength(0);
+    expect(screen.getByRole('alert')).toHaveTextContent('An active prediction pass is required');
+  } finally {
+    cleanup();
+    clock.mockRestore();
+  }
+});
+
+it('filters cached legacy fixtures whose exact kickoff exceeds the pass, even on the last allowed calendar day', async () => {
+  await runInitialBatch();
+  const cache = await readPredictionsCache();
+  const expiry = Date.now() + 2 * 3_600_000;
+  const fixture = cache.items[0].enginePredictions?.[0].fixture;
+  if (!fixture) throw new Error('Missing cached fixture');
+  fixture.fixture.id = 88888;
+  fixture.fixture.timestamp = (expiry + 1) / 1000;
+  fixture.fixture.date = new Date(expiry + 1).toISOString();
+  cache.items[0].fixtures = [fixture];
+  cache.items[0].predicted = [{
+    fixtures: [fixture],
+    option: { id: 1, name: 'Home Win', shortName: 'Home', level: 3, description: 'Home team wins' },
+  }];
+  await writePredictionsCache(cache);
+  fireEvent.click(screen.getByRole('button', { name: 'Legacy rules', exact: true }));
+  cleanup();
+  const originalGet = get.getMockImplementation()!;
+  get.mockImplementation((endpoint, options) => endpoint === '/me/'
+    ? Promise.resolve({ data: { has_prediction_access: true, is_admin: false,
+      prediction_access_ends_at: new Date(expiry).toISOString(),
+      prediction_horizon_ends_at: new Date(expiry).toISOString() } })
+    : originalGet(endpoint, options));
+  await renderPredictionDesk();
+  await screen.findByText(/Eligible kickoffs must be before/);
   expect(screen.getByText(/Legacy fixture results/)).toHaveTextContent('0 fixtures');
 });
 

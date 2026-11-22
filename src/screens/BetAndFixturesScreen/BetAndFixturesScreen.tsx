@@ -49,7 +49,8 @@ import type { MarketOdds, MarketValue, PaperSelection } from '../../prediction-e
 import { PremiumRequiredError, SessionExpiredError, SignInRequiredError } from '../../services/api/client';
 import { describeFailure } from '../../services/api/failures';
 import { useAuth } from '../../services/auth/AuthProvider';
-import { getMe, isAccessActive } from '../../services/access';
+import { getMe, isAccessActive, predictionHorizonOf } from '../../services/access';
+import type { MeResponse } from '../../services/access/types';
 import { getPredictionsByLeagueSeason, getPredictionsByFixture, getHighlightLevels, getPredictionWorkspace, savePredictionWorkspace, clearPredictionWorkspace, SavedPredictionLeague, MarketHighlight, PredictionEnvelopeRow } from '../../services/predictions';
 import { usePremiumRedirect } from '../../hooks/usePremiumRedirect';
 import { FORECAST_HIGHLIGHTS, ForecastId, LEGACY_FORECAST_IDS, visibleForecastPrediction } from '../../config/forecast-highlights';
@@ -547,7 +548,7 @@ const BetAndFixturesScreen: React.FC = () => {
   // Statistical forecasts are server-generated and premium. `hasPredictionAccess`
   // is read fresh from `/me/` (the only entitlement truth) whenever the user signs
   // in; `null` means "not checked yet", so the UI never assumes access by default.
-  const [hasPredictionAccess, setHasPredictionAccess] = useState<boolean | null>(null);
+  const [me, setMe] = useState<MeResponse | null>(null);
   const [workspaceReady, setWorkspaceReady] = useState(false);
   const [workspaceError, setWorkspaceError] = useState('');
   const [restoreAttempt, setRestoreAttempt] = useState(0);
@@ -557,14 +558,13 @@ const BetAndFixturesScreen: React.FC = () => {
   const accountRef = useRef(user?.uid);
   accountRef.current = user?.uid;
   useEffect(() => {
-    setHasPredictionAccess(null);
+    setMe(null);
     if (initialising || !user) {
-      setHasPredictionAccess(null);
       return;
     }
     let cancelled = false;
     getMe().then((response) => {
-      if (!cancelled) setHasPredictionAccess(isAccessActive(response.data));
+      if (!cancelled) setMe(response.data);
     }).catch((error) => {
       if (!cancelled) setWorkspaceError(describePredictionsFailure(error));
     });
@@ -641,6 +641,15 @@ const BetAndFixturesScreen: React.FC = () => {
   // Cooldown
   const [lastBetAt, setLastBetAt] = useState<number | null>(null);
   const [nowTick, setNowTick] = useState<number>(Date.now());
+  const hasPredictionAccess = me === null ? null : isAccessActive(me, nowTick);
+  const predictionDeadline = useMemo(() => predictionHorizonOf(me), [me]);
+  const maxPredictionDate = predictionDeadline === null ? undefined : new Date(predictionDeadline - 1);
+  useEffect(() => {
+    if (predictionDeadline === null || me === null) return;
+    const lastDay = moment(predictionDeadline - 1).startOf('day').toDate();
+    if (moment(fromDate).isAfter(lastDay, 'day')) setFromDate(lastDay);
+    if (moment(toDate).isAfter(lastDay, 'day')) setToDate(lastDay);
+  }, [predictionDeadline, me, fromDate, toDate]);
   const tickRef = useRef<number | null>(null);
 
   // Modal & standings
@@ -875,6 +884,7 @@ const BetAndFixturesScreen: React.FC = () => {
 
   const filterBetweenDates = (fixtures: FixtureDataModel[], from: Date, to: Date) =>
     fixtures.filter((fixtureData) =>
+      (predictionDeadline === null || fixtureData.fixture.timestamp * 1000 < predictionDeadline) &&
       toMomentDate(fixtureData.fixture.date).isSameOrAfter(moment(from)) &&
       toMomentDate(fixtureData.fixture.date).isSameOrBefore(moment(to).endOf('day'))
     );
@@ -959,7 +969,7 @@ const BetAndFixturesScreen: React.FC = () => {
 
   useEffect(() => {
     setCurrentFixtures(filterBetweenDates(futureFixtures, fromDate, toDate));
-  }, [futureFixtures, fromDate.toString(), toDate.toString()]);
+  }, [futureFixtures, fromDate.toString(), toDate.toString(), predictionDeadline]);
 
   useEffect(()=>{
     if (!cacheReady) return;
@@ -1638,7 +1648,7 @@ const BetAndFixturesScreen: React.FC = () => {
     .map((key) => paperSelectionsByKey.get(key))
     .filter((selection): selection is PaperSelection => Boolean(selection) && selection?.marketId !== 'btts_no');
   const displayedFixtureIds = predictionMode === 'legacy'
-    ? Object.keys(groupedData)
+    ? Object.keys(groupedData).filter(id => currentFixtures.some(fixture => fixture.fixture.id === Number(id)))
     : initialising || hasPredictionAccess !== true || workspaceOwnerRef.current !== user?.uid
       ? [] : Object.keys(enginePredictions).filter(id => currentFixtures.some(fixture => fixture.fixture.id === Number(id)));
   const visibleEnginePredictions = useMemo(
@@ -1734,6 +1744,7 @@ const BetAndFixturesScreen: React.FC = () => {
                     className="w-[140px] rounded-lg border border-slate-500 bg-white px-2 py-1.5 text-xs text-slate-900"
                     disabled={!cacheReady || predictionMode === 'statistical' && !workspaceReady}
                     selected={fromDate}
+                    maxDate={maxPredictionDate}
                     onChange={(d: Date) => setFromDate(d)}
                   />
                   <span className="text-xs text-slate-200">to</span>
@@ -1741,10 +1752,17 @@ const BetAndFixturesScreen: React.FC = () => {
                     className="w-[140px] rounded-lg border border-slate-500 bg-white px-2 py-1.5 text-xs text-slate-900"
                     disabled={!cacheReady || predictionMode === 'statistical' && !workspaceReady}
                     selected={toDate}
+                    maxDate={maxPredictionDate}
                     onChange={(d: Date) => setToDate(d)}
                   />
                 </div>
                 <div className="mt-2 text-[11px] text-slate-200">Current window: {predictionRangeLabel}</div>
+                {me && predictionDeadline !== null && hasPredictionAccess && (
+                  <p className="mt-2 text-[11px] text-amber-200">
+                    Eligible kickoffs must be before {new Date(predictionDeadline).toLocaleString()}.
+                    Your pass expiry or the seven-day limit applies, whichever is sooner.
+                  </p>
+                )}
               </div>
             </div>
           </div>

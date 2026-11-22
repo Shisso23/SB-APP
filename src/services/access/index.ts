@@ -100,8 +100,18 @@ export const clearCheckoutAttempt = () => {
 };
 
 /** True when the current entitlement window has a future end date. */
-export const isAccessActive = (me: MeResponse | null): boolean =>
-  Boolean(me?.has_prediction_access && me.prediction_access_ends_at);
+export const isAccessActive = (me: MeResponse | null, now: number = Date.now()): boolean =>
+  Boolean(me?.has_prediction_access && me.prediction_access_ends_at
+    && Date.parse(me.prediction_access_ends_at) > now);
+
+/** Exclusive kickoff cutoff. A null cutoff is reserved for server-confirmed admins. */
+export const predictionHorizonOf = (me: MeResponse | null, now: number = Date.now()): number | null => {
+  if (me?.is_admin === true) return null;
+  if (!isAccessActive(me, now) || !me?.prediction_access_ends_at) return now;
+  const expiry = Date.parse(me.prediction_access_ends_at);
+  const serverCutoff = me.prediction_horizon_ends_at ? Date.parse(me.prediction_horizon_ends_at) : now + 7 * 86_400_000;
+  return Number.isFinite(serverCutoff) ? Math.min(expiry, serverCutoff, now + 7 * 86_400_000) : now;
+};
 
 /** Classify entitlement state for the UI. */
 export const accessStateOf = (me: MeResponse | null): 'active' | 'expired' | 'none' => {

@@ -401,7 +401,8 @@ const AuthenticatedAdminScreen: React.FC = () => {
           </p>
           <p className="mt-2 text-xs text-slate-500">
             Queued means waiting for the backend worker, not predicting yet. The scheduled worker may
-            take up to 15 minutes to start. A job that stays queued longer needs its worker checked.
+            runs at 12:00, 15:00, 17:00, 19:00 and 21:00 SAST. Queued jobs wait for the next pass.
+            Use the manual daily bet list below for immediate execution.
           </p>
         </section>
 
