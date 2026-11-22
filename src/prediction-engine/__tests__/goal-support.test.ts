@@ -118,7 +118,7 @@ describe('scope and configuration', () => {
   });
 });
 
-describe('integration with market qualification and selection', () => {
+describe('integration with market qualification (buildMarkets)', () => {
   const oddsFor = (marketIds: string[]): MarketOdds[] =>
     marketIds.map((marketId) => ({ marketId: marketId as MarketOdds['marketId'], decimalOdds: 1.8, timestamp: NOW }));
 
@@ -138,7 +138,7 @@ describe('integration with market qualification and selection', () => {
 
   it('disqualifies a goal total that passes its own thresholds when team-goal support contradicts it', () => {
     const { markets, selections } = marketsFor(
-      { over1_5: 0.8, over2_5: 0.62, homeScores: 0.5, awayScores: 0.5 },
+      { over1_5: 0.8, over2_5: 0.62, over3_5: 0.1, homeScores: 0.5, awayScores: 0.5 },
       oddsFor(['over_1_5', 'over_2_5'])
     );
     const over15 = markets.find((m) => m.marketId === 'over_1_5')!;
@@ -154,7 +154,7 @@ describe('integration with market qualification and selection', () => {
 
   it('keeps qualification and ranking unchanged when the supporting evidence backs the total', () => {
     const supported = marketsFor(
-      { over1_5: 0.8, over2_5: 0.62, homeScores: 0.9, awayScores: 0.65 },
+      { over1_5: 0.8, over2_5: 0.62, over3_5: 0.1, homeScores: 0.9, awayScores: 0.65 },
       oddsFor(['over_1_5', 'over_2_5'])
     );
     const over15 = supported.markets.find((m) => m.marketId === 'over_1_5')!;
@@ -163,6 +163,20 @@ describe('integration with market qualification and selection', () => {
     expect(over15.rejectReasons).toEqual([]);
     expect(over25.qualifies).toBe(true);
     expect(supported.selections.map((m) => m.marketId)).toEqual(expect.arrayContaining(['over_1_5', 'over_2_5']));
+  });
+
+  it('also vetoes an over_1_5 qualification implied via over_2_5/over_3_5 when support is missing', () => {
+    // over_1_5 itself is below its own threshold but MARKET_IMPLICATIONS would imply
+    // it via over_2_5 passing; the goal-support veto must still apply to that implied path.
+    const { markets } = marketsFor(
+      { over1_5: 0.3, over2_5: 0.9, over3_5: 0.1, homeScores: 0.3, awayScores: 0.3 },
+      oddsFor(['over_1_5', 'over_2_5'])
+    );
+    const over15 = markets.find((m) => m.marketId === 'over_1_5')!;
+    const over25 = markets.find((m) => m.marketId === 'over_2_5')!;
+    // over_2_5 itself is vetoed for lack of support, so it cannot imply over_1_5 either.
+    expect(over25.qualifies).toBe(false);
+    expect(over15.qualifies).toBe(false);
   });
 
   it('preserves BTTS and team-to-score behaviour regardless of the goal-support veto', () => {

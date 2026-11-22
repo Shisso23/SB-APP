@@ -41,6 +41,28 @@ export const MARKET_LABELS: Record<MarketId, string> = {
   away_dnb: 'Draw no bet: Away',
 };
 
+/**
+ * Strict logical implications between markets: each list is a group of markets whose
+ * events, taken together, are a subset of this market's event (e.g. the home team
+ * scoring AND the away team scoring together guarantee both teams score). So when
+ * every market in one of these groups has already passed its own threshold, this
+ * market's true probability is guaranteed at least as high, and it may qualify through
+ * that guarantee instead of its own (separately modelled) number. This never relaxes
+ * a market's own threshold; it only adds another way to satisfy it.
+ */
+export const MARKET_IMPLICATIONS: Partial<Record<MarketId, MarketId[][]>> = {
+  btts_yes: [['home_over_0_5', 'away_over_0_5']],
+  over_1_5: [['over_2_5'], ['over_3_5']],
+  over_2_5: [['over_3_5']],
+  under_2_5: [['under_1_5']],
+  under_3_5: [['under_1_5'], ['under_2_5']],
+  home_dnb: [['home_win']],
+  away_dnb: [['away_win']],
+  home_or_draw: [['home_win'], ['draw']],
+  away_or_draw: [['away_win'], ['draw']],
+};
+
+
 /** Explicit data-quality flags so the UI never overstates confidence. */
 export interface DataQuality {
   /** Number of finished matches used for the home team (venue + overall). */
@@ -222,6 +244,8 @@ export interface MarketValue {
   passedProbabilityThreshold: boolean;
   passedEdgeThreshold: boolean;
   qualifies: boolean;
+  /** Set when the probability gate was satisfied via MARKET_IMPLICATIONS instead of this market's own number. */
+  impliedBy?: MarketId[];
   rejectReasons: string[];
   evidence: string[];
 }

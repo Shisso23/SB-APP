@@ -1,4 +1,4 @@
-import { FORECAST_HIGHLIGHTS, ForecastPreference, ForecastId, derivedThresholdSupport, effectiveHighlightLevel, forecastProbability, highlightLevel, LEGACY_FORECAST_IDS, visibleForecastPrediction } from './forecast-highlights';
+import { FORECAST_HIGHLIGHTS, ForecastPreference, ForecastId, forecastProbability, highlightLevel, impliedHighlightResult, LEGACY_FORECAST_IDS, visibleForecastPrediction } from './forecast-highlights';
 import { SUPPORTED_MARKETS } from '../prediction-engine/markets';
 import { betOptions } from '../variables/variables';
 import { FixturePrediction, ScorelineProbability } from '../prediction-engine/types';
@@ -9,6 +9,11 @@ const prediction = (grid?: ScorelineProbability[]): FixturePrediction => ({
   markets: [{ marketId: 'home_or_draw', modelProbability: .85 }],
   probabilities: { baseScorelines: grid, topScorelines: [{ home: 2, away: 1, probability: .1 }] },
 } as FixturePrediction);
+
+const marketsPrediction = (markets: { marketId: ForecastId; modelProbability: number }[]): FixturePrediction => ({
+  markets, probabilities: { topScorelines: [] },
+} as unknown as FixturePrediction);
+
 
 test('every statistical and active legacy option has a configuration', () => {
   SUPPORTED_MARKETS.filter(id => id !== 'btts_no').forEach(id => expect(FORECAST_HIGHLIGHTS[id]).toBeDefined());
@@ -58,6 +63,48 @@ test('ranges sum inclusive disjoint outcomes from a complete grid', () => {
   expect(forecastProbability(p, 'home_or_draw')).toBe(.85);
 });
 
+test('impliedHighlightResult returns the own level when a forecast already passes its own threshold', () => {
+  const p = marketsPrediction([{ marketId: 'home_win', modelProbability: .6 }]);
+  expect(impliedHighlightResult(p, 'home_win')).toEqual({ level: 'suggested' });
+});
+
+test('BTTS qualifies via both teams independently passing their own over-0.5 threshold', () => {
+  const p = marketsPrediction([
+    { marketId: 'home_over_0_5', modelProbability: .9 },
+    { marketId: 'away_over_0_5', modelProbability: .9 },
+    { marketId: 'btts_yes', modelProbability: .5 }, // below its own .72 threshold
+  ]);
+  expect(impliedHighlightResult(p, 'btts_yes')).toEqual({ level: 'suggested', impliedBy: ['home_over_0_5', 'away_over_0_5'] });
+});
+
+test('does not imply BTTS when only one side independently passes its threshold', () => {
+  const p = marketsPrediction([
+    { marketId: 'home_over_0_5', modelProbability: .9 },
+    { marketId: 'away_over_0_5', modelProbability: .4 },
+    { marketId: 'btts_yes', modelProbability: .5 },
+  ]);
+  expect(impliedHighlightResult(p, 'btts_yes')).toEqual({ level: 'none' });
+});
+
+test('chains direct implications: over_1_5 via over_2_5, home_or_draw via draw, home_dnb via home_win', () => {
+  const p = marketsPrediction([
+    { marketId: 'over_2_5', modelProbability: .9 },
+    { marketId: 'over_1_5', modelProbability: .5 },
+    { marketId: 'draw', modelProbability: .5 },
+    { marketId: 'home_or_draw', modelProbability: .5 },
+    { marketId: 'home_win', modelProbability: .9 },
+    { marketId: 'home_dnb', modelProbability: .5 },
+  ]);
+  expect(impliedHighlightResult(p, 'over_1_5')).toEqual({ level: 'suggested', impliedBy: ['over_2_5'] });
+  expect(impliedHighlightResult(p, 'home_or_draw')).toEqual({ level: 'suggested', impliedBy: ['home_win'] });
+  expect(impliedHighlightResult(p, 'home_dnb')).toEqual({ level: 'suggested', impliedBy: ['home_win'] });
+});
+
+test('forecasts without an implication rule simply return none when their own number misses', () => {
+  const p = marketsPrediction([{ marketId: 'home_win', modelProbability: .1 }]);
+  expect(impliedHighlightResult(p, 'home_win')).toEqual({ level: 'none' });
+});
+
 test('does not invent probabilities from truncated top scorelines, malformed grids or missing markets', () => {
   expect(forecastProbability(prediction(), 'total_2_5')).toBeUndefined();
   expect(forecastProbability(prediction([{ home: 2, away: 1, probability: .1 }]), 'total_2_5')).toBeUndefined();
@@ -91,29 +138,34 @@ test('BTTS No is hidden from forecasts, ranked candidates and leading headlines 
   expect(original.selections).toHaveLength(1);
 });
 
-test('derivedThresholdSupport implies BTTS Yes and goal totals once their component markets each clear their own threshold', () => {
+test('implies BTTS Yes and goal totals once their component forecasts each clear their own threshold', () => {
   const withMarkets = (entries: [ForecastId, number][], grid?: ScorelineProbability[]): FixturePrediction => ({
     markets: entries.map(([marketId, modelProbability]) => ({ marketId, modelProbability })),
     probabilities: { baseScorelines: grid, topScorelines: [] },
   } as unknown as FixturePrediction);
 
-  expect(derivedThresholdSupport(withMarkets([['home_over_0_5', .82], ['away_over_0_5', .82]]), 'btts_yes')).toBe(true);
-  expect(derivedThresholdSupport(withMarkets([['home_over_0_5', .82], ['away_over_0_5', .82]]), 'over_1_5')).toBe(true);
+  expect(impliedHighlightResult(withMarkets([['home_over_0_5', .82], ['away_over_0_5', .82]]), 'btts_yes'))
+    .toEqual({ level: 'suggested', impliedBy: ['home_over_0_5', 'away_over_0_5'] });
+  expect(impliedHighlightResult(withMarkets([['home_over_0_5', .82], ['away_over_0_5', .82]]), 'over_1_5'))
+    .toEqual({ level: 'suggested', impliedBy: ['home_over_0_5', 'away_over_0_5'] });
   // home_over_1_5/away_over_1_5 are base-grid ranges (home or away scores 2+), not raw markets.
   const homeTwoPlus: ScorelineProbability[] = [{ home: 2, away: 0, probability: .75 }, { home: 0, away: 0, probability: .25 }];
   const awayTwoPlus: ScorelineProbability[] = [{ home: 0, away: 2, probability: .75 }, { home: 0, away: 0, probability: .25 }];
   const bothTwoPlus: ScorelineProbability[] = [{ home: 2, away: 2, probability: .75 }, { home: 0, away: 0, probability: .25 }];
-  expect(derivedThresholdSupport(withMarkets([['away_over_0_5', .82]], homeTwoPlus), 'over_2_5')).toBe(true);
-  expect(derivedThresholdSupport(withMarkets([['home_over_0_5', .82]], awayTwoPlus), 'over_2_5')).toBe(true);
-  expect(derivedThresholdSupport(withMarkets([], bothTwoPlus), 'over_3_5')).toBe(true);
+  expect(impliedHighlightResult(withMarkets([['away_over_0_5', .82]], homeTwoPlus), 'over_2_5'))
+    .toEqual({ level: 'suggested', impliedBy: ['home_over_1_5', 'away_over_0_5'] });
+  expect(impliedHighlightResult(withMarkets([['home_over_0_5', .82]], awayTwoPlus), 'over_2_5'))
+    .toEqual({ level: 'suggested', impliedBy: ['away_over_1_5', 'home_over_0_5'] });
+  expect(impliedHighlightResult(withMarkets([], bothTwoPlus), 'over_3_5'))
+    .toEqual({ level: 'suggested', impliedBy: ['home_over_1_5', 'away_over_1_5'] });
   // Only one side clearing its own threshold is not enough.
-  expect(derivedThresholdSupport(withMarkets([['home_over_0_5', .82]]), 'btts_yes')).toBe(false);
-  expect(derivedThresholdSupport(withMarkets([['home_over_0_5', .81999], ['away_over_0_5', .82]]), 'btts_yes')).toBe(false);
-  // A market with no configured support group never derives.
-  expect(derivedThresholdSupport(withMarkets([['home_over_0_5', .82], ['away_over_0_5', .82]]), 'home_win')).toBe(false);
+  expect(impliedHighlightResult(withMarkets([['home_over_0_5', .82]]), 'btts_yes')).toEqual({ level: 'none' });
+  expect(impliedHighlightResult(withMarkets([['home_over_0_5', .81999], ['away_over_0_5', .82]]), 'btts_yes')).toEqual({ level: 'none' });
+  // A market with no configured implication group never derives.
+  expect(impliedHighlightResult(withMarkets([['home_over_0_5', .82], ['away_over_0_5', .82]]), 'home_win')).toEqual({ level: 'none' });
 });
 
-test('effectiveHighlightLevel never downgrades a market that already clears its own threshold', () => {
+test('never downgrades a market that already clears its own threshold', () => {
   const p = { markets: [{ marketId: 'btts_yes', modelProbability: .9 }], probabilities: { baseScorelines: undefined, topScorelines: [] } } as unknown as FixturePrediction;
-  expect(effectiveHighlightLevel(p, 'btts_yes', .9)).toBe('suggested');
+  expect(impliedHighlightResult(p, 'btts_yes')).toEqual({ level: 'suggested' });
 });

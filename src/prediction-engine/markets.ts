@@ -1,6 +1,7 @@
 import { PredictionConfig } from '../config/prediction-config';
 import {
   FixturePrediction,
+  MARKET_IMPLICATIONS,
   MARKET_LABELS,
   MarketId,
   MarketOdds,
@@ -256,9 +257,48 @@ export const buildMarkets = ({
     return market;
   });
 
+  applyMarketImplications(markets);
+
+  // Over 1.5 / Over 2.5 additionally require logical support from the team-scoring
+  // probabilities (see `evaluateGoalTotalSupport`). This is a veto only: it is applied
+  // after MARKET_IMPLICATIONS so an implied qualification is checked too, it never
+  // lowers or bypasses the existing probability/edge/odds thresholds, and every other
+  // market is left untouched.
+  markets.forEach((market) => {
+    const support = evaluateGoalTotalSupport({ marketId: market.marketId, probabilities, config });
+    if (support.required && !support.supported) {
+      market.qualifies = false;
+      market.rejectReasons.push(...support.reasons);
+    }
+  });
+
   const selections = rankSelections(markets, config, quality);
 
   return { markets, selections };
+};
+
+/**
+ * A market whose own probability missed its threshold can still satisfy the
+ * probability gate when every market in one of its MARKET_IMPLICATIONS groups has
+ * already passed its own threshold (its event is a superset, so the true probability
+ * is guaranteed at least as high). Odds/edge/freshness/EV checks are never bypassed:
+ * a market with no quoted price still never qualifies (see buildMarketValue).
+ */
+export const applyMarketImplications = (markets: MarketValue[]): void => {
+  const byMarketId = new Map(markets.map((market) => [market.marketId, market]));
+  markets.forEach((market) => {
+    if (market.passedProbabilityThreshold) return;
+    const groups = MARKET_IMPLICATIONS[market.marketId];
+    const impliedBy = groups?.find((group) => group.every((id) => byMarketId.get(id)?.passedProbabilityThreshold));
+    if (!impliedBy) return;
+    market.passedProbabilityThreshold = true;
+    market.impliedBy = impliedBy;
+    market.rejectReasons = market.rejectReasons.filter((reason) => !/below the .*threshold for this market/.test(reason));
+    if (market.decimalOdds !== undefined) {
+      market.qualifies = market.passedProbabilityThreshold && market.passedEdgeThreshold && !market.oddsStale &&
+        Number.isFinite(market.expectedValue) && Number(market.expectedValue) > 0;
+    }
+  });
 };
 
 /** Data-quality signals that gate whether a market may be recommended at all. */

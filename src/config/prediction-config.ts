@@ -101,8 +101,9 @@ export interface PredictionConfig {
       /**
        * A single team's scoring probability (team over 0.5) at or above this value
        * counts as "strongly expected to score". Default 0.85 matches the existing
-       * `strong` display band for team-goal markets and sits above both team-to-score
-       * display thresholds (0.82).
+       * `strong` display band for team-goal markets (see `home_over_1_5`/`away_over_1_5`
+       * in forecast-highlights.ts) and sits above both team-to-score display thresholds
+       * (0.82).
        */
       strongTeamScoreProbability: number;
       /**

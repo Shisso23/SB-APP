@@ -2,6 +2,19 @@
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
+## Backend
+
+The Django REST API backend previously lived in `backend/` in this repository. It
+now lives in its own repository: https://github.com/Shisso23/PredictXI-backend.
+See `docs/predictxi-system-overview.md` for how the frontend and backend fit
+together.
+
+Note: `backend/prediction_runner/engine/` in that repository is a vendored copy
+of this repository's `src/prediction-engine/` and `src/config/prediction-config.ts`
+(plus a few small, self-contained model/enum files), used to compile the backend's
+private prediction runner. There is no automated sync — if you change the engine
+here, re-copy the affected files into the backend repo by hand.
+
 ## Available Scripts
 
 In the project directory, you can run:

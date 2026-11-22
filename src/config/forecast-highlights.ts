@@ -1,4 +1,4 @@
-import { FixturePrediction, MARKET_LABELS } from '../prediction-engine/types';
+import { FixturePrediction, MARKET_IMPLICATIONS, MARKET_LABELS, MarketId } from '../prediction-engine/types';
 
 export interface ForecastPreference {
   label: string;
@@ -49,6 +49,20 @@ export const FORECAST_HIGHLIGHTS = {
 };
 export type ForecastId = keyof typeof FORECAST_HIGHLIGHTS;
 
+/**
+ * Does `FORECAST_HIGHLIGHTS` model this market id?
+ *
+ * `MARKET_IMPLICATIONS` is typed against `MarketId` from the prediction engine,
+ * which overlaps `ForecastId` without containing it: `MarketId` includes ids this
+ * config does not model (`btts_no`), and this config includes derived ids the
+ * engine does not model (`total_2_5`). Every id actually listed in
+ * `MARKET_IMPLICATIONS` IS modelled here, so this check always passes for
+ * reachable values; it expresses that invariant to the compiler rather than
+ * changing behaviour.
+ */
+const isModelledForecast = (id: MarketId): boolean =>
+  Object.prototype.hasOwnProperty.call(FORECAST_HIGHLIGHTS, id);
+
 export const FORECAST_FAMILY_LABELS = {
   result: 'Match result',
   team_scoring: 'Team to score',
@@ -94,38 +108,48 @@ export const forecastProbability = (prediction: FixturePrediction, id: ForecastI
   }, 0);
 };
 
-/** Markets whose event is logically implied once every market in at least one of
- * these groups independently clears its own threshold (e.g. both teams scoring 1+
- * implies BTTS Yes and implies at least 2 total goals). Additive only: a market's
- * own threshold is checked first and is never removed, lowered or bypassed for it.
+/** Grid-derived support groups supplementing MARKET_IMPLICATIONS for goal totals:
+ * a total's event is logically implied once every forecast in at least one of these
+ * groups independently clears its own threshold (e.g. home scoring 2+ and away
+ * scoring 1+ together guarantee at least 3 total goals). `home_over_1_5` and
+ * `away_over_1_5` are base-grid range forecasts this config models but the engine
+ * does not, so these groups cannot live in `MARKET_IMPLICATIONS`. Additive only: a
+ * forecast's own threshold is checked first and is never removed, lowered or bypassed.
  */
 const DERIVED_SUPPORT: Partial<Record<ForecastId, ForecastId[][]>> = {
-  btts_yes: [['home_over_0_5', 'away_over_0_5']],
   over_1_5: [['home_over_0_5', 'away_over_0_5']],
   over_2_5: [['home_over_1_5', 'away_over_0_5'], ['away_over_1_5', 'home_over_0_5']],
   over_3_5: [['home_over_1_5', 'away_over_1_5']],
 };
 
-/** Whether every market in at least one support group independently clears its own
- * threshold for this prediction, implying `id`'s event without using `id`'s own probability.
+export interface ImpliedHighlightResult {
+  level: 'strong' | 'suggested' | 'none';
+  /** Set when this forecast's own probability missed its threshold but every
+   * forecast in one of its implying groups (MARKET_IMPLICATIONS or
+   * DERIVED_SUPPORT) independently passed. */
+  impliedBy?: ForecastId[];
+}
+/**
+ * Falls back to a logical implication when a forecast's own number misses its own
+ * threshold: if every forecast in one of its implying groups has already passed its
+ * own threshold, this forecast's event is logically guaranteed too, so it is
+ * suggested on that basis. Never relaxes a forecast's own threshold; only adds
+ * another way to satisfy it.
  */
-export const derivedThresholdSupport = (prediction: FixturePrediction, id: ForecastId): boolean => {
-  const groups = DERIVED_SUPPORT[id];
-  if (!groups) return false;
-  return groups.some(group => group.every(supportId =>
-    highlightLevel(forecastProbability(prediction, supportId), FORECAST_HIGHLIGHTS[supportId]) !== 'none'));
-};
-
-/** Own-threshold level, falling back to implied qualification via `derivedThresholdSupport`
- * when the market does not already clear its own threshold. Never downgrades a market
- * that already qualifies on its own probability.
- */
-export const effectiveHighlightLevel = (
-  prediction: FixturePrediction, id: ForecastId, probability: unknown,
-): 'strong' | 'suggested' | 'none' => {
-  const own = highlightLevel(probability, FORECAST_HIGHLIGHTS[id]);
-  if (own !== 'none') return own;
-  return derivedThresholdSupport(prediction, id) ? 'suggested' : 'none';
+export const impliedHighlightResult = (prediction: FixturePrediction, id: ForecastId): ImpliedHighlightResult => {
+  const own = highlightLevel(forecastProbability(prediction, id), FORECAST_HIGHLIGHTS[id]);
+  if (own !== 'none') return { level: own };
+  const groups: ForecastId[][] = [
+    ...(MARKET_IMPLICATIONS[id as MarketId] ?? [])
+      .filter(group => group.every(isModelledForecast))
+      .map(group => group as ForecastId[]),
+    ...(DERIVED_SUPPORT[id] ?? []),
+  ];
+  const impliedBy = groups.find(group =>
+    group.every(impliedId =>
+      highlightLevel(forecastProbability(prediction, impliedId), FORECAST_HIGHLIGHTS[impliedId]) !== 'none',
+    ));
+  return impliedBy ? { level: 'suggested', impliedBy } : { level: 'none' };
 };
 
 // Only active legacy registry options; commented-out options are not supported UI.

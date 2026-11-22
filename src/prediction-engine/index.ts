@@ -24,6 +24,8 @@ export {
   SUPPORTED_MARKETS,
 } from './markets';
 export { buildCandidateSelections, reliabilityScore } from './selection';
+export { evaluateGoalTotalSupport, teamTwoPlusProbability } from './goal-support';
+export type { GoalTotalSupport } from './goal-support';
 export { runBacktest, brierScore, logLoss, buildCalibrationBuckets } from './backtest';
 export {
   collectTeamMatches,

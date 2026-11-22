@@ -1,16 +1,18 @@
-import { FixturesFilterModel } from "../../models/fixtures";
+import { FixturesFilterModel, FixturesModel } from "../../models/fixtures";
 import { setFixtures, setIsLoadingFixtures } from "./fixtures.reducer";
 import { getFilteredFixtures } from '../../services/fixtures/index';
 
-export const geFilteredFixturesAction = async (filters: FixturesFilterModel) => async (dispatch: Function) => {
+/** Minimal dispatch shape: accepts thunks and plain action objects. */
+type ThunkDispatch = (action: unknown) => unknown;
+
+/** Load fixtures from the PredictXI Django API; errors propagate to the caller. */
+export const geFilteredFixturesAction = (filters: FixturesFilterModel) => async (dispatch: ThunkDispatch) => {
   dispatch(setIsLoadingFixtures(true));
 
-  return getFilteredFixtures(filters)
-    .then((fixtures) => {
-      return dispatch(setFixtures(fixtures.data));
-    })
-    .catch((error) => error)
-    .finally(() => {
-      dispatch(setIsLoadingFixtures(false));
-    });
+  try {
+    const fixtures = await getFilteredFixtures(filters);
+    return dispatch(setFixtures(fixtures.data as FixturesModel));
+  } finally {
+    dispatch(setIsLoadingFixtures(false));
+  }
 };
