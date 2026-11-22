@@ -50,7 +50,7 @@ import { PremiumRequiredError, SessionExpiredError, SignInRequiredError } from '
 import { describeFailure } from '../../services/api/failures';
 import { useAuth } from '../../services/auth/AuthProvider';
 import { getMe, isAccessActive } from '../../services/access';
-import { getPredictionsByLeagueSeason, getPredictionsByFixture, getHighlightLevels, MarketHighlight, PredictionEnvelopeRow } from '../../services/predictions';
+import { getPredictionsByLeagueSeason, getPredictionsByFixture, getHighlightLevels, getPredictionWorkspace, savePredictionWorkspace, clearPredictionWorkspace, SavedPredictionLeague, MarketHighlight, PredictionEnvelopeRow } from '../../services/predictions';
 import { usePremiumRedirect } from '../../hooks/usePremiumRedirect';
 import { FORECAST_HIGHLIGHTS, ForecastId, LEGACY_FORECAST_IDS, visibleForecastPrediction } from '../../config/forecast-highlights';
 import { ForecastHighlight } from './ForecastHighlight';
@@ -264,6 +264,7 @@ type CountrySectionProps = {
   isOpenDefault?: boolean;
   isSelected: (id: number) => boolean;
   disabledReason: (id: number) => string | null;
+  savedStatus: (id: number) => string | null;
   onToggle: (league: LeagueDataModel, checked?: boolean) => void;
   onSelectAll: () => void;
   onClearAll: () => void;
@@ -275,6 +276,7 @@ const CountrySection: React.FC<CountrySectionProps> = ({
   isOpenDefault = false,
   isSelected,
   disabledReason,
+  savedStatus,
   onToggle,
   onSelectAll,
   onClearAll,
@@ -333,10 +335,12 @@ const CountrySection: React.FC<CountrySectionProps> = ({
                     <div>
                       <div className="text-sm font-medium text-slate-100">{league.league.name}</div>
                       <div className="text-xs text-slate-400">{league.country.name}</div>
+                      {savedStatus(league.league.id) && <div className="text-xs text-emerald-300">{savedStatus(league.league.id)}</div>}
                     </div>
                   </label>
                   <input
                     type="checkbox"
+                    aria-label={league.league.name}
                     checked={checked}
                     disabled={!!reason && !checked}
                     title={reason || ''}
@@ -544,19 +548,28 @@ const BetAndFixturesScreen: React.FC = () => {
   // is read fresh from `/me/` (the only entitlement truth) whenever the user signs
   // in; `null` means "not checked yet", so the UI never assumes access by default.
   const [hasPredictionAccess, setHasPredictionAccess] = useState<boolean | null>(null);
+  const [workspaceReady, setWorkspaceReady] = useState(false);
+  const [workspaceError, setWorkspaceError] = useState('');
+  const [restoreAttempt, setRestoreAttempt] = useState(0);
+  const [savedLeagues, setSavedLeagues] = useState<SavedPredictionLeague[]>([]);
+  const [clearingPredictions, setClearingPredictions] = useState(false);
+  const workspaceOwnerRef = useRef<string | null>(null);
+  const accountRef = useRef(user?.uid);
+  accountRef.current = user?.uid;
   useEffect(() => {
-    if (!signedIn) {
+    setHasPredictionAccess(null);
+    if (initialising || !user) {
       setHasPredictionAccess(null);
       return;
     }
     let cancelled = false;
     getMe().then((response) => {
       if (!cancelled) setHasPredictionAccess(isAccessActive(response.data));
-    }).catch(() => {
-      if (!cancelled) setHasPredictionAccess(false);
+    }).catch((error) => {
+      if (!cancelled) setWorkspaceError(describePredictionsFailure(error));
     });
     return () => { cancelled = true; };
-  }, [signedIn]);
+  }, [user?.uid, initialising, restoreAttempt]);
 
   const [leaguesFilters] = useState<LeaguesFilterModel>({ current: true, type: 'League' });
   const [allLeagues, setAllLeagues] = useState<LeagueDataModel[] | null>(null);
@@ -767,6 +780,13 @@ const BetAndFixturesScreen: React.FC = () => {
 
   // Selection helpers
   const isSelected = (id: number) => selectedBatch.some((l) => l.league.id === id);
+  const savedStatus = (id: number): string | null => {
+    if (predictionMode !== 'statistical') return null;
+    const league = allLeagues?.find(entry => entry.league.id === id);
+    const season = league?.seasons.find(entry => entry.current)?.year ?? league?.seasons[0]?.year;
+    const saved = savedLeagues.find(entry => entry.leagueId === id && entry.season === season);
+    return saved ? saved.predictions > 0 ? 'Already predicted · saved' : 'Saved league · no current forecasts' : null;
+  };
   const disabledReason = (id: number): string | null => {
     if (isSelected(id)) return null;
     if (selectedBatch.length >= MAX_BATCH) return `You can select up to ${MAX_BATCH} leagues per bet.`;
@@ -798,10 +818,20 @@ const BetAndFixturesScreen: React.FC = () => {
   const resetSelection = () => setSelectedBatch([]);
 
   const clearPredictions = async () => {
+    setClearingPredictions(true);
+    try {
+      if (signedIn && hasPredictionAccess === true) await clearPredictionWorkspace();
+    } catch (error) {
+      setWorkspaceError(`Saved predictions could not be cleared: ${describePredictionsFailure(error)}`);
+      setClearingPredictions(false);
+      return;
+    }
     setPredictedFixtures([]);
     setExpandedForecasts({});
     setGroupedData({});
     setEnginePredictions({});
+    setSavedLeagues([]);
+    setWorkspaceError('');
     setAllFixtures([]);
     setFutureFixtures([]);
     setCurrentFixtures([]);
@@ -809,6 +839,7 @@ const BetAndFixturesScreen: React.FC = () => {
     setFailedLeagueLoads({});
     setFixtureLoadWarnings([]);
     if (!await clearPredictionsCache()) setFixtureLoadWarnings(['Prediction storage could not be cleared. Please retry when browser storage is available.']);
+    setClearingPredictions(false);
   };
 
   // Cooldown ticker
@@ -819,7 +850,8 @@ const BetAndFixturesScreen: React.FC = () => {
   const msLeft = lastBetAt ? Math.max(0, lastBetAt + COOLDOWN_MS - nowTick) : 0;
 
   // <<< CHANGE: allow bets during countdown if batch < 7
-  const canBet = cacheReady && selectedBatch.length > 0 && (selectedBatch.length < MAX_BATCH || msLeft === 0);
+  const canBet = cacheReady && !clearingPredictions && (predictionMode !== 'statistical' || workspaceReady)
+    && selectedBatch.length > 0 && (selectedBatch.length < MAX_BATCH || msLeft === 0);
 
   // Do not attempt work that must fail: sign-in is authoritative server-side.
   const betDisabledReason = initialising
@@ -862,8 +894,8 @@ const BetAndFixturesScreen: React.FC = () => {
           setSelectedOptions(betOptions.filter(option => cache.view?.optionIds.includes(option.id)));
         }
         const withinWindow = cache.items.filter(item => item.from === fromStr && item.to === toStr);
-        const restoredEngine = withinWindow.flatMap(item => item.enginePredictions ?? []);
-        setEnginePredictions(Object.fromEntries(restoredEngine.map(prediction => [prediction.fixture.fixture.id, prediction])));
+        // Statistical forecasts are restored from the account, never from an
+        // unscoped browser snapshot left by a different signed-in user.
         setOddsLoadMessages(Object.assign({}, ...withinWindow.map(item => item.oddsMessages ?? {})));
         setAllFixtures(previous => dedupeFixtures([...previous, ...withinWindow.flatMap(item => item.fixtures)]));
         setPredictedFixtures(withinWindow.flatMap(item => item.predicted.map(predicted => ({
@@ -876,20 +908,64 @@ const BetAndFixturesScreen: React.FC = () => {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    if (!cacheReady) return;
+    let active = true;
+    const owner = user?.uid;
+    if (initialising || !owner || hasPredictionAccess !== true) {
+      setWorkspaceReady(!initialising && (!owner || hasPredictionAccess === false));
+      setEnginePredictions({});
+      setSavedLeagues([]);
+      if (!owner) workspaceOwnerRef.current = null;
+      return;
+    }
+    const firstRestore = workspaceOwnerRef.current !== owner;
+    if (firstRestore) {
+      setEnginePredictions({});
+      setSavedLeagues([]);
+    }
+    setWorkspaceReady(false);
+    const range = { from: moment(fromDate).format('YYYY-MM-DD'), to: moment(toDate).format('YYYY-MM-DD') };
+    getPredictionWorkspace(firstRestore ? undefined : range).then(response => {
+      if (!active) return;
+      workspaceOwnerRef.current = owner;
+      const restored = response.data.response.map(predictionRowToFixturePrediction)
+        .filter((prediction): prediction is FixturePrediction => prediction !== null);
+      setEnginePredictions(Object.fromEntries(restored.map(prediction => [prediction.fixture.fixture.id, prediction])));
+      setSavedLeagues(response.data.leagues);
+      setAllFixtures(previous => dedupeFixtures([...previous, ...restored.map(prediction => prediction.fixture)]));
+      const restoredFrom = firstRestore && predictionMode === 'statistical' && response.data.from
+        ? new Date(`${response.data.from}T00:00:00`) : fromDate;
+      const restoredTo = firstRestore && predictionMode === 'statistical' && response.data.to
+        ? new Date(`${response.data.to}T00:00:00`) : toDate;
+      const restoredFuture = filterFutureFixtures(restored.map(prediction => prediction.fixture));
+      setFutureFixtures(restoredFuture);
+      setCurrentFixtures(filterBetweenDates(restoredFuture, restoredFrom, restoredTo));
+      if (firstRestore && predictionMode === 'statistical' && response.data.from && response.data.to) {
+        setFromDate(new Date(`${response.data.from}T00:00:00`));
+        setToDate(new Date(`${response.data.to}T00:00:00`));
+      }
+      setWorkspaceError('');
+    }).catch(error => {
+      if (active) setWorkspaceError(`Saved forecasts could not be restored: ${describePredictionsFailure(error)}`);
+    }).finally(() => { if (active) setWorkspaceReady(true); });
+    return () => { active = false; };
+  }, [cacheReady, user?.uid, initialising, hasPredictionAccess, fromDate.toString(), toDate.toString(), predictionMode]);
+
   // Derived fixtures & grouping
   useEffect(() => {
     setFutureFixtures(filterFutureFixtures(allFixtures));
-  }, [allFixtures.length]);
+  }, [allFixtures]);
 
   useEffect(() => {
     setCurrentFixtures(filterBetweenDates(futureFixtures, fromDate, toDate));
-  }, [futureFixtures.length, fromDate.toString(), toDate.toString()]);
+  }, [futureFixtures, fromDate.toString(), toDate.toString()]);
 
   useEffect(()=>{
     if (!cacheReady) return;
     // Initial asynchronous hydration must not trigger a prediction run.
     if (!initialCacheRestored.current) { initialCacheRestored.current = true; return; }
-    if (selectedBatch.length > 0) handleBet()
+    if (selectedBatch.length > 0 && predictionMode === 'legacy') handleBet()
   }, [cacheReady, fromDate.toString(), toDate.toString()])
 
   useEffect(() => {
@@ -1160,6 +1236,7 @@ const BetAndFixturesScreen: React.FC = () => {
       return;
     }
     predictionRunInFlight.current = true;
+    const runOwner = user?.uid;
     const runIds = new Set(runLeagues.map(league => league.league.id));
     const runFailures: Record<number, LeagueLoadFailure> = {};
     setRetryingLeagueIds(retryFailures ? Array.from(runIds) : []);
@@ -1188,11 +1265,6 @@ const BetAndFixturesScreen: React.FC = () => {
 
     // fixtures from cache
     const cachedFixtures = hits.flatMap(h => h.fixtures);
-    const cachedPred = hits.flatMap(h => h.predicted).map(p => {
-      const opt = betOptions.find(o => o.id === p.option.id);
-      const fallback = opt ?? new betOptionModel({ ...p.option, predict: () => ({ fixtures: [], option: {} as betOptionModel }) });
-      return { fixtures: p.fixtures, option: fallback };
-    });
 
     // new fixtures if any misses (multi-season) — also tells us whether we hit network per league
     let fetchedFixtures: FixtureDataModel[] = [];
@@ -1234,7 +1306,7 @@ const BetAndFixturesScreen: React.FC = () => {
     // predict
     const mergedAll = dedupeFixtures([...allFixtures, ...cachedFixtures, ...fetchedFixtures]);
     const currentWindow = filterBetweenDates(filterFutureFixtures(mergedAll), fromDate, toDate);
-    const predictionWindow = retryFailures ? currentWindow.filter(fixture => runIds.has(fixture.league.id)) : currentWindow;
+    const predictionWindow = currentWindow.filter(fixture => runIds.has(fixture.league.id));
 
     const knownResults = new Map<number, { homeGoals: number; awayGoals: number }>();
     mergedAll.forEach((fixture) => {
@@ -1317,7 +1389,9 @@ const BetAndFixturesScreen: React.FC = () => {
         }
       });
     }
-    setOddsLoadMessages(previous => retryFailures ? { ...previous, ...oddsMessages } : oddsMessages);
+    if (accountRef.current !== runOwner) return;
+    workspaceOwnerRef.current = runOwner ?? null;
+    setOddsLoadMessages(previous => ({ ...previous, ...oddsMessages }));
     setFailedLeagueLoads(previous => {
       const updated = { ...previous };
       runIds.forEach(id => { delete updated[id]; });
@@ -1334,7 +1408,14 @@ const BetAndFixturesScreen: React.FC = () => {
         .map((fixture) => publishedPredictions.get(fixture.fixture.id))
         .filter((prediction): prediction is FixturePrediction => Boolean(prediction));
       engineResultsForCache = engineResults;
-      const engineMap: Record<number, FixturePrediction> = retryFailures ? { ...enginePredictions } : {};
+      const engineMap: Record<number, FixturePrediction> = { ...enginePredictions };
+      if (predictionMode === 'statistical') {
+        Object.values(engineMap).forEach(prediction => {
+          if (runIds.has(prediction.fixture.league.id) && !runFailures[prediction.fixture.league.id]) {
+            delete engineMap[prediction.fixture.fixture.id];
+          }
+        });
+      }
       engineResults.forEach((prediction) => {
         engineMap[Number(prediction.fixture.fixture.id)] = prediction;
       });
@@ -1374,10 +1455,34 @@ const BetAndFixturesScreen: React.FC = () => {
       console.error('Prediction engine failed; existing predictions are unaffected.', error);
     }
 
-    const mergedPred = retryFailures ? [
-      ...predictedFixtures.map(entry => ({ ...entry, fixtures: entry.fixtures.filter(fixture => !runIds.has(fixture.league.id)) })).filter(entry => entry.fixtures.length),
+    const mergedPred = [
+      ...predictedFixtures.map(entry => ({ ...entry, fixtures: entry.fixtures.filter(fixture => !runIds.has(fixture.league.id) || runFailures[fixture.league.id]) })).filter(entry => entry.fixtures.length),
       ...freshPred,
-    ] : [...predictedFixtures, ...cachedPred, ...freshPred];
+    ];
+
+    if (predictionMode === 'statistical') {
+      const successful = runLeagues.filter(league => !runFailures[league.league.id]
+        && Array.from(publishedPredictions.values()).some(prediction => prediction.fixture.league.id === league.league.id));
+      if (successful.length) {
+        try {
+          const response = await savePredictionWorkspace({
+            leagues: successful.map(league => ({
+              leagueId: league.league.id,
+              season: league.seasons.find(season => season.current)?.year ?? league.seasons[0]?.year,
+            })), from: fromStr, to: toStr,
+          });
+          if (accountRef.current !== runOwner) return;
+          const consolidated = response.data.response.map(predictionRowToFixturePrediction)
+            .filter((prediction): prediction is FixturePrediction => prediction !== null);
+          setEnginePredictions(Object.fromEntries(consolidated.map(prediction => [prediction.fixture.fixture.id, prediction])));
+          setSavedLeagues(response.data.leagues);
+          consolidated.forEach(prediction => mergedAll.push(prediction.fixture));
+          setWorkspaceError('');
+        } catch (error) {
+          setWorkspaceError(`Your league selection could not be saved to your account. Retry this run: ${describePredictionsFailure(error)}`);
+        }
+      }
+    }
 
     // Store the actual displayed forecasts, including runs that reused fixture data.
     if (runLeagues.length > 0) {
@@ -1417,13 +1522,17 @@ const BetAndFixturesScreen: React.FC = () => {
       }
       toWrite.view = { ts: Date.now(), from: fromStr, to: toStr, optionIds };
       if (!await writePredictionsCache(toWrite)) {
-        setFixtureLoadWarnings(previous => [...previous, 'Prediction storage is unavailable or at capacity; forecasts remain on this page but could not be saved for page refresh.']);
+        setFixtureLoadWarnings(previous => [...previous, predictionMode === 'statistical'
+          ? 'Browser snapshot storage is unavailable; account forecasts are restored from the backend.'
+          : 'Prediction storage is unavailable or at capacity; forecasts remain on this page but could not be saved for page refresh.']);
       }
     }
 
-    setAllFixtures(mergedAll);
-    setFutureFixtures(filterFutureFixtures(mergedAll));
-    setCurrentFixtures(currentWindow);
+    const finalFixtures = dedupeFixtures(mergedAll);
+    const finalFuture = filterFutureFixtures(finalFixtures);
+    setAllFixtures(finalFixtures);
+    setFutureFixtures(finalFuture);
+    setCurrentFixtures(filterBetweenDates(finalFuture, fromDate, toDate));
     setPredictedFixtures(mergedPred);
 
     // <<< CHANGE: start cooldown ONLY if we actually fetched 7 leagues now
@@ -1528,12 +1637,13 @@ const BetAndFixturesScreen: React.FC = () => {
     .filter((selection): selection is PaperSelection => Boolean(selection) && selection?.marketId !== 'btts_no');
   const displayedFixtureIds = predictionMode === 'legacy'
     ? Object.keys(groupedData)
-    : Object.keys(enginePredictions).filter(id => currentFixtures.some(fixture => fixture.fixture.id === Number(id)));
+    : initialising || hasPredictionAccess !== true || workspaceOwnerRef.current !== user?.uid
+      ? [] : Object.keys(enginePredictions).filter(id => currentFixtures.some(fixture => fixture.fixture.id === Number(id)));
   const visibleEnginePredictions = useMemo(
-    () => Object.values(enginePredictions).filter((prediction) =>
+    () => initialising || hasPredictionAccess !== true || workspaceOwnerRef.current !== user?.uid ? [] : Object.values(enginePredictions).filter((prediction) =>
       currentFixtures.some((fixture) => fixture.fixture.id === prediction.fixture.fixture.id)
     ).map(visibleForecastPrediction),
-    [enginePredictions, currentFixtures]
+    [enginePredictions, currentFixtures, initialising, hasPredictionAccess, user?.uid]
   );
 
   // Per-market suggested/strong/none badge levels for every currently-displayed
@@ -1542,11 +1652,11 @@ const BetAndFixturesScreen: React.FC = () => {
   // SAME canonical thresholds the Suggested Bet List / Official Daily List
   // already rely on, via the server, instead of a local copy.
   useEffect(() => {
-    if (predictionMode !== 'statistical' || !visibleEnginePredictions.length) {
+    const requestId = ++highlightsRequestIdRef.current;
+    if (!workspaceReady || predictionMode !== 'statistical' || !visibleEnginePredictions.length) {
       setHighlightsByFixtureId({});
       return;
     }
-    const requestId = ++highlightsRequestIdRef.current;
     getHighlightLevels({ predictions: visibleEnginePredictions })
       .then((response) => {
         if (highlightsRequestIdRef.current !== requestId) return;
@@ -1554,14 +1664,16 @@ const BetAndFixturesScreen: React.FC = () => {
         response.data.response.forEach((row) => { byFixtureId[row.providerFixtureId] = row.markets; });
         setHighlightsByFixtureId(byFixtureId);
       })
-      .catch(() => {
+      .catch((error) => {
         if (highlightsRequestIdRef.current !== requestId) return;
         // Badge-only, non-blocking: a failed fetch just leaves fixtures showing
         // "Probability unavailable" until the next successful batch, the same
         // honest fallback already used when a market has no computed probability.
         setHighlightsByFixtureId({});
+        setWorkspaceError(`Forecast highlights could not be loaded: ${describePredictionsFailure(error)}`);
       });
-  }, [visibleEnginePredictions, predictionMode]);
+    return () => { highlightsRequestIdRef.current += 1; };
+  }, [visibleEnginePredictions, predictionMode, workspaceReady]);
 
   // ===== Render =====
   return (
@@ -1618,14 +1730,14 @@ const BetAndFixturesScreen: React.FC = () => {
                 <div className="flex flex-wrap items-center gap-2">
                   <DatePicker
                     className="w-[140px] rounded-lg border border-slate-500 bg-white px-2 py-1.5 text-xs text-slate-900"
-                    disabled={!cacheReady}
+                    disabled={!cacheReady || predictionMode === 'statistical' && !workspaceReady}
                     selected={fromDate}
                     onChange={(d: Date) => setFromDate(d)}
                   />
                   <span className="text-xs text-slate-200">to</span>
                   <DatePicker
                     className="w-[140px] rounded-lg border border-slate-500 bg-white px-2 py-1.5 text-xs text-slate-900"
-                    disabled={!cacheReady}
+                    disabled={!cacheReady || predictionMode === 'statistical' && !workspaceReady}
                     selected={toDate}
                     onChange={(d: Date) => setToDate(d)}
                   />
@@ -1691,6 +1803,7 @@ const BetAndFixturesScreen: React.FC = () => {
                           >
                             <img src={league.league.logo} alt={league.league.name} className="h-3 w-3 rounded-full" />
                             <span className="max-w-[100px] truncate">{league.league.name}</span>
+                            {savedStatus(league.league.id) && <span className="text-emerald-300">{savedStatus(league.league.id)}</span>}
                           </button>
                         );
                       })}
@@ -1719,6 +1832,7 @@ const BetAndFixturesScreen: React.FC = () => {
                       <img src={league.league.logo} alt={league.league.name} className="h-3.5 w-3.5 rounded-full" />
                       <span className="max-w-[120px] truncate">{league.league.name}</span>
                       <span className="hidden text-[10px] text-slate-400 sm:inline">{league.country.name}</span>
+                      {savedStatus(league.league.id) && <span className="text-emerald-300">{savedStatus(league.league.id)}</span>}
                     </button>
                   );
                 })}
@@ -1803,6 +1917,7 @@ const BetAndFixturesScreen: React.FC = () => {
                         isOpenDefault={idx < 4}
                         isSelected={isSelected}
                         disabledReason={disabledReason}
+                        savedStatus={savedStatus}
                         onToggle={toggleLeague}
                         onSelectAll={() => selectAllInCountry(leagues)}
                         onClearAll={() => clearAllInCountry(leagues)}
@@ -1836,7 +1951,11 @@ const BetAndFixturesScreen: React.FC = () => {
           </div>
 
           <div className="space-y-4 lg:col-span-7 xl:col-span-8">
-            {!cacheReady && <div role="status" className="rounded-xl border border-slate-600 bg-slate-900 p-3 text-sm text-slate-200">Restoring saved forecasts…</div>}
+            {(!cacheReady || predictionMode === 'statistical' && !workspaceReady) && <div role="status" className="rounded-xl border border-slate-600 bg-slate-900 p-3 text-sm text-slate-200">Restoring saved forecasts…</div>}
+            {workspaceError && <div role="alert" className="rounded-xl border border-amber-400/40 p-3 text-sm text-amber-100">
+              {workspaceError}
+              <button type="button" onClick={() => setRestoreAttempt(value => value + 1)} className="ml-3 underline">Retry saved forecasts</button>
+            </div>}
             {loadingBatch && <div ref={predictionLoaderRef} className="scroll-mt-48">
               <PredictionLoader {...predictionLoading} hasPreviousForecasts={displayedFixtureIds.length > 0} />
             </div>}
@@ -1846,6 +1965,7 @@ const BetAndFixturesScreen: React.FC = () => {
               predictions={visibleEnginePredictions}
               loading={loadingBatch}
               statistical={predictionMode === 'statistical'}
+              ready={!initialising && workspaceReady && hasPredictionAccess === true}
               selectedPickKeys={selectedStatisticalPickKeys}
               onReview={prediction => onFixtureClick(prediction.fixture)()}
               onTogglePick={toggleStatisticalPick}
@@ -1856,7 +1976,7 @@ const BetAndFixturesScreen: React.FC = () => {
               </summary>
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs text-slate-400">{predictionRangeLabel}</span>
-                <button type="button" onClick={clearPredictions} disabled={loadingBatch || !cacheReady}
+                <button type="button" onClick={clearPredictions} disabled={loadingBatch || clearingPredictions || !cacheReady || predictionMode === 'statistical' && !workspaceReady}
                   className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-2 py-1 text-[11px] font-semibold text-rose-200 hover:bg-rose-500/20 disabled:opacity-50">Clear predictions</button>
               </div>
               {displayedFixtureIds.length > 0 && (

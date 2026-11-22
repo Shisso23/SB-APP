@@ -77,7 +77,11 @@ export interface AdminJob {
   finishedAt: string | null;
   error: string;
   summary: Record<string, unknown>;
-  leagueResults: Record<string, { status: string; error?: string }>;
+  leagueResults: Record<string, {
+    status: string;
+    error?: string;
+    steps?: Record<string, 'completed' | 'skipped'>;
+  }>;
 }
 
 export interface AdminRunResponse {

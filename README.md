@@ -15,6 +15,40 @@ of this repository's `src/prediction-engine/` and `src/config/prediction-config.
 private prediction runner. There is no automated sync — if you change the engine
 here, re-copy the affected files into the backend repo by hand.
 
+## Admin predictions
+
+The [admin screen](src/screens/admin/AdminScreen.tsx) queues backend jobs:
+
+- **Predict** prepares historical data, refreshes fixtures/standings/odds, then
+  generates and saves forecasts for selected leagues. Refresh is not required first.
+- **Refresh latest data** updates inputs only.
+- **Publish official list** separately freezes five qualifying saved forecasts
+  across configured leagues for the chosen date; existing lists are not overwritten.
+- **Refresh view** reloads the dashboard without requesting prediction work.
+
+Queued/running jobs and coverage update automatically, even after reopening the
+page. Queued means waiting for the backend worker. The current scheduled worker
+has a 15-minute interval; longer waits require checking that worker's deployment,
+logs and environment. This page cannot execute jobs if the worker is absent.
+
+## Saved prediction desk
+
+Statistical league batches are added to the signed-in account's backend workspace.
+Adding Italy/Spain after England/Germany keeps all four leagues' current forecasts
+visible within the selected date window. League controls mark already-predicted
+leagues but remain selectable for an intentional refresh.
+
+After a refresh or a new session, the desk waits for Firebase and access checks,
+then loads every page of the account's saved backend forecasts and requests the
+suggested bet list from that consolidated set. IndexedDB is not the authoritative
+store for statistical forecasts; legacy rules retain their existing browser cache.
+Normal forecast expiry, kickoff rules and suggestion thresholds still apply.
+
+**Clear selected leagues** changes only the next batch. **Clear predictions** clears
+the account's workspace and local view, not the canonical database forecasts.
+Selecting those leagues again reuses valid saved forecasts. The updated backend
+and migration `0010_prediction_workspace` must be deployed before this frontend.
+
 ## Available Scripts
 
 In the project directory, you can run:

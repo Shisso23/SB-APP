@@ -74,6 +74,20 @@ const now = Date.UTC(2026, 10, 7, 10);
 const props = { loading: false, statistical: true, selectedPickKeys: [], onReview: jest.fn(), onTogglePick: jest.fn() };
 beforeEach(() => { props.onReview.mockClear(); props.onTogglePick.mockClear(); mockGetSuggestedBetList.mockReset(); });
 
+test('waits for session readiness and ignores a response after the forecast set is cleared', async () => {
+  const prediction = makeForecastBetPrediction({ now });
+  let resolve: (value: unknown) => void = () => { throw new Error('Request was not started'); };
+  mockGetSuggestedBetList.mockImplementation(() => new Promise(done => { resolve = done; }));
+  const { rerender } = render(<SuggestedBetList {...props} predictions={[prediction]} ready={false} />);
+  expect(mockGetSuggestedBetList).not.toHaveBeenCalled();
+  rerender(<SuggestedBetList {...props} predictions={[prediction]} ready />);
+  expect(mockGetSuggestedBetList).toHaveBeenCalledTimes(1);
+  rerender(<SuggestedBetList {...props} predictions={[]} ready />);
+  resolve({ data: { response: [toSuggestion(prediction, prediction.markets[0].marketId)] } });
+  await waitFor(() => expect(screen.getByRole('heading', { name: /Suggested bet list/ })).toHaveTextContent('· 0'));
+  expect(screen.queryByRole('listitem')).not.toBeInTheDocument();
+});
+
 test('offers up to five distinct matches, adjustable size, and copies a labelled review list', async () => {
   const predictions = Array.from({ length: 8 }, (_, index) => makeForecastBetPrediction({ now, id: index + 1 }));
   mockBetList(predictions);

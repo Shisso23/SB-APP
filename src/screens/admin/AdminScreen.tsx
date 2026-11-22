@@ -1,9 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
   getAdminCoverage,
   getAdminJobs,
-  getAdminJob,
   getAdminStatus,
   startAdminRun,
 } from '../../services/admin';
@@ -72,9 +71,9 @@ const AdminScreen: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [coverageError, setCoverageError] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
   const [activeJobId, setActiveJobId] = useState<number | null>(null);
-
-  const pollTimer = useRef<number | null>(null);
 
   /** Ask the server whether this user is an admin. Never inferred locally. */
   useEffect(() => {
@@ -99,10 +98,10 @@ const AdminScreen: React.FC = () => {
     try {
       const response = await getAdminCoverage(date);
       setCoverage(response.data);
-      setError(null);
+      setCoverageError(null);
       return response.data;
     } catch {
-      setError('We could not load league coverage.');
+      setCoverageError('We could not load league coverage.');
       return null;
     }
   }, []);
@@ -111,53 +110,48 @@ const AdminScreen: React.FC = () => {
     try {
       const response = await getAdminJobs(date);
       setJobs(response.data.jobs);
+      setStatusError(null);
     } catch {
-      /* Coverage already surfaces errors; the list can stay as-is. */
+      setStatusError('We could not load run status. Retrying while a run is active.');
     }
   }, []);
 
   useEffect(() => {
     if (!status?.isAdmin) return;
+    setActiveJobId(null);
     void loadCoverage(targetDate);
     void loadJobs(targetDate);
   }, [status?.isAdmin, targetDate, loadCoverage, loadJobs]);
 
-  /** Poll a running job until it reaches a terminal state. */
-  const pollJob = useCallback(
-    async (jobId: number) => {
-      const tick = async () => {
-        try {
-          const response = await getAdminJob(jobId);
-          const job = response.data;
-          if (job.isTerminal) {
-            if (pollTimer.current) window.clearTimeout(pollTimer.current);
-            pollTimer.current = null;
-            setActiveJobId(null);
-            setNotice(
-              job.status === 'completed'
-                ? 'Run completed. Coverage updated below.'
-                : `Run ${job.status}: ${job.error || 'see details'}`,
-            );
-            void loadCoverage(targetDate);
-            void loadJobs(targetDate);
-            return;
-          }
-        } catch {
-          /* Keep polling: a transient status read should not abort the run view. */
-        }
-        pollTimer.current = window.setTimeout(tick, 3000);
-      };
-      await tick();
-    },
-    [targetDate, loadCoverage, loadJobs],
+  const hasActiveRuns = activeJobId !== null || jobs.some(
+    (job) => job.status === 'queued' || job.status === 'running',
   );
 
-  useEffect(
-    () => () => {
-      if (pollTimer.current) window.clearTimeout(pollTimer.current);
-    },
-    [],
-  );
+  useEffect(() => {
+    if (!status?.isAdmin || !hasActiveRuns) return;
+    let cancelled = false;
+    let timer: number;
+    const tick = async () => {
+      await Promise.all([loadCoverage(targetDate), loadJobs(targetDate)]);
+      if (!cancelled) timer = window.setTimeout(tick, 3000);
+    };
+    timer = window.setTimeout(tick, 3000);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [status?.isAdmin, hasActiveRuns, targetDate, loadCoverage, loadJobs]);
+
+  useEffect(() => {
+    const job = jobs.find((row) => row.jobId === activeJobId);
+    if (!job || job.status === 'queued' || job.status === 'running') return;
+    setActiveJobId(null);
+    setNotice(
+      job.status === 'completed'
+        ? 'Run completed. Coverage updated below.'
+        : `Run ${job.status}: ${job.error || 'see details'}`,
+    );
+  }, [jobs, activeJobId]);
 
   const eligibleLeagues = useMemo(
     () => (coverage?.leagues ?? []).filter((row) => row.eligibleFixtures > 0).map((row) => row.leagueId),
@@ -173,17 +167,20 @@ const AdminScreen: React.FC = () => {
   const run = async (kind: AdminJobKind) => {
     setNotice(null);
     setError(null);
-    if (!selectedLeagues.length) {
+    if (kind !== 'publish' && !selectedLeagues.length) {
       setError('Select at least one league before starting a run.');
       return;
     }
     setBusy(true);
     try {
-      const response = await startAdminRun({ kind, date: targetDate, leagues: selectedLeagues });
+      const response = await startAdminRun({
+        kind, date: targetDate,
+        leagues: kind === 'publish' ? status?.configuredLeagues ?? [] : selectedLeagues,
+      });
       setActiveJobId(response.data.jobId);
-      setNotice(`Run queued (job ${response.data.jobId}). Status will update automatically.`);
+      setNotice(`Run queued (job ${response.data.jobId}). Waiting for the background worker; status will update automatically.`);
       void loadJobs(targetDate);
-      void pollJob(response.data.jobId);
+      void loadCoverage(targetDate);
     } catch (caught) {
       // The server returns an actionable reason (e.g. an unconfigured league);
       // surface it rather than a generic failure.
@@ -235,9 +232,9 @@ const AdminScreen: React.FC = () => {
             {notice}
           </p>
         ) : null}
-        {error ? (
+        {error || coverageError || statusError ? (
           <p role="alert" className="mb-4 rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-900">
-            {error}
+            {error || coverageError || statusError}
           </p>
         ) : null}
 
@@ -259,7 +256,6 @@ const AdminScreen: React.FC = () => {
               <legend className="text-sm font-medium text-slate-700">Leagues to cover</legend>
               <div className="mt-1 flex flex-wrap gap-2">
                 {(coverage?.leagues ?? []).map((row) => {
-                  const disabled = row.eligibleFixtures === 0;
                   const checked = selectedLeagues.includes(row.leagueId);
                   const inputId = `admin-league-${row.leagueId}`;
                   return (
@@ -268,13 +264,12 @@ const AdminScreen: React.FC = () => {
                       htmlFor={inputId}
                       className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-sm ${
                         checked ? 'border-teal-400 bg-teal-50 text-teal-900' : 'border-slate-300 bg-white text-slate-700'
-                      } ${disabled ? 'opacity-60' : ''}`}
+                      }`}
                     >
                       <input
                         id={inputId}
                         type="checkbox"
                         checked={checked}
-                        disabled={disabled}
                         onChange={() => toggleLeague(row.leagueId)}
                         className="h-4 w-4"
                       />
@@ -327,7 +322,7 @@ const AdminScreen: React.FC = () => {
             </button>
             <button
               type="button"
-              disabled={busy || !selectedLeagues.length}
+              disabled={busy || !status.configuredLeagues.length}
               onClick={() => void run('publish')}
               className="rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 disabled:opacity-50"
             >
@@ -338,12 +333,23 @@ const AdminScreen: React.FC = () => {
               guess whether the control is broken. */}
           {!selectedLeagues.length ? (
             <p role="alert" className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
-              Select at least one league to start a run.
+              Select at least one league to predict or refresh data.
             </p>
           ) : null}
           <p className="mt-3 text-xs text-slate-500">
-            Successful leagues become available to users as the run progresses; there is no need to wait
-            for every league to finish.
+            Predict prepares historical data, refreshes fixtures, standings and odds, then generates
+            and saves predictions. You do not need to run Refresh first. Refresh latest data only
+            updates inputs; it does not generate predictions. Publish official list separately freezes
+            five qualifying stored predictions across the configured leagues for the selected date.
+            An existing official list is not overwritten. Predict and Refresh use the same bounded
+            pipeline as the automated schedules. The selected date sets the season and coverage date;
+            prediction itself processes upcoming fixtures in that season, not just that date.
+            Steps already completed in the same five-minute slot are reused; trigger again in a later
+            slot to run them again.
+          </p>
+          <p className="mt-2 text-xs text-slate-500">
+            Queued means waiting for the backend worker, not predicting yet. The scheduled worker may
+            take up to 15 minutes to start. A job that stays queued longer needs its worker checked.
           </p>
         </section>
 
@@ -494,6 +500,12 @@ const AdminScreen: React.FC = () => {
                         >
                           League {leagueId}: {result.status}
                           {result.error ? ` (${result.error})` : ''}
+                          {result.steps && Object.values(result.steps).includes('skipped')
+                            ? ` · already completed this five-minute slot: ${Object.entries(result.steps)
+                                .filter(([, outcome]) => outcome === 'skipped')
+                                .map(([step]) => step)
+                                .join(', ')}`
+                            : ''}
                         </li>
                       ))}
                     </ul>

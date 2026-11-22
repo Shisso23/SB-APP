@@ -10,7 +10,7 @@
  * All API calls are mocked; no test performs a real request.
  */
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -156,13 +156,12 @@ describe('league selection is a filter', () => {
     expect(mocked.startAdminRun).not.toHaveBeenCalled();
   });
 
-  it('disables leagues that have no eligible fixtures', async () => {
+  it('allows leagues with no stored eligible fixtures to be refreshed by Predict', async () => {
     mocked.getAdminCoverage.mockResolvedValue({
       data: coverageOf([league({ leagueId: 78, eligibleFixtures: 0, status: 'no_eligible_fixtures' })]),
     } as never);
     renderScreen();
-    // Nothing to generate for this date, so it cannot be selected.
-    expect(await screen.findByRole('checkbox', { name: /League 78/ })).toBeDisabled();
+    expect(await screen.findByRole('checkbox', { name: /League 78/ })).toBeEnabled();
   });
 });
 
@@ -215,6 +214,80 @@ describe('coverage dashboard', () => {
 });
 
 describe('job tracking', () => {
+  it('explains which pipeline steps reused an already completed slot', async () => {
+    mocked.getAdminJobs.mockResolvedValue({
+      data: { jobs: [job({
+        status: 'completed',
+        leagueResults: { '39': { status: 'ok', steps: { refresh: 'completed', predict: 'skipped' } } },
+      })] },
+    } as never);
+    renderScreen();
+    expect(await screen.findByText(/already completed this five-minute slot: predict/i)).toBeInTheDocument();
+  });
+
+  it('does not erase a refused action when automatic coverage polling succeeds', async () => {
+    mocked.getAdminJobs.mockResolvedValue({ data: { jobs: [job()] } } as never);
+    mocked.startAdminRun.mockRejectedValue({
+      response: { data: { detail: 'A run is already queued for this date.' } },
+    });
+    jest.useFakeTimers();
+    try {
+      renderScreen();
+      await screen.findByText('#7');
+      await act(async () => {
+        userEvent.click(screen.getByRole('checkbox', { name: /League 39/ }));
+      });
+      await act(async () => {
+        userEvent.click(screen.getByRole('button', { name: 'Predict' }));
+      });
+      await act(async () => { jest.advanceTimersByTime(3000); });
+      expect(screen.getByRole('alert')).toHaveTextContent('A run is already queued for this date.');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps status errors visible when coverage succeeds, then recovers on the next poll', async () => {
+    mocked.getAdminJobs.mockResolvedValue({ data: { jobs: [job()] } } as never);
+    jest.useFakeTimers();
+    try {
+      renderScreen();
+      await screen.findByText('#7');
+      mocked.getAdminJobs.mockRejectedValueOnce(new Error('offline'));
+      await act(async () => { jest.advanceTimersByTime(3000); });
+      expect(screen.getByText(/We could not load run status/)).toBeInTheDocument();
+      await act(async () => { jest.advanceTimersByTime(3000); });
+      expect(screen.queryByText(/We could not load run status/)).not.toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('updates queued runs after reopening the page and stops polling when completed', async () => {
+    mocked.getAdminJobs.mockResolvedValue({ data: { jobs: [job()] } } as never);
+    jest.useFakeTimers();
+    try {
+      renderScreen();
+      await screen.findByText('#7');
+      mocked.getAdminJobs.mockResolvedValue({
+        data: { jobs: [job({ status: 'running' })] },
+      } as never);
+      await act(async () => { jest.advanceTimersByTime(3000); });
+      expect(screen.getByText(/Running/)).toBeInTheDocument();
+      mocked.getAdminJobs.mockResolvedValue({
+        data: { jobs: [job({ status: 'completed' })] },
+      } as never);
+      await act(async () => { jest.advanceTimersByTime(3000); });
+      expect(screen.getByText(/Completed/)).toBeInTheDocument();
+      const calls = mocked.getAdminJobs.mock.calls.length;
+      await act(async () => { jest.advanceTimersByTime(6000); });
+      expect(mocked.getAdminJobs).toHaveBeenCalledTimes(calls);
+      expect(mocked.getAdminCoverage.mock.calls.length).toBeGreaterThan(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('reports a queued job and does not block the page', async () => {
     mocked.startAdminRun.mockResolvedValue({
       data: { jobId: 12, kind: 'generate', targetDate: '2026-03-10', season: 2026, leagues: [39], status: 'queued' },
@@ -253,6 +326,24 @@ describe('job tracking', () => {
   });
 });
 describe('publication state', () => {
+  it('publishes the official list separately across configured leagues without requiring a selection', async () => {
+    mocked.getAdminStatus.mockResolvedValue({
+      data: { isAdmin: true, isMember: false, configuredLeagues: [39, 140] },
+    } as never);
+    mocked.startAdminRun.mockResolvedValue({
+      data: { jobId: 12, kind: 'publish', targetDate: '2026-03-10',
+        season: 2026, leagues: [39, 140], status: 'queued' },
+    } as never);
+    renderScreen();
+    await screen.findByRole('heading', { name: 'Prediction workflow' });
+    await act(async () => {
+      userEvent.click(screen.getByRole('button', { name: 'Publish official list' }));
+    });
+    expect(mocked.startAdminRun).toHaveBeenCalledWith({
+      kind: 'publish', date: expect.any(String), leagues: [39, 140],
+    });
+  });
+
   it('shows a stale league as stale rather than silently current', async () => {
     mocked.getAdminCoverage.mockResolvedValue({
       data: coverageOf([league()], '0 of 1 eligible leagues published', {

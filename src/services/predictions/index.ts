@@ -10,13 +10,14 @@
  * never computes a forecast itself; it only reads what the server has already
  * published for a fixture.
  */
-import { apiClient, apiGet } from '../api/client';
+import { apiClient, apiGet, ApiRequestError } from '../api/client';
+import type { AxiosResponse } from 'axios';
 import { FixturePrediction } from '../../prediction-engine/types';
 
 const endpoint = '/predictions/';
 
 export const getPredictionsByLeagueSeason = async ({ leagueId, season }: { leagueId: number; season: number }) => {
-  return apiGet(endpoint, { params: { league: leagueId, season } });
+  return readPredictionPages<PredictionsPayload>(endpoint, { league: leagueId, season });
 };
 
 export const getPredictionsByFixture = async (fixtureId: number) => {
@@ -42,6 +43,45 @@ export interface PredictionsPayload {
   errors?: unknown;
   response?: PredictionEnvelopeRow[];
 }
+
+const readPredictionPages = async <T extends PredictionsPayload>(
+  path: string, params: Record<string, string | number> = {}, initial?: AxiosResponse<T>,
+) => {
+  const first = initial ?? await apiGet<T>(path, { params: { ...params, page_size: 200 } });
+  if (!Array.isArray(first.data.response)) throw new ApiRequestError('The saved prediction response was incomplete.');
+  const rows = [...first.data.response];
+  const pages = first.data.paging?.total ?? 1;
+  for (let page = 2; page <= pages; page += 1) {
+    const next = await apiGet<T>(path, { params: { ...params, page_size: 200, page } });
+    if (!Array.isArray(next.data.response)) throw new ApiRequestError('The saved prediction response was incomplete.');
+    rows.push(...next.data.response);
+  }
+  return { ...first, data: { ...first.data, response: rows, results: rows.length } };
+};
+
+export interface SavedPredictionLeague {
+  leagueId: number;
+  season: number;
+  predictions: number;
+}
+
+export interface PredictionWorkspacePayload extends PredictionsPayload {
+  leagues: SavedPredictionLeague[];
+  from: string | null;
+  to: string | null;
+}
+
+export const getPredictionWorkspace = (range?: { from: string; to: string }) =>
+  readPredictionPages<PredictionWorkspacePayload>(`${endpoint}workspace/`, range);
+
+export const savePredictionWorkspace = async (workspace: {
+  leagues: { leagueId: number; season: number }[]; from: string; to: string;
+}) => readPredictionPages<PredictionWorkspacePayload>(
+  `${endpoint}workspace/`, { from: workspace.from, to: workspace.to },
+  await apiClient.post<PredictionWorkspacePayload>(`${endpoint}workspace/`, workspace, { params: { page_size: 200 } }),
+);
+
+export const clearPredictionWorkspace = () => apiClient.delete(`${endpoint}workspace/`);
 
 /**
  * Server-computed display preference for a market: the SAME label/meaning/

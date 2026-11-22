@@ -47,10 +47,11 @@ export const SuggestedBetList: React.FC<{
   predictions: FixturePrediction[];
   loading: boolean;
   statistical: boolean;
+  ready?: boolean;
   selectedPickKeys: string[];
   onReview: (prediction: FixturePrediction) => void;
   onTogglePick: (fixtureId: number, market: MarketValue) => void;
-}> = ({ predictions, loading, statistical, selectedPickKeys, onReview, onTogglePick }) => {
+}> = ({ predictions, loading, statistical, ready = true, selectedPickKeys, onReview, onTogglePick }) => {
   const [limit, setLimit] = useState(DEFAULT_BET_LIST_SIZE);
   const [copyMessage, setCopyMessage] = useState('');
   const [suggestions, setSuggestions] = useState<BetListSuggestion[]>([]);
@@ -59,13 +60,13 @@ export const SuggestedBetList: React.FC<{
   const requestIdRef = useRef(0);
 
   useEffect(() => {
-    if (!statistical || !predictions.length) {
+    const requestId = ++requestIdRef.current;
+    if (!ready || !statistical || !predictions.length) {
       setSuggestions([]);
       setFetchError('');
       setFetching(false);
       return;
     }
-    const requestId = ++requestIdRef.current;
     setFetching(true);
     setFetchError('');
     getSuggestedBetList({ predictions, limit })
@@ -80,7 +81,8 @@ export const SuggestedBetList: React.FC<{
         setFetching(false);
         setFetchError(error instanceof Error ? error.message : 'Could not load the suggested bet list.');
       });
-  }, [predictions, limit, statistical]);
+    return () => { requestIdRef.current += 1; };
+  }, [predictions, limit, statistical, ready]);
 
   const predictionsById = new Map(predictions.map((prediction) => [prediction.fixture.fixture.id, prediction]));
   const isLoading = loading || fetching;

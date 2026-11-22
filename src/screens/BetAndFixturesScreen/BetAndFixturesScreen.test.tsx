@@ -13,12 +13,13 @@ import { readPredictionsCache, writePredictionsCache, clearPredictionsCache } fr
 import { writeBrowserCache, resetMemoryBrowserCache } from '../../services/test-support/memory-browser-cache';
 import { FORECAST_HIGHLIGHTS, ForecastPreference, impliedHighlightResult, forecastProbability, ForecastId } from '../../config/forecast-highlights';
 import { FixturePrediction } from '../../prediction-engine/types';
+import { PredictionEnvelopeRow, PredictionWorkspacePayload } from '../../services/predictions';
 jest.mock('../../services/browser-cache', () => require('../../services/test-support/memory-browser-cache'));
 
 jest.mock('../../services/api/client', () => ({
   __esModule: true,
   apiGet: jest.fn(),
-  apiClient: { post: jest.fn() },
+  apiClient: { post: jest.fn(), delete: jest.fn() },
   PremiumRequiredError: class PremiumRequiredError extends Error {},
   SessionExpiredError: class SessionExpiredError extends Error {},
   SignInRequiredError: class SignInRequiredError extends Error {},
@@ -33,7 +34,9 @@ jest.mock('react-redux', () => ({
 }));
 
 // The screen requires a signed-in user; default the test to signed-in.
-const mockAuth = { user: { email: 'test@example.com' } as unknown, initialising: false, markSignedOut: jest.fn() };
+const mockAuth: { user: { uid: string; email: string } | null; initialising: boolean; markSignedOut: jest.Mock } = {
+  user: { uid: 'test-user', email: 'test@example.com' }, initialising: false, markSignedOut: jest.fn(),
+};
 jest.mock('../../services/auth/AuthProvider', () => ({
   __esModule: true,
   useAuth: () => mockAuth,
@@ -52,6 +55,28 @@ const mockLeaguesState = {
 };
 const get = apiGet as jest.Mock;
 const post = apiClient.post as jest.Mock;
+const remove = apiClient.delete as jest.Mock;
+type TestPredictionRow = Omit<PredictionEnvelopeRow, 'output'> & { output: FixturePrediction };
+const serverPredictions = new Map<number, TestPredictionRow>();
+const serverWorkspaces = new Map<string, PredictionWorkspacePayload>();
+const workspaceResponse = (range?: { from?: string; to?: string }) => {
+  const workspace = serverWorkspaces.get(mockAuth.user?.uid ?? '') ?? {
+    leagues: [], from: null, to: null, response: [],
+  };
+  const from = range?.from ?? workspace.from;
+  const to = range?.to ?? workspace.to;
+  const response = Array.from(serverPredictions.values()).filter(row => {
+    const fixture = row.output.fixture;
+    const day = fixture.fixture.date.slice(0, 10);
+    return workspace.leagues.some(league => league.leagueId === fixture.league.id && league.season === fixture.league.season)
+      && (!from || day >= from) && (!to || day <= to);
+  });
+  return { data: { ...workspace, from, to, response, results: response.length,
+    leagues: workspace.leagues.map(league => ({ ...league,
+      predictions: response.filter(row => row.output.fixture.league.id === league.leagueId).length,
+    })), errors: [], paging: { current: 1, total: 1 },
+  } };
+};
 
 /** Wire-format mapping matching the backend's real `bet_list`/`highlight_levels`
  * operations exactly (see PredictXI-backend's prediction_runner/run.ts), so this
@@ -117,16 +142,33 @@ beforeEach(async () => {
   get.mockReset();
   post.mockReset();
   mockDispatch.mockClear();
-  mockAuth.user = { email: 'test@example.com' };
+  mockAuth.user = { uid: 'test-user', email: 'test@example.com' };
+  mockAuth.initialising = false;
+  serverPredictions.clear();
+  serverWorkspaces.clear();
+  remove.mockReset();
+  remove.mockImplementation(() => {
+    serverWorkspaces.delete(mockAuth.user?.uid ?? '');
+    return Promise.resolve({ status: 204 });
+  });
   resultFinished = false;
   failRefresh = false;
   activeSeasonRequests = 0;
-  post.mockImplementation((path: string, body: { predictions: FixturePrediction[]; limit?: number }) => {
+  post.mockImplementation((path: string, body: { predictions: FixturePrediction[]; limit?: number } & PredictionWorkspacePayload) => {
     if (path === '/predictions/bet-list/') return Promise.resolve(mockBetListResponse(body.predictions, body.limit));
     if (path === '/predictions/highlights/') return Promise.resolve(mockHighlightsResponse(body.predictions));
+    if (path === '/predictions/workspace/') {
+      const owner = mockAuth.user?.uid ?? '';
+      const previous = serverWorkspaces.get(owner);
+      const leagues = new Map((previous?.leagues ?? []).map(league => [`${league.leagueId}:${league.season}`, league]));
+      body.leagues.forEach(league => leagues.set(`${league.leagueId}:${league.season}`, league));
+      serverWorkspaces.set(owner, { from: body.from, to: body.to, leagues: Array.from(leagues.values()) });
+      return Promise.resolve(workspaceResponse());
+    }
     throw new Error(`Unexpected test POST request: ${path}`);
   });
   get.mockImplementation((endpoint, options) => {
+    if (endpoint === '/predictions/workspace/') return Promise.resolve(workspaceResponse(options?.params));
     if (endpoint === '/me/') {
       return Promise.resolve({ data: { has_prediction_access: true, prediction_access_ends_at: '2099-01-01' } });
     }
@@ -146,7 +188,9 @@ beforeEach(async () => {
         valid_until: null, is_actionable: true,
         output: predictFixture({ fixture, allFixtures, leaguesStandings: [] }),
       });
-      return Promise.resolve({ data: { response: [toRow(1, settled), toRow(2, upcoming)], errors: [], results: 2 } });
+      const response = [toRow(1, settled), toRow(2, upcoming)];
+      response.forEach(row => serverPredictions.set(row.id, row));
+      return Promise.resolve({ data: { response, errors: [], results: 2 } });
     }
     if (endpoint === '/fixtures/') {
       const season = options.params.season;
@@ -239,7 +283,7 @@ it('does not run predictions when signed out', async () => {
   await waitFor(() => expect(run).toBeDisabled());
   // No fixtures request should be issued while signed out.
   expect(get.mock.calls.filter(([endpoint]) => endpoint === '/fixtures/')).toHaveLength(0);
-  mockAuth.user = { email: 'test@example.com' };
+  mockAuth.user = { uid: 'test-user', email: 'test@example.com' };
 });
 it('shows a paywall CTA and blocks the predictions fetch when no active pass exists', async () => {
   const implementation = get.getMockImplementation();
@@ -311,7 +355,7 @@ it('keeps every forecast visible with an honest empty suggestion state when prob
 });
 
 
-it('restores statistical forecasts and highlights after remount without refetching or renewing their six-hour lifetime', async () => {
+it('restores statistical forecasts from the backend after remount without regenerating or renewing the browser cache', async () => {
   await runInitialBatch();
   const cacheBefore = await readPredictionsCache();
   const forecastsBefore = screen.getByText(/All forecasts and market details/).closest('details')!.textContent;
@@ -321,9 +365,8 @@ it('restores statistical forecasts and highlights after remount without refetchi
   await renderPredictionDesk();
   await screen.findAllByText('2–5 total goals');
   expect(screen.getByText(/All forecasts and market details/).closest('details')!.textContent).toBe(forecastsBefore);
-  // Entitlement is re-checked via /me/ on every mount; no fixture/prediction/odds
-  // refetch should happen because the cache is still within its lifetime.
-  const dataRequestsAfter = get.mock.calls.slice(requestsBefore).filter(([endpoint]) => endpoint !== '/me/');
+  const dataRequestsAfter = get.mock.calls.slice(requestsBefore).filter(([endpoint]) =>
+    endpoint !== '/me/' && endpoint !== '/predictions/workspace/');
   expect(dataRequestsAfter).toHaveLength(0);
   expect(await readPredictionsCache()).toEqual(cacheBefore);
   expect(screen.queryByText(/BTTS No/)).not.toBeInTheDocument();
@@ -352,6 +395,7 @@ it('restores a saved date range and legacy results, and clearing removes both ca
   expect(screen.getByDisplayValue('01/01/2020')).toBeInTheDocument();
   expect(screen.getByDisplayValue('01/01/2099')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Clear predictions' }));
+  await waitFor(async () => expect((await readPredictionsCache()).items).toHaveLength(0));
   const clearedCache = await readPredictionsCache();
   expect(clearedCache.items).toHaveLength(0);
   expect(clearedCache.view).toBeUndefined();
@@ -361,15 +405,15 @@ it('restores a saved date range and legacy results, and clearing removes both ca
   expect(screen.getByText(/Legacy fixture results/)).toHaveTextContent('0 fixtures');
 });
 
-it('does not restore cached predictions at the six-hour expiry boundary', async () => {
+it('restores valid backend forecasts even when the browser snapshot has expired', async () => {
   await runInitialBatch();
   const cache = await readPredictionsCache();
   cache.items.forEach((item: { ts: number }) => { item.ts = Date.now() - 6 * 60 * 60 * 1000; });
   await writePredictionsCache(cache);
   cleanup();
   await renderPredictionDesk();
-  expect(screen.getByText(/All forecasts and market details/)).toHaveTextContent('0 fixtures');
-  expect(screen.queryByText('2–5 total goals')).not.toBeInTheDocument();
+  await screen.findAllByText('2–5 total goals');
+  expect(screen.getByText(/All forecasts and market details/)).not.toHaveTextContent('0 fixtures');
 });
 
 test.each(['not-json', '{"items":{}}'])('ignores malformed prediction cache: %s', async raw => {
@@ -397,7 +441,10 @@ it('keeps forecasts usable and reports a genuine IndexedDB write failure', async
   writeBrowserCache.mockRejectedValueOnce(new DOMException('Database full', 'QuotaExceededError'));
   await runInitialBatch();
   expect(screen.getAllByText('2–5 total goals').length).toBeGreaterThan(0);
-  expect(screen.getByRole('alert')).toHaveTextContent(/could not be saved for page refresh/);
+  expect(screen.getByRole('alert')).toHaveTextContent(/account forecasts are restored from the backend/);
+  cleanup();
+  await renderPredictionDesk();
+  await screen.findAllByText('2–5 total goals');
 });
 
 it('expands or collapses individual fixtures and the full forecast list without removing forecasts', async () => {
@@ -431,6 +478,7 @@ it('shows progress while a request is pending and removes the loader when predic
   let release: () => void = () => undefined;
   const pending = new Promise<void>(resolve => { release = resolve; });
   get.mockImplementation(async (endpoint, options) => {
+    if (endpoint === '/predictions/workspace/') return workspaceResponse(options?.params);
     if (endpoint === '/fixtures/' && options.params.season === currentYear) await pending;
     return implementation(endpoint, options);
   });
@@ -459,7 +507,7 @@ it('keeps existing forecasts visible while refreshing and clears the loader afte
   expect(screen.getByRole('alert')).toHaveTextContent('Fixture refresh unavailable');
 });
 
-const retryLeagueNames: Record<number, string> = { 39: 'Premier League', 78: 'Bundesliga', 140: 'La Liga' };
+const retryLeagueNames: Record<number, string> = { 39: 'Premier League', 78: 'Bundesliga', 135: 'Serie A', 140: 'La Liga' };
 const setupLeagueRetryApi = () => {
   const base = mockLeaguesState.leagues.response[0];
   mockLeaguesState.leagues.response = [39, 78, 140].map(id => ({
@@ -474,6 +522,7 @@ const setupLeagueRetryApi = () => {
   const fallbackSuccesses = new Set<string>();
   const blockers = new Map<string, Promise<void>>();
   get.mockImplementation(async (endpoint, options) => {
+    if (endpoint === '/predictions/workspace/') return workspaceResponse(options?.params);
     if (endpoint === '/me/') {
       return { data: { has_prediction_access: true, prediction_access_ends_at: '2099-01-01' } };
     }
@@ -487,11 +536,13 @@ const setupLeagueRetryApi = () => {
         league: { ...base.league, id: league, name: retryLeagueNames[league] },
       };
       const output = predictFixture({ fixture, allFixtures: [], leaguesStandings: [] });
-      return { data: { response: [{
+      const row = {
         id: league, engine_version: 'test', config_hash: 'test',
         generated_at: new Date(now).toISOString(), as_of: new Date(now).toISOString(),
         valid_until: null, is_actionable: true, output,
-      }], errors: [], results: 1 } };
+      };
+      serverPredictions.set(row.id, row);
+      return { data: { response: [row], errors: [], results: 1 } };
     }
     const { league, season } = options.params;
     if (endpoint === '/fixtures/') {
@@ -529,6 +580,86 @@ const runRetryBatch = async () => {
   await screen.findByRole('button', { name: 'Bet (run predictions)' });
   await awaitHighlightsSettled();
 };
+
+it('consolidates separate league batches and restores the complete fixture and bet-list inputs without browser storage', async () => {
+  setupLeagueRetryApi();
+  const base = mockLeaguesState.leagues.response[0];
+  mockLeaguesState.leagues.response.push({
+    ...base, league: { ...base.league, id: 135, name: 'Serie A' },
+    country: { ...base.country, name: 'Italy' },
+  });
+  localStorage.setItem('popularLeagueIds_v1', JSON.stringify([39, 78, 135, 140]));
+  await renderPredictionDesk();
+  const runBatch = async (ids: number[]) => {
+    for (const id of ids) fireEvent.click(screen.getAllByRole('button', { name: new RegExp(retryLeagueNames[id]) })[0]);
+    const run = screen.getByRole('button', { name: 'Bet (run predictions)' });
+    await waitFor(() => expect(run).toBeEnabled());
+    fireEvent.click(run);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Bet (run predictions)' })).toBeEnabled());
+  };
+  await runBatch([39, 78]);
+  expect(screen.getByText(/All forecasts and market details/)).toHaveTextContent('2 fixtures');
+  expect(screen.getAllByRole('button', { name: /Premier League/ })[0]).toHaveTextContent('Already predicted');
+  fireEvent.click(screen.getByRole('button', { name: 'Clear selected leagues' }));
+  await runBatch([135, 140]);
+  expect(screen.getByText(/All forecasts and market details/)).toHaveTextContent('4 fixtures');
+  const predictionIds = () => {
+    const request = post.mock.calls.filter(([path]) => path === '/predictions/bet-list/').pop();
+    return request?.[1].predictions.map((prediction: FixturePrediction) => prediction.fixture.fixture.id).sort();
+  };
+  await waitFor(() => expect(predictionIds()).toHaveLength(4));
+  const beforeIds = predictionIds();
+  await runBatch([]); // An explicit refresh must update, not duplicate, the selected leagues.
+  expect(screen.getByText(/All forecasts and market details/)).toHaveTextContent('4 fixtures');
+  cleanup();
+  await clearPredictionsCache();
+  await renderPredictionDesk();
+  await waitFor(() => expect(screen.getByText(/All forecasts and market details/)).toHaveTextContent('4 fixtures'));
+  await waitFor(() => expect(predictionIds()).toEqual(beforeIds));
+  expect(screen.getAllByRole('button', { name: /Premier League/ })[0]).toHaveTextContent('Already predicted');
+});
+
+it('waits for Firebase restoration and loads the saved account without logging out and back in', async () => {
+  await runInitialBatch();
+  cleanup();
+  get.mockClear();
+  post.mockClear();
+  mockAuth.user = null;
+  mockAuth.initialising = true;
+  const rendered = render(<MemoryRouter><BetAndFixturesScreen /></MemoryRouter>);
+  await act(async () => { await Promise.resolve(); });
+  expect(get).not.toHaveBeenCalled();
+  expect(post).not.toHaveBeenCalled();
+  expect(screen.getByText(/All forecasts and market details/)).toHaveTextContent('0 fixtures');
+  mockAuth.user = { uid: 'test-user', email: 'test@example.com' };
+  mockAuth.initialising = false;
+  rendered.rerender(<MemoryRouter><BetAndFixturesScreen /></MemoryRouter>);
+  await screen.findAllByText('2–5 total goals');
+  expect(get.mock.calls.filter(([path]) => path === '/predictions/')).toHaveLength(0);
+  expect(post.mock.calls.some(([path]) => path === '/predictions/bet-list/')).toBe(true);
+});
+
+it('clears the desk without deleting database forecasts and allows those leagues to be loaded again', async () => {
+  const run = await runInitialBatch();
+  const storedIds = Array.from(serverPredictions.keys());
+  fireEvent.click(screen.getByRole('button', { name: 'Clear predictions' }));
+  await waitFor(() => expect(screen.getByText(/All forecasts and market details/)).toHaveTextContent('0 fixtures'));
+  expect(Array.from(serverPredictions.keys())).toEqual(storedIds);
+  expect(serverWorkspaces.has('test-user')).toBe(false);
+  fireEvent.click(run);
+  await screen.findAllByText('2–5 total goals');
+  expect(Array.from(serverPredictions.keys())).toEqual(storedIds);
+  expect(screen.getAllByRole('button', { name: /Premier League/ })[0]).toHaveTextContent('Already predicted');
+});
+
+it('does not restore another account from the shared browser prediction cache', async () => {
+  await runInitialBatch();
+  cleanup();
+  mockAuth.user = { uid: 'another-user', email: 'another@example.com' };
+  await renderPredictionDesk();
+  expect(screen.getByText(/All forecasts and market details/)).toHaveTextContent('0 fixtures');
+  expect(screen.queryByText('2–5 total goals')).not.toBeInTheDocument();
+});
 
 it('retries only a failed league and season, preserves successful forecasts, and clears only recovered failures', async () => {
   const api = setupLeagueRetryApi();
