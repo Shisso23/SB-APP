@@ -73,6 +73,8 @@ export interface BetListSuggestion {
   family: string;
   historyLimited: boolean;
   impliedBy?: string[];
+  /** Set when this market was chosen for variety; names the match's strongest qualifying option. */
+  diversityAlternative?: { label: string; probability: number };
   priceStatus: BetListPriceStatus;
   decimalOdds: number | null;
   bookmaker: string;

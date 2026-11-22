@@ -39,7 +39,7 @@ const formatSuggestionsForClipboard = (
     const header = fixture
       ? `${index + 1}. ${fixture.teams.home.name} vs ${fixture.teams.away.name} | ${fixture.league.name} | ${fixture.fixture.date}`
       : `${index + 1}. ${suggestion.marketLabel}`;
-    return `${header}\n${suggestion.marketLabel} | Forecast ${(suggestion.probability * 100).toFixed(2)}% | Threshold ${(suggestion.preference.suggest * 100).toFixed(0)}%\n${suggestion.explanation}\n${quote} | ${PRICE_STATUS_LABELS[suggestion.priceStatus]}${suggestion.preference.isRange ? '\nSource: base scoreline model, separate from prior-blended totals.' : ''}${suggestion.historyLimited ? '\nLimited team history; inspect the statistics.' : ''}${suggestion.impliedBy ? '\nQualifies via combined markets that already passed their own thresholds.' : ''}`;
+    return `${header}\n${suggestion.marketLabel} | Forecast ${(suggestion.probability * 100).toFixed(2)}% | Threshold ${(suggestion.preference.suggest * 100).toFixed(0)}%\n${suggestion.explanation}\n${quote} | ${PRICE_STATUS_LABELS[suggestion.priceStatus]}${suggestion.preference.isRange ? '\nSource: base scoreline model, separate from prior-blended totals.' : ''}${suggestion.historyLimited ? '\nLimited team history; inspect the statistics.' : ''}${suggestion.impliedBy ? '\nQualifies via combined markets that already passed their own thresholds.' : ''}${suggestion.diversityAlternative ? `\nChosen for variety; strongest qualifying option for this match: ${suggestion.diversityAlternative.label} (${(suggestion.diversityAlternative.probability * 100).toFixed(2)}%).` : ''}`;
   }),
 ].join('\n\n');
 
@@ -121,7 +121,7 @@ export const SuggestedBetList: React.FC<{
         </div>
         <ol className="mt-3 space-y-3">
           {suggestions.map((suggestion, index) => {
-            const { marketId, marketLabel, preference, probability, priceStatus, historyLimited, impliedBy, family, decimalOdds, bookmaker } = suggestion;
+            const { marketId, marketLabel, preference, probability, priceStatus, historyLimited, impliedBy, diversityAlternative, family, decimalOdds, bookmaker } = suggestion;
             const prediction = predictionsById.get(suggestion.providerFixtureId);
             if (!prediction) return null;
             const fixture = prediction.fixture;
@@ -139,6 +139,7 @@ export const SuggestedBetList: React.FC<{
               <div className="mt-2 font-semibold text-cyan-100">{marketLabel} · {(probability * 100).toFixed(2)}%</div>
               <p className="mt-1 text-[10px] text-slate-400">{FORECAST_FAMILY_LABELS[family] ?? family}</p>
               {impliedBy && <p className="mt-2 text-xs text-cyan-200">Qualifies via combined markets that already passed their own thresholds.</p>}
+              {diversityAlternative && <p className="mt-2 text-xs text-cyan-200">Chosen for variety. Strongest qualifying option for this match: {diversityAlternative.label} ({(diversityAlternative.probability * 100).toFixed(2)}%).</p>}
               <ForecastHighlight probability={probability} preference={preference} progressive={marketId === 'btts_yes'} level={suggestion.level}
                 note={impliedBy ? `qualifies via combined markets, not its own threshold.` : undefined} />
               <p className="mt-2 text-xs text-slate-300">{suggestion.explanation}</p>
