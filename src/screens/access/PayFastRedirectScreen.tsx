@@ -61,7 +61,6 @@ const PayFastRedirectScreen: React.FC = () => {
     // to our server's return or cancel URL.
     const timer = window.setTimeout(submit, 300);
     return () => window.clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checkout, navigate]);
 
   if (!checkout) {
