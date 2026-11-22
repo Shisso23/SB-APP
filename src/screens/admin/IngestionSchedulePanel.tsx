@@ -7,7 +7,9 @@ const Step: React.FC<{ name: string; step: IngestionStep }> = ({ name, step }) =
   <span>
     {name}: {step.status}
     {step.recordsFetched !== undefined ? ` (${step.recordsFetched} fetched)` : ''}
+    {step.attempts !== undefined ? ` after ${step.attempts} attempt(s)` : ''}
     {step.error ? ` (${step.error})` : ''}
+    {step.reason ? ` (${step.reason})` : ''}
   </span>
 );
 
@@ -140,7 +142,10 @@ const IngestionSchedulePanel: React.FC<{ date: string; configuredLeagues: number
                   {run.finishedAt ? ` · finished ${formatSast(run.finishedAt)} SAST` : ''}
                 </p>
                 <p>Leagues: {run.leagues.join(', ')}</p>
-                {run.error ? <p className="text-rose-700">{run.error}</p> : null}
+                {run.results.skippedLeagues?.length ? (
+                  <p className="text-amber-700">Skipped leagues: {run.results.skippedLeagues.join(', ')}</p>
+                ) : null}
+                {run.error ? <p className={run.status === 'partial' ? 'text-amber-700' : 'text-rose-700'}>{run.error}</p> : null}
                 {run.status === 'running' ? (
                   <p className="text-slate-500">If the platform job has stopped but this remains running, check its logs.</p>
                 ) : null}

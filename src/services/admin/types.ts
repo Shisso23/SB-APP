@@ -157,6 +157,8 @@ export interface IngestionStep {
   status: 'completed' | 'skipped' | 'failed';
   recordsFetched?: number;
   error?: string;
+  attempts?: number;
+  reason?: string;
 }
 
 export interface IngestionRun {
@@ -171,6 +173,7 @@ export interface IngestionRun {
   results: {
     global?: Record<string, IngestionStep>;
     leagues?: Record<string, Record<string, IngestionStep>>;
+    skippedLeagues?: number[];
   };
 }
 

@@ -464,6 +464,36 @@ describe('job tracking', () => {
       expect(screen.getByText(/Provider unavailable/)).toBeInTheDocument();
       expect(screen.getByText(/1 ingestion step\(s\) failed/)).toBeInTheDocument();
     });
+
+    it('shows partial ingestion, skipped leagues, retry attempts and unattempted steps', async () => {
+      mocked.getIngestionSchedule.mockResolvedValue({
+        status: 200, statusText: 'OK', headers: {}, config: {},
+        data: {
+          date: '2026-03-10', selectedLeagues: [], effectiveLeagues: [39, 140],
+          timezone: 'Africa/Johannesburg', schedules: [],
+          runs: [{
+            id: 9, schedule: 'daily', status: 'partial', leagues: [39, 140],
+            error: '1 ingestion step(s) failed; 1 league(s) skipped.',
+            scheduledAt: '2026-03-10T02:00:00Z', startedAt: '2026-03-10T02:01:00Z',
+            finishedAt: '2026-03-10T02:02:00Z',
+            results: {
+              skippedLeagues: [39],
+              leagues: {
+                '39': { bootstrap: { status: 'failed', attempts: 2, error: 'Provider error' },
+                  refresh: { status: 'skipped', reason: 'An earlier step for this league failed.' } },
+                '140': { refresh: { status: 'completed', recordsFetched: 7 } },
+              },
+            },
+          }],
+        },
+      });
+      renderScreen();
+      expect(await screen.findByText(/daily: partial/)).toBeInTheDocument();
+      expect(screen.getByText('Skipped leagues: 39')).toBeInTheDocument();
+      expect(screen.getByText(/after 2 attempt/)).toBeInTheDocument();
+      expect(screen.getByText(/An earlier step for this league failed/)).toBeInTheDocument();
+      expect(screen.getByText(/7 fetched/)).toBeInTheDocument();
+    });
   });
 
   it('does not erase a refused action when automatic coverage polling succeeds', async () => {
