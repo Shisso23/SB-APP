@@ -107,7 +107,9 @@ const ListCard: React.FC<{ list: OfficialListSummary }> = ({ list }) => {
         </div>
         {money?.kind === 'settled' ? (
           <div className="text-right">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Hypothetical net</div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+              {money.estimated ? 'Estimated hypothetical net' : 'Hypothetical net'}
+            </div>
             <div
               className={`text-lg font-bold tabular-nums ${
                 (formatMoney(money.net) ?? '').startsWith('-') ? 'text-rose-700' : 'text-slate-900'
@@ -267,6 +269,12 @@ const ListCard: React.FC<{ list: OfficialListSummary }> = ({ list }) => {
               </div>
             </div>
           )}
+          {money.kind !== 'unavailable' && money.estimated ? (
+            <p className="mt-3 text-xs font-medium text-amber-700">
+              Estimated: {money.estimatedOddsCount === 1 ? '1 selection is' : `${money.estimatedOddsCount} selections are`}{' '}
+              priced from model fair odds, not bookmaker quotes.
+            </p>
+          ) : null}
           <p className="mt-3 text-xs leading-relaxed text-slate-500">{money.disclosure}</p>
         </div>
       ) : null}

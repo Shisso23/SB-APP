@@ -36,7 +36,7 @@ alongside IDs using [the supplied mapping](leagues-mapping.md). Unknown IDs rema
 visible as `League <id>`. Daily lists require at least three distinct qualifying
 matches. Missing bookmaker prices use frozen, explicitly labelled model fair odds
 (`1 / forecast probability`); these are not bookmaker quotes or proof of value
-and are excluded from monetary-return calculations. These publication changes
+and any hypothetical return that uses them is labelled as estimated. These publication changes
 require deploying the updated backend.
 
 Queued/running jobs and coverage update automatically, even after reopening the

@@ -60,6 +60,9 @@ export interface HypotheticalResult {
   totalReturn: string | null;
   net: string | null;
   isPotential: boolean;
+  /** True when any selection is priced from model fair odds, not a bookmaker quote. */
+  estimated?: boolean;
+  estimatedOddsCount?: number;
   disclosure: string;
 }
 

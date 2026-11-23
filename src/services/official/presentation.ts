@@ -111,22 +111,34 @@ export const formatTimestamp = (value: string | null | undefined): string | null
  */
 export type MoneyPresentation =
   | { kind: 'unavailable'; reason: string; disclosure: string }
-  | { kind: 'potential'; combinedOdds: string | null; disclosure: string }
-  | { kind: 'settled'; combinedOdds: string | null; totalReturn: string | null; net: string | null; disclosure: string };
+  | { kind: 'potential'; combinedOdds: string | null; estimated: boolean; estimatedOddsCount: number; disclosure: string }
+  | {
+      kind: 'settled';
+      combinedOdds: string | null;
+      totalReturn: string | null;
+      net: string | null;
+      estimated: boolean;
+      estimatedOddsCount: number;
+      disclosure: string;
+    };
 
 export const presentHypothetical = (value: HypotheticalResult | undefined): MoneyPresentation | null => {
   if (!value) return null;
   if (!value.available) {
     return { kind: 'unavailable', reason: value.reason, disclosure: value.disclosure };
   }
+  const estimated = value.estimated === true;
+  const estimatedOddsCount = value.estimatedOddsCount ?? 0;
   if (value.isPotential || !value.settledFully) {
-    return { kind: 'potential', combinedOdds: value.combinedOdds, disclosure: value.disclosure };
+    return { kind: 'potential', combinedOdds: value.combinedOdds, estimated, estimatedOddsCount, disclosure: value.disclosure };
   }
   return {
     kind: 'settled',
     combinedOdds: value.combinedOdds,
     totalReturn: value.totalReturn,
     net: value.net,
+    estimated,
+    estimatedOddsCount,
     disclosure: value.disclosure,
   };
 };

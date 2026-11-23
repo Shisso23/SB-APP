@@ -213,6 +213,23 @@ describe('public history screen', () => {
     expect(screen.getByText(/Monetary figure unavailable/)).toBeInTheDocument();
   });
 
+  it('shows an estimated return when selections use model fair odds', async () => {
+    mockAll({
+      today: publishedList({
+        hypothetical: {
+          stake: '1000.00', available: true, reason: '', settledFully: true, isPotential: false,
+          combinedOdds: '1.5625', totalReturn: '1562.50', net: '562.50',
+          estimated: true, estimatedOddsCount: 2,
+          disclosure: 'Hypothetical example—no bet placed.',
+        },
+      }),
+    });
+    renderScreen();
+    expect((await screen.findAllByText('Estimated hypothetical net')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/2 selections are priced from model fair odds/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Monetary figure unavailable/)).not.toBeInTheDocument();
+  });
+
   it('labels unsettled figures as potential rather than realised', async () => {
     mockAll({
       today: publishedList({
