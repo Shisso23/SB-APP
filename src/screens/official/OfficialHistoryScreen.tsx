@@ -8,7 +8,7 @@ import {
 } from '../../services/official';
 import type {
   OfficialHistoryResponse,
-  OfficialList,
+  OfficialListSummary,
   OfficialPreviewResponse,
   OfficialSummaryResponse,
 } from '../../services/official/types';
@@ -65,10 +65,10 @@ const Metric: React.FC<{ label: string; value: string; hint?: string }> = ({ lab
 );
 
 /** One published list: header, legs, and the hypothetical illustration. */
-const ListCard: React.FC<{ list: OfficialList }> = ({ list }) => {
+const ListCard: React.FC<{ list: OfficialListSummary }> = ({ list }) => {
   const status = describeListStatus(list.status);
   const money = presentHypothetical(list.hypothetical);
-  const tally = tallyList(list.legs ?? []);
+  const tally = list.legs ? tallyList(list.legs) : null;
 
   if (!list.published) {
     return (
@@ -95,7 +95,7 @@ const ListCard: React.FC<{ list: OfficialList }> = ({ list }) => {
             <StatusPill {...status} />
           </div>
           <p className="mt-1 text-xs text-slate-500">
-            {list.legCount ?? list.legs.length} selections ·{' '}
+            {list.legCount ?? list.legs?.length ?? 'Unknown number of'} selections ·{' '}
             Published {formatTimestamp(list.publishedAt) ?? '—'}
             {list.lastCheckedAt ? ` · Last checked ${formatTimestamp(list.lastCheckedAt)}` : ''}
           </p>
@@ -122,6 +122,7 @@ const ListCard: React.FC<{ list: OfficialList }> = ({ list }) => {
       {/* Per-list tally. Every outcome is counted, and the percentage uses the
           same won / (won + lost) rule as the overall metric, so void and
           unresolved selections never distort it. */}
+      {tally ? (
       <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl bg-slate-50 px-4 py-3 text-sm">
         <div>
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
@@ -156,7 +157,9 @@ const ListCard: React.FC<{ list: OfficialList }> = ({ list }) => {
           ) : null}
         </div>
       </div>
+      ) : null}
 
+      {list.legs ? (
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[640px] border-collapse text-sm">
           <caption className="sr-only">
@@ -218,6 +221,11 @@ const ListCard: React.FC<{ list: OfficialList }> = ({ list }) => {
           </tbody>
         </table>
       </div>
+      ) : (
+        <p className="mt-4 text-sm text-slate-600">
+          Selection details are available in full history on the page for this date.
+        </p>
+      )}
 
       {/* Hypothetical illustration. Unavailable is stated, never shown as zero. */}
       {money ? (
@@ -268,7 +276,7 @@ const ListCard: React.FC<{ list: OfficialList }> = ({ list }) => {
 
 const OfficialHistoryScreen: React.FC = () => {
   const [state, setState] = useState<LoadState>('loading');
-  const [today, setToday] = useState<OfficialList | null>(null);
+  const [today, setToday] = useState<OfficialListSummary | null>(null);
   const [history, setHistory] = useState<OfficialHistoryResponse | null>(null);
   const [summary, setSummary] = useState<OfficialSummaryResponse | null>(null);
   const [preview, setPreview] = useState<OfficialPreviewResponse | null>(null);
@@ -488,7 +496,12 @@ const OfficialHistoryScreen: React.FC = () => {
               </p>
               <div className="mt-4 space-y-4">
                 {history.recent.map((entry) => (
-                  <ListCard key={entry.businessDate} list={entry} />
+                  <ListCard
+                    key={entry.businessDate}
+                    list={entry.published
+                      ? history.results.find((result) => result.businessDate === entry.businessDate) ?? entry
+                      : entry}
+                  />
                 ))}
               </div>
             </section>

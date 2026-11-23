@@ -63,7 +63,7 @@ export interface HypotheticalResult {
   disclosure: string;
 }
 
-export interface OfficialList {
+export interface OfficialListSummary {
   businessDate: string;
   published: boolean;
   publishedAt?: string;
@@ -73,15 +73,20 @@ export interface OfficialList {
   lastCheckedAt?: string | null;
   lastCheckError?: string;
   legCount?: number;
-  legs: OfficialListLeg[];
+  /** Omitted for published entries in `recent` and for an unpublished today. */
+  legs?: OfficialListLeg[];
   hypothetical?: HypotheticalResult;
   /** Present when `published` is false: why nothing was published. */
   message?: string;
 }
 
+export interface OfficialList extends OfficialListSummary {
+  legs: OfficialListLeg[];
+}
+
 export interface OfficialHistoryResponse {
   /** The most recent business dates, including dates with no publication. */
-  recent: OfficialList[];
+  recent: OfficialListSummary[];
   page: number;
   pageSize: number;
   totalPages: number;

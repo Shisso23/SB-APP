@@ -10,7 +10,7 @@
  * All API calls are mocked. No test performs a real network request.
  */
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -19,6 +19,7 @@ import * as service from '../../services/official';
 import type {
   OfficialHistoryResponse,
   OfficialList,
+  OfficialListSummary,
   OfficialPreviewResponse,
   OfficialSummaryResponse,
 } from '../../services/official/types';
@@ -71,7 +72,7 @@ const publishedList = (overrides: Partial<OfficialList> = {}): OfficialList => (
   ...overrides,
 });
 
-const historyOf = (recent: OfficialList[], results: OfficialList[] = []): OfficialHistoryResponse => ({
+const historyOf = (recent: OfficialListSummary[], results: OfficialList[] = []): OfficialHistoryResponse => ({
   recent,
   page: 1,
   pageSize: 10,
@@ -128,6 +129,11 @@ const mockAll = ({
   history = historyOf([publishedList()]),
   summary = summaryOf(),
   preview = previewOf(),
+}: {
+  today?: OfficialListSummary;
+  history?: OfficialHistoryResponse;
+  summary?: OfficialSummaryResponse;
+  preview?: OfficialPreviewResponse;
 } = {}) => {
   mocked.getOfficialToday.mockResolvedValue({ data: today } as never);
   mocked.getOfficialHistory.mockResolvedValue({ data: history } as never);
@@ -256,6 +262,46 @@ describe('public history screen', () => {
     renderScreen();
     expect(await screen.findByText('Not published')).toBeInTheDocument();
     expect(screen.getAllByText(/No official five-match list was published/).length).toBeGreaterThan(0);
+  });
+
+  it('renders recent published summaries using available full history details', async () => {
+    const list = publishedList();
+    const recent: OfficialListSummary = {
+      businessDate: list.businessDate, published: true, legCount: list.legCount, status: list.status,
+    };
+    mockAll({
+      today: { businessDate: '2026-03-10', published: false },
+      history: historyOf([recent], [list]),
+    });
+    renderScreen();
+    const section = await screen.findByRole('region', { name: 'Most recent dates' });
+    expect(within(section).getByText(/Alpha.*Bravo/)).toBeInTheDocument();
+    expect(within(section).getByText('100%')).toBeInTheDocument();
+    expect(screen.getByText('No official daily list was published for this date.')).toBeInTheDocument();
+  });
+
+  it('shows an honest summary when recent selection details are not on the current page', async () => {
+    const list = publishedList();
+    const recent: OfficialListSummary = {
+      businessDate: '2026-03-10', published: true, legCount: 1, status: 'won',
+    };
+    const pageOne = { ...historyOf([recent], [list]), totalPages: 2 };
+    const pageTwo = {
+      ...historyOf([recent], [publishedList({ businessDate: '2026-03-01' })]),
+      page: 2,
+      totalPages: 2,
+    };
+    mockAll({ history: pageOne });
+    mocked.getOfficialHistory
+      .mockResolvedValueOnce({ data: pageOne } as never)
+      .mockResolvedValueOnce({ data: pageTwo } as never);
+    renderScreen();
+    await userEvent.click(await screen.findByRole('button', { name: 'Older' }));
+    await screen.findByText('Page 2 of 2');
+    const section = screen.getByRole('region', { name: 'Most recent dates' });
+    expect(within(section).getByText(/1 selections/)).toBeInTheDocument();
+    expect(within(section).getByText(/selection details.*full history/i)).toBeInTheDocument();
+    expect(within(section).queryByText('This list')).not.toBeInTheDocument();
   });
 
   it('does not identify status by colour alone', async () => {

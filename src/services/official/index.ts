@@ -10,7 +10,7 @@
 import { publicGet } from '../api/client';
 import type {
   OfficialHistoryResponse,
-  OfficialList,
+  OfficialListSummary,
   OfficialPreviewResponse,
   OfficialSummaryResponse,
 } from './types';
@@ -18,7 +18,7 @@ import type {
 const base = '/public/official/';
 
 /** Today's published list, or an explicit "nothing was published" response. */
-export const getOfficialToday = () => publicGet<OfficialList>(`${base}today/`);
+export const getOfficialToday = () => publicGet<OfficialListSummary>(`${base}today/`);
 
 /**
  * Paginated history.
