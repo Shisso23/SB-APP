@@ -21,7 +21,9 @@ const ManualPredictionPanel: React.FC<{
   leagues: number[];
   onBusyChange: (busy: boolean) => void;
   onPublished: () => void;
-}> = ({ date, leagues, onBusyChange, onPublished }) => {
+  onActivity: () => void;
+  otherBusy: boolean;
+}> = ({ date, leagues, onBusyChange, onPublished, onActivity, otherBusy }) => {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState('');
   const [results, setResults] = useState<ManualPredictionResponse[]>([]);
@@ -73,6 +75,8 @@ const ManualPredictionPanel: React.FC<{
           if (!active.current) return;
           failures.push(`${formatLeagueLabel(league)}: ${errorMessage(caught)}`);
           setError(failures.join(' '));
+        } finally {
+          onActivity();
         }
       }
       const ids = generated.flatMap(result => result.predictionIds);
@@ -133,7 +137,7 @@ const ManualPredictionPanel: React.FC<{
         standings and odds, generate forecasts immediately, then review and publish the daily list.
         No queue or background worker is used. Provider limits and forecast eligibility still apply.
       </p>
-      <button type="button" disabled={busy || !leagues.length || leagues.length > 7}
+      <button type="button" disabled={busy || otherBusy || !leagues.length || leagues.length > 7}
         onClick={() => void prepare()}
         className="mt-4 rounded-xl bg-teal-700 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">
         {busy ? 'Working…' : 'Predict manually and preview'}
@@ -173,11 +177,11 @@ const ManualPredictionPanel: React.FC<{
           {!preview.canPublish && <p role="alert" className="mt-3 text-sm text-amber-800">{preview.reason}</p>}
           {!published && <>
             <label className="mt-4 flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={confirmed} disabled={busy || !preview.canPublish}
+              <input type="checkbox" checked={confirmed} disabled={busy || otherBusy || !preview.canPublish}
                 onChange={event => setConfirmed(event.target.checked)} />
               I confirm publication of this immutable daily bet list.
             </label>
-            <button type="button" disabled={busy || !confirmed || !preview.canPublish}
+            <button type="button" disabled={busy || otherBusy || !confirmed || !preview.canPublish}
               onClick={() => void publish()}
               className="mt-3 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">
               Publish manual daily bet list

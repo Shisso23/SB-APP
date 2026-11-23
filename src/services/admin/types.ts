@@ -53,6 +53,27 @@ export interface ManualPredictionResponse {
   forecasts: ManualForecast[];
 }
 
+export type ManualTaskKind = 'catalog' | 'daily' | 'odds' | 'predict-settle' | 'settle';
+
+export interface ManualTaskProgress {
+  leagueId: number;
+  kind: ManualTaskKind | 'predict';
+  status: string;
+  startedAt: string;
+  finishedAt: string | null;
+  error: string;
+  checkpoint: Record<string, unknown>;
+}
+
+export interface ManualTasksResponse {
+  date: string;
+  today: string;
+  counts: Record<ManualTaskKind | 'predict', number>;
+  leagueCounts: Record<string, Partial<Record<ManualTaskKind | 'predict', number>>>;
+  manualPublicationsToday: number;
+  progress: ManualTaskProgress[];
+}
+
 export interface ManualBetListPreview {
   date: string;
   predictionIds: number[];

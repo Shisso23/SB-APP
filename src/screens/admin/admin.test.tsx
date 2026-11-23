@@ -101,6 +101,14 @@ beforeEach(() => {
   mocked.getAdminCoverage.mockResolvedValue({ data: coverageOf([league()]) } as never);
   mocked.getAdminJobs.mockResolvedValue({ data: { jobs: [] } } as never);
   mocked.getAdminAccessProducts.mockResolvedValue({ data: { products: [], minimumPrice: '5.00' } } as never);
+  mocked.getManualTasks.mockResolvedValue({
+    data: { date: '2026-03-10', today: '2026-03-10',
+      counts: { catalog: 0, daily: 1, odds: 2, 'predict-settle': 0, settle: 0, predict: 0 },
+      leagueCounts: { '39': { daily: 1, odds: 2 } }, manualPublicationsToday: 0,
+      progress: [{ leagueId: 39, kind: 'daily', status: 'completed', error: '',
+        startedAt: '2026-03-10T02:00:00Z', finishedAt: '2026-03-10T02:01:00Z', checkpoint: {} }],
+    },
+  } as never);
   mocked.getIngestionSchedule.mockResolvedValue({
     data: {
       date: '2026-03-10', selectedLeagues: [], effectiveLeagues: [39],
@@ -109,6 +117,42 @@ beforeEach(() => {
       runs: [],
     },
   } as never);
+});
+
+describe('manual tasks', () => {
+  it('shows recommendations, today counts and per-league remaining work', async () => {
+    renderScreen();
+    expect(await screen.findByText(/Daily ingestion: completed · 1 started today/)).toBeInTheDocument();
+    expect(screen.getByText(/Refresh odds: Remaining · 2 started today/)).toBeInTheDocument();
+    expect(screen.getByText(/Up to 5 passes per league per day/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Predict' })).not.toBeInTheDocument();
+  });
+
+  it('runs selected leagues directly and allows a repeated pass', async () => {
+    mocked.runManualTask.mockResolvedValue({ data: { id: 1, status: 'completed' } } as never);
+    renderScreen();
+    await userEvent.click(await screen.findByRole('checkbox', { name: /^League 39/ }));
+    const button = screen.getByRole('button', { name: 'Run refresh odds' });
+    await userEvent.click(button);
+    await waitFor(() => expect(mocked.runManualTask).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(button).toBeEnabled());
+    await userEvent.click(button);
+    await waitFor(() => expect(mocked.runManualTask).toHaveBeenCalledTimes(2));
+    expect(mocked.startAdminRun).not.toHaveBeenCalled();
+  });
+
+  it('keeps task failures visible after progress reloads', async () => {
+    mocked.runManualTask.mockRejectedValue(
+      new ApiRequestError('Unavailable', 503, { detail: 'Provider request budget exhausted; retry later.' }),
+    );
+    renderScreen();
+    await userEvent.click(await screen.findByRole('checkbox', { name: /^League 39/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Run refresh odds' }));
+    expect(await screen.findByText(/Provider request budget exhausted/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Reload task progress' }));
+    await waitFor(() => expect(mocked.getManualTasks.mock.calls.length).toBeGreaterThan(1));
+    expect(screen.getByText(/Provider request budget exhausted/)).toBeInTheDocument();
+  });
 });
 
 const manualPreview: ManualBetListPreview = {
@@ -360,46 +404,11 @@ describe('league selection is a filter', () => {
     expect(brazil).toBeChecked();
   });
 
-  it('describes league selection as filtering, not splitting the run', async () => {
-    renderScreen();
-    await screen.findByRole('heading', { name: 'Prediction workflow' });
-    expect(screen.getByText(/it does not split the run/i)).toBeInTheDocument();
-    // The promise that betlists are unchanged must be stated.
-    expect(screen.getByText(/suggested betlists stay exactly as the engine produces them/i)).toBeInTheDocument();
-  });
-
-  it('sends the selected leagues in one request rather than one per league', async () => {
-    mocked.getAdminCoverage.mockResolvedValue({
-      data: coverageOf([league({ leagueId: 39 }), league({ leagueId: 140 })]),
-    } as never);
-    mocked.startAdminRun.mockResolvedValue({
-      data: { jobId: 9, kind: 'generate', targetDate: '2026-03-10', season: 2026, leagues: [39, 140], status: 'queued' },
-    } as never);
-    mocked.getAdminJob.mockResolvedValue({
-      data: { ...job({ jobId: 9, status: 'completed' }), isTerminal: true },
-    } as never);
-
-    renderScreen();
-    await screen.findByRole('heading', { name: 'Prediction workflow' });
-
-    await userEvent.click(await screen.findByRole('checkbox', { name: /^League 39/ }));
-    await userEvent.click(await screen.findByRole('checkbox', { name: /^League 140/ }));
-    await userEvent.click(screen.getByRole('button', { name: 'Predict' }));
-
-    await waitFor(() => expect(mocked.startAdminRun).toHaveBeenCalledTimes(1));
-    // ONE call carrying both leagues: a split would change betlist selection.
-    expect(mocked.startAdminRun).toHaveBeenCalledWith({
-      kind: 'generate',
-      date: expect.any(String),
-      leagues: [39, 140],
-    });
-  });
-
   it('explains why no run can start when nothing is selected', async () => {
     renderScreen();
     await screen.findByRole('heading', { name: 'Prediction workflow' });
     // The button is disabled, so the reason must be visible without a click.
-    expect(screen.getByRole('button', { name: 'Predict' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Run daily ingestion' })).toBeDisabled();
     expect(await screen.findByRole('alert')).toHaveTextContent(/select at least one league/i);
     expect(mocked.startAdminRun).not.toHaveBeenCalled();
   });
@@ -473,151 +482,6 @@ describe('job tracking', () => {
     expect(await screen.findByText(/already completed this five-minute slot: predict/i)).toBeInTheDocument();
   });
 
-  describe('scheduled ingestion', () => {
-    it('saves selected leagues without changing the manual prediction selection', async () => {
-      mocked.saveIngestionSchedule.mockResolvedValue({
-        data: { date: '2026-03-10', selectedLeagues: [39], effectiveLeagues: [39] },
-      } as never);
-      renderScreen();
-      await userEvent.click(await screen.findByRole('checkbox', { name: 'Scheduled League 39 - Premier League (England)' }));
-      await userEvent.click(screen.getByRole('button', { name: 'Save ingestion schedule' }));
-      await waitFor(() => expect(mocked.saveIngestionSchedule).toHaveBeenCalledWith(expect.any(String), [39]));
-      expect(screen.getByRole('checkbox', { name: /League 39 - Premier League \(England\) \(4 eligible\)/ })).not.toBeChecked();
-      expect(await screen.findByText('Ingestion selection saved.')).toBeInTheDocument();
-      expect(screen.getByText(/04:00 SAST/)).toBeInTheDocument();
-    });
-
-    it('shows per-league fetched counts and failures from ingestion history', async () => {
-      mocked.getIngestionSchedule.mockResolvedValue({
-        data: {
-          date: '2026-03-10', selectedLeagues: [39], effectiveLeagues: [39],
-          timezone: 'Africa/Johannesburg', schedules: [],
-          runs: [{
-            id: 8, schedule: 'odds', status: 'failed', leagues: [39], error: '1 ingestion step(s) failed.',
-            scheduledAt: '2026-03-10T10:00:00Z', startedAt: '2026-03-10T10:01:00Z',
-            finishedAt: '2026-03-10T10:02:00Z',
-            results: { leagues: { '39': { refresh: { status: 'completed', recordsFetched: 7 },
-              odds: { status: 'failed', error: 'Provider unavailable' } } } },
-          }],
-        },
-      } as never);
-      renderScreen();
-      expect(await screen.findByText(/7 fetched/)).toBeInTheDocument();
-      expect(screen.getByText(/Provider unavailable/)).toBeInTheDocument();
-      expect(screen.getByText(/1 ingestion step\(s\) failed/)).toBeInTheDocument();
-    });
-
-    it('shows partial ingestion, skipped leagues, retry attempts and unattempted steps', async () => {
-      mocked.getIngestionSchedule.mockResolvedValue({
-        status: 200, statusText: 'OK', headers: {}, config: {},
-        data: {
-          date: '2026-03-10', selectedLeagues: [], effectiveLeagues: [39, 140],
-          timezone: 'Africa/Johannesburg', schedules: [],
-          runs: [{
-            id: 9, schedule: 'daily', status: 'partial', leagues: [39, 140],
-            error: '1 ingestion step(s) failed; 1 league(s) skipped.',
-            scheduledAt: '2026-03-10T02:00:00Z', startedAt: '2026-03-10T02:01:00Z',
-            finishedAt: '2026-03-10T02:02:00Z',
-            results: {
-              skippedLeagues: [39],
-              leagues: {
-                '39': { bootstrap: { status: 'failed', attempts: 2, error: 'Provider error' },
-                  refresh: { status: 'skipped', reason: 'An earlier step for this league failed.' } },
-                '140': { refresh: { status: 'completed', recordsFetched: 7 } },
-              },
-            },
-          }],
-        },
-      });
-      renderScreen();
-      expect(await screen.findByText(/daily: partial/)).toBeInTheDocument();
-      expect(screen.getByText('Skipped leagues: League 39 - Premier League (England)')).toBeInTheDocument();
-      expect(screen.getByText(/after 2 attempt/)).toBeInTheDocument();
-      expect(screen.getByText(/An earlier step for this league failed/)).toBeInTheDocument();
-      expect(screen.getByText(/7 fetched/)).toBeInTheDocument();
-    });
-  });
-
-  it('does not erase a refused action when automatic coverage polling succeeds', async () => {
-    mocked.getAdminJobs.mockResolvedValue({ data: { jobs: [job()] } } as never);
-    mocked.startAdminRun.mockRejectedValue({
-      response: { data: { detail: 'A run is already queued for this date.' } },
-    });
-    jest.useFakeTimers();
-    try {
-      renderScreen();
-      await screen.findByText('#7');
-      await act(async () => {
-        userEvent.click(screen.getByRole('checkbox', { name: /^League 39/ }));
-      });
-      await act(async () => {
-        userEvent.click(screen.getByRole('button', { name: 'Predict' }));
-      });
-      await act(async () => { jest.advanceTimersByTime(3000); });
-      expect(screen.getByRole('alert')).toHaveTextContent('A run is already queued for this date.');
-    } finally {
-      jest.useRealTimers();
-    }
-  });
-
-  it('keeps status errors visible when coverage succeeds, then recovers on the next poll', async () => {
-    mocked.getAdminJobs.mockResolvedValue({ data: { jobs: [job()] } } as never);
-    jest.useFakeTimers();
-    try {
-      renderScreen();
-      await screen.findByText('#7');
-      mocked.getAdminJobs.mockRejectedValueOnce(new Error('offline'));
-      await act(async () => { jest.advanceTimersByTime(3000); });
-      expect(screen.getByText(/We could not load run status/)).toBeInTheDocument();
-      await act(async () => { jest.advanceTimersByTime(3000); });
-      expect(screen.queryByText(/We could not load run status/)).not.toBeInTheDocument();
-    } finally {
-      jest.useRealTimers();
-    }
-  });
-
-  it('updates queued runs after reopening the page and stops polling when completed', async () => {
-    mocked.getAdminJobs.mockResolvedValue({ data: { jobs: [job()] } } as never);
-    jest.useFakeTimers();
-    try {
-      renderScreen();
-      await screen.findByText('#7');
-      mocked.getAdminJobs.mockResolvedValue({
-        data: { jobs: [job({ status: 'running' })] },
-      } as never);
-      await act(async () => { jest.advanceTimersByTime(3000); });
-      expect(screen.getByText(/Running/)).toBeInTheDocument();
-      mocked.getAdminJobs.mockResolvedValue({
-        data: { jobs: [job({ status: 'completed' })] },
-      } as never);
-      await act(async () => { jest.advanceTimersByTime(3000); });
-      expect(screen.getByText(/Completed/)).toBeInTheDocument();
-      const calls = mocked.getAdminJobs.mock.calls.length;
-      await act(async () => { jest.advanceTimersByTime(6000); });
-      expect(mocked.getAdminJobs).toHaveBeenCalledTimes(calls);
-      expect(mocked.getAdminCoverage.mock.calls.length).toBeGreaterThan(1);
-    } finally {
-      jest.useRealTimers();
-    }
-  });
-
-  it('reports a queued job and does not block the page', async () => {
-    mocked.startAdminRun.mockResolvedValue({
-      data: { jobId: 12, kind: 'generate', targetDate: '2026-03-10', season: 2026, leagues: [39], status: 'queued' },
-    } as never);
-    mocked.getAdminJob.mockResolvedValue({
-      data: { ...job({ jobId: 12 }), isTerminal: false },
-    } as never);
-
-    renderScreen();
-    await screen.findByRole('heading', { name: 'Prediction workflow' });
-    await userEvent.click(await screen.findByRole('checkbox', { name: /^League 39/ }));
-    await userEvent.click(screen.getByRole('button', { name: 'Predict' }));
-
-    // The response is immediate; the UI reports queued rather than waiting.
-    expect(await screen.findByText(/Run queued \(job 12\)/)).toBeInTheDocument();
-  });
-
   it('lists recent runs with trigger attribution', async () => {
     mocked.getAdminJobs.mockResolvedValue({
       data: { jobs: [job({ status: 'completed' })] },
@@ -627,36 +491,8 @@ describe('job tracking', () => {
     expect(screen.getByText(/admin@example\.com/)).toBeInTheDocument();
   });
 
-  it('surfaces an actionable server refusal instead of a generic error', async () => {
-    mocked.startAdminRun.mockRejectedValue({
-      response: { data: { detail: 'These leagues are not configured for this project: 999' } },
-    });
-    renderScreen();
-    await screen.findByRole('heading', { name: 'Prediction workflow' });
-    await userEvent.click(await screen.findByRole('checkbox', { name: /^League 39/ }));
-    await userEvent.click(screen.getByRole('button', { name: 'Predict' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(/not configured for this project/i);
-  });
 });
 describe('publication state', () => {
-  it('publishes the official list separately across configured leagues without requiring a selection', async () => {
-    mocked.getAdminStatus.mockResolvedValue({
-      data: { isAdmin: true, isMember: false, configuredLeagues: [39, 140] },
-    } as never);
-    mocked.startAdminRun.mockResolvedValue({
-      data: { jobId: 12, kind: 'publish', targetDate: '2026-03-10',
-        season: 2026, leagues: [39, 140], status: 'queued' },
-    } as never);
-    renderScreen();
-    await screen.findByRole('heading', { name: 'Prediction workflow' });
-    await act(async () => {
-      userEvent.click(screen.getByRole('button', { name: 'Publish official list' }));
-    });
-    expect(mocked.startAdminRun).toHaveBeenCalledWith({
-      kind: 'publish', date: expect.any(String), leagues: [39, 140],
-    });
-  });
-
   it('shows a stale league as stale rather than silently current', async () => {
     mocked.getAdminCoverage.mockResolvedValue({
       data: coverageOf([league()], '0 of 1 eligible leagues published', {
@@ -677,20 +513,4 @@ describe('publication state', () => {
     expect(await screen.findByText('Nothing published')).toBeInTheDocument();
   });
 
-  it('names the refresh control as the admin refresh action', async () => {
-    renderScreen();
-    await screen.findByRole('heading', { name: 'Prediction workflow' });
-    expect(screen.getByRole('button', { name: 'Refresh latest data' })).toBeInTheDocument();
-  });
-
-  it('explains an overlap refusal instead of failing silently', async () => {
-    mocked.startAdminRun.mockRejectedValue({
-      response: { data: { detail: 'A run of this kind is already queued or running for this date.' } },
-    });
-    renderScreen();
-    await screen.findByRole('heading', { name: 'Prediction workflow' });
-    await userEvent.click(await screen.findByRole('checkbox', { name: /^League 39/ }));
-    await userEvent.click(screen.getByRole('button', { name: 'Predict' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(/already queued or running/i);
-  });
 });

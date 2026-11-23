@@ -20,6 +20,8 @@ import type {
   IngestionScheduleResponse,
   ManualPredictionResponse,
   ManualBetListPreview,
+  ManualTaskKind,
+  ManualTasksResponse,
 } from './types';
 
 const base = '/admin/';
@@ -37,7 +39,13 @@ export const setAdminAccessProductActive = (code: string, isActive: boolean) =>
 export const getAdminStatus = () => apiGet<AdminStatusResponse>(`${base}status/`);
 
 export const predictAdminManualLeague = (date: string, leagueId: number) =>
-  apiClient.post<ManualPredictionResponse>(`${base}manual/predictions/`, { date, leagueId });
+  apiClient.post<ManualPredictionResponse>(`${base}manual/predictions/`, { date, leagueId }, { timeout: 110_000 });
+
+export const getManualTasks = (date: string) =>
+  apiGet<ManualTasksResponse>(`${base}manual/tasks/?${new URLSearchParams({ date }).toString()}`);
+
+export const runManualTask = (date: string, leagueId: number, kind: ManualTaskKind) =>
+  apiClient.post<{ id: number; status: string }>(`${base}manual/tasks/`, { date, leagueId, kind }, { timeout: 110_000 });
 
 export const previewAdminManualList = (date: string, predictionIds: number[]) =>
   apiClient.post<ManualBetListPreview>(`${base}manual/bet-list/`, { date, predictionIds });
@@ -63,10 +71,7 @@ export const getAdminCoverage = (targetDate?: string, leagues?: number[]) => {
 };
 
 /**
- * Request a run.
- *
- * Returns immediately with a QUEUED job; the work happens off-request, so the UI
- * polls `getAdminJob` instead of holding a connection open.
+ * Legacy queue endpoint. The backend now rejects these requests with HTTP 410.
  */
 export const startAdminRun = (input: {
   kind: 'generate' | 'refresh' | 'publish';

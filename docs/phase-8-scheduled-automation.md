@@ -1,5 +1,9 @@
 # Phase 8 — Scheduled automation (cron)
 
+> Historical design only: the current deployment removes the scheduled components
+> and the admin UI uses direct manual tasks. Do not install the cron entries below.
+> See the current [admin workflow](../README.md#admin-predictions).
+
 How PredictXI runs generation and refresh automatically, and how to turn it on.
 
 **Nothing here changes the prediction engine, market thresholds, rankings, or the

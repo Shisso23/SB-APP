@@ -17,14 +17,21 @@ here, re-copy the affected files into the backend repo by hand.
 
 ## Admin predictions
 
-The [admin screen](src/screens/admin/AdminScreen.tsx) queues backend jobs:
+The [admin screen](src/screens/admin/AdminScreen.tsx) executes tasks directly:
 
-- **Predict** prepares historical data, refreshes fixtures/standings/odds, then
-  generates and saves forecasts for selected leagues. Refresh is not required first.
-- **Refresh latest data** updates inputs only.
-- **Publish official list** separately freezes three to five qualifying saved forecasts
-  across configured leagues for the chosen date; existing lists are not overwritten.
+- **Global league catalogue** refreshes the catalogue once; **Daily ingestion**
+  prepares history, fixtures and standings for selected leagues.
+- **Refresh odds** updates odds. **Predict and settle** refreshes fixtures and odds,
+  then predicts and settles bounded batches; **Settle only** is a recovery option.
+- **Predict manually and preview** prepares a daily list, which must be reviewed and
+  explicitly published. Existing lists are not overwritten.
 - **Refresh view** reloads the dashboard without requesting prediction work.
+
+The former daily/odds/predict-settle cadences (1/5/3 daily passes per league)
+are guidance, not limits. The screen records attempts and per-league progress in
+the backend. Counts are for all admin requests started today in SAST, including
+failures, regardless of workflow date. Keep the page open while sequential
+per-league requests run; a failed request can be retried. Provider quotas apply.
 
 On a page refresh, admin access waits for Firebase to restore the signed-in user
 before asking the backend for current permissions. Signing out or switching
@@ -39,10 +46,9 @@ matches. Missing bookmaker prices use frozen, explicitly labelled model fair odd
 and any hypothetical return that uses them is labelled as estimated. These publication changes
 require deploying the updated backend.
 
-Queued/running jobs and coverage update automatically, even after reopening the
-page. Queued means waiting for the backend worker. The current scheduled worker
-has a 15-minute interval; longer waits require checking that worker's deployment,
-logs and environment. This page cannot execute jobs if the worker is absent.
+The deployment spec retains only the pre-deploy migration job. Apply the updated
+backend spec to remove existing platform schedules; a code push alone does not
+change deployed components.
 
 ## Saved prediction desk
 

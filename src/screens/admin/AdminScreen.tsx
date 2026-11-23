@@ -5,16 +5,14 @@ import {
   getAdminCoverage,
   getAdminJobs,
   getAdminStatus,
-  startAdminRun,
 } from '../../services/admin';
 import type {
   AdminJob,
-  AdminJobKind,
   AdminStatusResponse,
   CoverageResponse,
   CoverageStatus,
 } from '../../services/admin/types';
-import IngestionSchedulePanel from './IngestionSchedulePanel';
+import ManualTasksPanel from './ManualTasksPanel';
 import AccessProductsPanel from './AccessProductsPanel';
 import ManualPredictionPanel from './ManualPredictionPanel';
 import { useAuth } from '../../services/auth/AuthProvider';
@@ -106,13 +104,10 @@ const AuthenticatedAdminScreen: React.FC = () => {
   const [selectedLeagues, setSelectedLeagues] = useState<number[]>([]);
   const [coverage, setCoverage] = useState<CoverageResponse | null>(null);
   const [jobs, setJobs] = useState<AdminJob[]>([]);
-  const [busy, setBusy] = useState(false);
   const [manualBusy, setManualBusy] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [manualVersion, setManualVersion] = useState(0);
   const [coverageError, setCoverageError] = useState<string | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
-  const [activeJobId, setActiveJobId] = useState<number | null>(null);
 
   /** Ask the server whether this user is an admin. Never inferred locally. */
   useEffect(() => {
@@ -158,46 +153,15 @@ const AuthenticatedAdminScreen: React.FC = () => {
       setJobs(response.data.jobs);
       setStatusError(null);
     } catch {
-      setStatusError('We could not load run status. Retrying while a run is active.');
+      setStatusError('We could not load historical run status.');
     }
   }, []);
 
   useEffect(() => {
     if (!status?.isAdmin) return;
-    setActiveJobId(null);
     void loadCoverage(targetDate);
     void loadJobs(targetDate);
   }, [status?.isAdmin, targetDate, loadCoverage, loadJobs]);
-
-  const hasActiveRuns = activeJobId !== null || jobs.some(
-    (job) => job.status === 'queued' || job.status === 'running',
-  );
-
-  useEffect(() => {
-    if (!status?.isAdmin || !hasActiveRuns) return;
-    let cancelled = false;
-    let timer: number;
-    const tick = async () => {
-      await Promise.all([loadCoverage(targetDate), loadJobs(targetDate)]);
-      if (!cancelled) timer = window.setTimeout(tick, 3000);
-    };
-    timer = window.setTimeout(tick, 3000);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [status?.isAdmin, hasActiveRuns, targetDate, loadCoverage, loadJobs]);
-
-  useEffect(() => {
-    const job = jobs.find((row) => row.jobId === activeJobId);
-    if (!job || job.status === 'queued' || job.status === 'running') return;
-    setActiveJobId(null);
-    setNotice(
-      job.status === 'completed'
-        ? 'Run completed. Coverage updated below.'
-        : `Run ${job.status}: ${job.error || 'see details'}`,
-    );
-  }, [jobs, activeJobId]);
 
   const eligibleLeagues = useMemo(
     () => (coverage?.leagues ?? []).filter((row) => row.eligibleFixtures > 0).map((row) => row.leagueId),
@@ -208,35 +172,6 @@ const AuthenticatedAdminScreen: React.FC = () => {
     setSelectedLeagues((current) =>
       current.includes(leagueId) ? current.filter((id) => id !== leagueId) : [...current, leagueId],
     );
-  };
-
-  const run = async (kind: AdminJobKind) => {
-    setNotice(null);
-    setError(null);
-    if (kind !== 'publish' && !selectedLeagues.length) {
-      setError('Select at least one league before starting a run.');
-      return;
-    }
-    setBusy(true);
-    try {
-      const response = await startAdminRun({
-        kind, date: targetDate,
-        leagues: kind === 'publish' ? status?.configuredLeagues ?? [] : selectedLeagues,
-      });
-      setActiveJobId(response.data.jobId);
-      setNotice(`Run queued (job ${response.data.jobId}). Waiting for the background worker; status will update automatically.`);
-      void loadJobs(targetDate);
-      void loadCoverage(targetDate);
-    } catch (caught) {
-      // The server returns an actionable reason (e.g. an unconfigured league);
-      // surface it rather than a generic failure.
-      setError(
-        (caught as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-          'We could not start the run.',
-      );
-    } finally {
-      setBusy(false);
-    }
   };
 
   if (checking) return <AccessChecking />;
@@ -270,20 +205,13 @@ const AuthenticatedAdminScreen: React.FC = () => {
           <span className="text-xs font-bold uppercase tracking-widest text-teal-700">Operations</span>
           <h1 className="mt-3 text-3xl font-extrabold tracking-tight">Prediction workflow</h1>
           <p className="mt-3 max-w-3xl text-slate-600">
-            Select a date and the leagues to cover, then start a run. Selecting leagues filters which
-            fixtures are included — it does not split the run, so suggested betlists stay exactly as the
-            engine produces them.
+            Select a date and leagues, then execute the required tasks manually.
           </p>
         </header>
 
-        {notice ? (
-          <p role="status" className="mb-4 rounded-xl border border-teal-300 bg-teal-50 px-4 py-3 text-sm text-teal-900">
-            {notice}
-          </p>
-        ) : null}
-        {error || coverageError || statusError ? (
+        {coverageError || statusError ? (
           <p role="alert" className="mb-4 rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-900">
-            {error || coverageError || statusError}
+            {coverageError || statusError}
           </p>
         ) : null}
 
@@ -356,61 +284,23 @@ const AuthenticatedAdminScreen: React.FC = () => {
             </fieldset>
           </div>
 
-          <div className="mt-5 flex flex-wrap gap-3">
-            <button
-              type="button"
-              disabled={busy || !selectedLeagues.length}
-              onClick={() => void run('generate')}
-              className="rounded-xl bg-slate-900 px-6 py-3 text-sm font-bold text-white transition hover:bg-slate-800 disabled:opacity-50"
-            >
-              Predict
-            </button>
-            <button
-              type="button"
-              disabled={busy || !selectedLeagues.length}
-              onClick={() => void run('refresh')}
-              className="rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 disabled:opacity-50"
-            >
-              Refresh latest data
-            </button>
-            <button
-              type="button"
-              disabled={busy || !status.configuredLeagues.length}
-              onClick={() => void run('publish')}
-              className="rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 disabled:opacity-50"
-            >
-              Publish official list
-            </button>
-          </div>
           {/* A disabled button must say why, rather than leaving the operator to
               guess whether the control is broken. */}
           {!selectedLeagues.length ? (
             <p role="alert" className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
-              Select at least one league to predict or refresh data.
+              Select at least one league to run a manual task.
             </p>
           ) : null}
-          <p className="mt-3 text-xs text-slate-500">
-            Predict prepares historical data, refreshes fixtures, standings and odds, then generates
-            and saves predictions. You do not need to run Refresh first. Refresh latest data only
-            updates inputs; it does not generate predictions. Publish official list separately freezes
-            three to five qualifying stored predictions across the configured leagues for the selected date.
-            An existing official list is not overwritten. Predict and Refresh use the same bounded
-            pipeline as the automated schedules. The selected date sets the season and coverage date;
-            prediction itself processes upcoming fixtures in that season, not just that date.
-            Steps already completed in the same five-minute slot are reused; trigger again in a later
-            slot to run them again.
-          </p>
-          <p className="mt-2 text-xs text-slate-500">
-            Queued means waiting for the backend worker, not predicting yet. The scheduled worker may
-            runs at 12:00, 15:00, 17:00, 19:00 and 21:00 SAST. Queued jobs wait for the next pass.
-            Use the manual daily bet list below for immediate execution.
-          </p>
         </section>
 
         <ManualPredictionPanel date={targetDate} leagues={selectedLeagues}
           onBusyChange={setManualBusy}
-          onPublished={() => { void loadCoverage(targetDate); }} />
-        <IngestionSchedulePanel date={targetDate} configuredLeagues={status.configuredLeagues} />
+          otherBusy={manualBusy}
+          onPublished={() => { void loadCoverage(targetDate); setManualVersion(value => value + 1); }}
+          onActivity={() => setManualVersion(value => value + 1)} />
+        <ManualTasksPanel date={targetDate} leagues={selectedLeagues} configuredLeagues={status.configuredLeagues}
+          busy={manualBusy} onBusyChange={setManualBusy} version={manualVersion}
+          onActivity={() => { setManualVersion(value => value + 1); void loadCoverage(targetDate); }} />
         <AccessProductsPanel />
 
         {/* Coverage */}
@@ -419,6 +309,9 @@ const AuthenticatedAdminScreen: React.FC = () => {
             <div>
               <h2 id="coverage-heading" className="text-lg font-bold tracking-tight">League coverage</h2>
               <p className="mt-1 text-sm text-slate-600">{coverage?.summary.label ?? 'Loading coverage…'}</p>
+              <p className="mt-1 text-xs text-slate-500">
+                Coverage may still show older queued or failed jobs; use manual task progress above for current work.
+              </p>
             </div>
             <button
               type="button"
@@ -514,7 +407,7 @@ const AuthenticatedAdminScreen: React.FC = () => {
         <section aria-labelledby="jobs-heading" className="mt-8">
           <h2 id="jobs-heading" className="text-lg font-bold tracking-tight">Recent runs</h2>
           <p className="mt-1 text-sm text-slate-600">
-            Runs execute outside this page; status updates on its own.
+            Historical queued runs are shown for reference; manual tasks are tracked above.
           </p>
           <ul className="mt-4 space-y-3">
             {jobs.map((job) => {
@@ -522,9 +415,7 @@ const AuthenticatedAdminScreen: React.FC = () => {
               return (
                 <li
                   key={job.jobId}
-                  className={`rounded-2xl border bg-white p-4 shadow-sm ${
-                    activeJobId === job.jobId ? 'border-indigo-300' : 'border-slate-200'
-                  }`}
+                  className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="text-sm">
