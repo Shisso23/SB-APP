@@ -224,9 +224,7 @@ const ListCard: React.FC<{ list: OfficialListSummary }> = ({ list }) => {
         </table>
       </div>
       ) : (
-        <p className="mt-4 text-sm text-slate-600">
-          Selection details are available in full history on the page for this date.
-        </p>
+        <p className="mt-4 text-sm text-slate-600">Selection details are not available for this date.</p>
       )}
 
       {/* Hypothetical illustration. Unavailable is stated, never shown as zero. */}
@@ -288,10 +286,9 @@ const OfficialHistoryScreen: React.FC = () => {
   const [history, setHistory] = useState<OfficialHistoryResponse | null>(null);
   const [summary, setSummary] = useState<OfficialSummaryResponse | null>(null);
   const [preview, setPreview] = useState<OfficialPreviewResponse | null>(null);
-  const [page, setPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async (targetPage: number) => {
+  const load = useCallback(async () => {
     setState('loading');
     setError(null);
     try {
@@ -300,7 +297,7 @@ const OfficialHistoryScreen: React.FC = () => {
       // "no predictions were ever published".
       const [todayResponse, historyResponse, summaryResponse, previewResponse] = await Promise.all([
         getOfficialToday(),
-        getOfficialHistory(targetPage),
+        getOfficialHistory(),
         getOfficialSummary(),
         getOfficialPreview(),
       ]);
@@ -308,7 +305,6 @@ const OfficialHistoryScreen: React.FC = () => {
       setHistory(historyResponse.data);
       setSummary(summaryResponse.data);
       setPreview(previewResponse.data);
-      setPage(targetPage);
       setState('ready');
     } catch (caught) {
       setError('We could not load the prediction history right now. Please try again.');
@@ -317,7 +313,7 @@ const OfficialHistoryScreen: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    void load(1);
+    void load();
   }, [load]);
 
   const lists = summary?.metrics.lists;
@@ -341,7 +337,7 @@ const OfficialHistoryScreen: React.FC = () => {
             <p role="alert" className="text-sm text-rose-800">{error}</p>
             <button
               type="button"
-              onClick={() => void load(page)}
+              onClick={() => void load()}
               className="mt-3 rounded-xl bg-slate-900 px-5 py-2 text-sm font-semibold text-white"
             >
               Try again
@@ -498,56 +494,17 @@ const OfficialHistoryScreen: React.FC = () => {
 
             {/* Recent dates, including gaps */}
             <section aria-labelledby="recent-heading">
-              <h2 id="recent-heading" className="text-lg font-bold tracking-tight">Most recent dates</h2>
+              <h2 id="recent-heading" className="text-lg font-bold tracking-tight">Last two weeks</h2>
               <p className="mt-1 text-sm text-slate-600">
-                Dates with no published list are shown too, so gaps are visible.
+                Today and the previous 14 days. Dates with no published list are shown too, so gaps are visible.
               </p>
               <div className="mt-4 space-y-4">
                 {history.recent.map((entry) => (
-                  <ListCard
-                    key={entry.businessDate}
-                    list={entry.published
-                      ? history.results.find((result) => result.businessDate === entry.businessDate) ?? entry
-                      : entry}
-                  />
+                  <ListCard key={entry.businessDate} list={entry} />
                 ))}
               </div>
             </section>
 
-            {/* Older history */}
-            {history.results.length ? (
-              <section aria-labelledby="older-heading">
-                <h2 id="older-heading" className="text-lg font-bold tracking-tight">Full history</h2>
-                <div className="mt-4 space-y-4">
-                  {history.results.map((entry) => (
-                    <ListCard key={entry.businessDate} list={entry} />
-                  ))}
-                </div>
-                {history.totalPages > 1 ? (
-                  <nav className="mt-6 flex items-center justify-between" aria-label="History pages">
-                    <button
-                      type="button"
-                      disabled={page <= 1}
-                      onClick={() => void load(page - 1)}
-                      className="rounded-xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-800 disabled:opacity-50"
-                    >
-                      Newer
-                    </button>
-                    <span className="text-sm text-slate-600">
-                      Page {history.page} of {history.totalPages}
-                    </span>
-                    <button
-                      type="button"
-                      disabled={page >= history.totalPages}
-                      onClick={() => void load(page + 1)}
-                      className="rounded-xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-800 disabled:opacity-50"
-                    >
-                      Older
-                    </button>
-                  </nav>
-                ) : null}
-              </section>
-            ) : null}
           </div>
         ) : null}
       </div>

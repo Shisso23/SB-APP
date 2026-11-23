@@ -10,8 +10,7 @@
  * All API calls are mocked. No test performs a real network request.
  */
 import React from 'react';
-import { render, screen, waitFor, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 import OfficialHistoryScreen from './OfficialHistoryScreen';
@@ -281,44 +280,26 @@ describe('public history screen', () => {
     expect(screen.getAllByText(/No official five-match list was published/).length).toBeGreaterThan(0);
   });
 
-  it('renders recent published summaries using available full history details', async () => {
-    const list = publishedList();
-    const recent: OfficialListSummary = {
-      businessDate: list.businessDate, published: true, legCount: list.legCount, status: list.status,
-    };
-    mockAll({
-      today: { businessDate: '2026-03-10', published: false },
-      history: historyOf([recent], [list]),
-    });
-    renderScreen();
-    const section = await screen.findByRole('region', { name: 'Most recent dates' });
-    expect(within(section).getByText(/Alpha.*Bravo/)).toBeInTheDocument();
-    expect(within(section).getByText('100%')).toBeInTheDocument();
-    expect(screen.getByText('No official daily list was published for this date.')).toBeInTheDocument();
-  });
-
-  it('shows an honest summary when recent selection details are not on the current page', async () => {
-    const list = publishedList();
+  it('shows a recent date without selections instead of crashing', async () => {
     const recent: OfficialListSummary = {
       businessDate: '2026-03-10', published: true, legCount: 1, status: 'won',
     };
-    const pageOne = { ...historyOf([recent], [list]), totalPages: 2 };
-    const pageTwo = {
-      ...historyOf([recent], [publishedList({ businessDate: '2026-03-01' })]),
-      page: 2,
-      totalPages: 2,
-    };
-    mockAll({ history: pageOne });
-    mocked.getOfficialHistory
-      .mockResolvedValueOnce({ data: pageOne } as never)
-      .mockResolvedValueOnce({ data: pageTwo } as never);
+    mockAll({ history: historyOf([recent]) });
     renderScreen();
-    await userEvent.click(await screen.findByRole('button', { name: 'Older' }));
-    await screen.findByText('Page 2 of 2');
-    const section = screen.getByRole('region', { name: 'Most recent dates' });
+    const section = await screen.findByRole('region', { name: 'Last two weeks' });
     expect(within(section).getByText(/1 selections/)).toBeInTheDocument();
-    expect(within(section).getByText(/selection details.*full history/i)).toBeInTheDocument();
+    expect(within(section).getByText(/Selection details are not available/)).toBeInTheDocument();
     expect(within(section).queryByText('This list')).not.toBeInTheDocument();
+  });
+
+  it('shows recent lists with their selections and no full history section', async () => {
+    mockAll({ history: historyOf([publishedList()], [publishedList({ businessDate: '2026-03-01' })]) });
+    renderScreen();
+    const section = await screen.findByRole('region', { name: 'Last two weeks' });
+    expect(within(section).getByText(/Alpha.*Bravo/)).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Full history' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Older' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/1 March 2026/)).not.toBeInTheDocument();
   });
 
   it('does not identify status by colour alone', async () => {
@@ -381,19 +362,6 @@ describe('public history screen', () => {
     mockAll({ today: noOdds });
     renderScreen();
     expect(await screen.findByText('No quote')).toBeInTheDocument();
-  });
-
-  it('paginates older history', async () => {
-    mockAll({
-      history: {
-        ...historyOf([publishedList()], [publishedList({ businessDate: '2026-03-01' })]),
-        totalPages: 2,
-      },
-    });
-    renderScreen();
-    const next = await screen.findByRole('button', { name: 'Older' });
-    await userEvent.click(next);
-    await waitFor(() => expect(mocked.getOfficialHistory).toHaveBeenCalledWith(2));
   });
 });
 
