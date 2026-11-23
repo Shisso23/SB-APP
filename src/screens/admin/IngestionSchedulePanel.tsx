@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 
 import { getIngestionSchedule, saveIngestionSchedule } from '../../services/admin';
 import type { IngestionScheduleResponse, IngestionStep } from '../../services/admin/types';
+import { formatLeagueLabel } from '../../config/league-labels';
 
 const Step: React.FC<{ name: string; step: IngestionStep }> = ({ name, step }) => (
   <span>
@@ -93,12 +94,12 @@ const IngestionSchedulePanel: React.FC<{ date: string; configuredLeagues: number
                 <label key={league} className="inline-flex items-center gap-2 rounded-lg border px-3 py-1 text-sm">
                   <input
                     type="checkbox"
-                    aria-label={`Scheduled league ${league}`}
+                    aria-label={`Scheduled ${formatLeagueLabel(league)}`}
                     checked={selected.includes(league)}
                     onChange={() => setSelected((current) => current.includes(league)
                       ? current.filter((value) => value !== league) : [...current, league])}
                   />
-                  League {league}{!configuredLeagues.includes(league) ? ' (not configured)' : ''}
+                  {formatLeagueLabel(league)}{!configuredLeagues.includes(league) ? ' (not configured)' : ''}
                 </label>
               ))}
             </div>
@@ -118,7 +119,7 @@ const IngestionSchedulePanel: React.FC<{ date: string; configuredLeagues: number
             </button>
           </div>
           <p className="mt-3 text-sm text-slate-600">
-            Saved schedule: {data.selectedLeagues.length ? data.effectiveLeagues.join(', ') : 'all configured leagues'}.
+            Saved schedule: {data.selectedLeagues.length ? data.effectiveLeagues.map(formatLeagueLabel).join(', ') : 'all configured leagues'}.
           </p>
           <p className="mt-2 text-xs text-slate-500">
             Times below reflect the checked-in App Platform schedule, in SAST. Verify the deployed spec matches.
@@ -141,9 +142,9 @@ const IngestionSchedulePanel: React.FC<{ date: string; configuredLeagues: number
                 <p>Started {formatSast(run.startedAt)} SAST
                   {run.finishedAt ? ` · finished ${formatSast(run.finishedAt)} SAST` : ''}
                 </p>
-                <p>Leagues: {run.leagues.join(', ')}</p>
+                <p>Leagues: {run.leagues.map(formatLeagueLabel).join(', ')}</p>
                 {run.results.skippedLeagues?.length ? (
-                  <p className="text-amber-700">Skipped leagues: {run.results.skippedLeagues.join(', ')}</p>
+                  <p className="text-amber-700">Skipped leagues: {run.results.skippedLeagues.map(formatLeagueLabel).join(', ')}</p>
                 ) : null}
                 {run.error ? <p className={run.status === 'partial' ? 'text-amber-700' : 'text-rose-700'}>{run.error}</p> : null}
                 {run.status === 'running' ? (
@@ -154,7 +155,7 @@ const IngestionSchedulePanel: React.FC<{ date: string; configuredLeagues: number
                 ))}
                 {Object.entries(run.results.leagues ?? {}).map(([league, steps]) => (
                   <p key={league}>
-                    League {league}: {Object.entries(steps).map(([name, step], index) => (
+                    {formatLeagueLabel(Number(league))}: {Object.entries(steps).map(([name, step], index) => (
                       <React.Fragment key={name}>{index ? ' · ' : ''}<Step name={name} step={step} /></React.Fragment>
                     ))}
                   </p>

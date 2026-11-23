@@ -112,7 +112,7 @@ beforeEach(() => {
 });
 
 const manualPreview: ManualBetListPreview = {
-  date: '2026-11-22', predictionIds: [1, 2, 3, 4, 5], requiredSize: 5,
+  date: '2026-11-22', predictionIds: [1, 2, 3, 4, 5], requiredSize: 5, minimumSize: 3,
   canPublish: true, reason: '', selectionHash: 'server-preview-hash',
   suggestions: [1, 2, 3, 4, 5].map(id => ({
     predictionId: id, providerFixtureId: 500 + id,
@@ -139,7 +139,7 @@ describe('manual daily publication without jobs', () => {
     mocked.getAdminJobs.mockResolvedValue({ data: { jobs: [job({ status: 'failed' })] } } as never);
     mocked.publishAdminManualList.mockResolvedValue({ data: { published: true, date: manualPreview.date, listId: 5 } } as never);
     renderScreen();
-    await userEvent.click(await screen.findByRole('checkbox', { name: /League 39/ }));
+    await userEvent.click(await screen.findByRole('checkbox', { name: /^League 39/ }));
     const panel = within(screen.getByRole('region', { name: 'Manual daily bet list (no jobs)' }));
     await userEvent.click(panel.getByRole('button', { name: 'Predict manually and preview' }));
     const publish = await panel.findByRole('button', { name: 'Publish manual daily bet list' });
@@ -155,17 +155,43 @@ describe('manual daily publication without jobs', () => {
     expect(mocked.startAdminRun).not.toHaveBeenCalled();
   });
 
-  it('clears a preview when league selection changes and refuses short lists', async () => {
+  it.each([3, 4])('publishes a server-approved %i-match list with labelled fair odds after confirmation', async (count) => {
+    prepareMocks();
+    const preview: ManualBetListPreview = {
+      ...manualPreview,
+      suggestions: manualPreview.suggestions.slice(0, count).map(pick => ({
+        ...pick, decimalOdds: '1.2500', oddsSource: 'model-fair',
+      })),
+    };
+    mocked.previewAdminManualList.mockResolvedValue({ data: preview } as never);
+    mocked.publishAdminManualList.mockResolvedValue({ data: { published: true } } as never);
+    renderScreen();
+    await userEvent.click(await screen.findByRole('checkbox', { name: /^League 39/ }));
+    const panel = within(screen.getByRole('region', { name: 'Manual daily bet list (no jobs)' }));
+    await userEvent.click(panel.getByRole('button', { name: 'Predict manually and preview' }));
+    const confirm = await panel.findByRole('checkbox', { name: /confirm publication/ });
+    expect(confirm).toBeEnabled();
+    expect(panel.getAllByText(/Estimated model fair odds 1.2500/)).toHaveLength(count);
+    expect(panel.getByText(new RegExp(`${count} distinct qualifying matches selected`))).toBeInTheDocument();
+    const publish = panel.getByRole('button', { name: 'Publish manual daily bet list' });
+    expect(publish).toBeDisabled();
+    await userEvent.click(confirm);
+    expect(publish).toBeEnabled();
+    await userEvent.click(publish);
+    await waitFor(() => expect(mocked.publishAdminManualList).toHaveBeenCalledWith(preview));
+  });
+
+  it('clears a preview when league selection changes and refuses lists below the minimum', async () => {
     prepareMocks();
     mocked.previewAdminManualList.mockResolvedValue({
-      data: { ...manualPreview, canPublish: false, reason: 'Only 4 distinct fixtures qualified; 5 are required.', suggestions: manualPreview.suggestions.slice(0, 4) },
+      data: { ...manualPreview, canPublish: false, reason: 'Only 2 distinct fixtures qualified; 3 are required.', suggestions: manualPreview.suggestions.slice(0, 2) },
     } as never);
     renderScreen();
-    const selection = await screen.findByRole('checkbox', { name: /League 39/ });
+    const selection = await screen.findByRole('checkbox', { name: /^League 39/ });
     await userEvent.click(selection);
     const panel = within(screen.getByRole('region', { name: 'Manual daily bet list (no jobs)' }));
     await userEvent.click(panel.getByRole('button', { name: 'Predict manually and preview' }));
-    expect(await panel.findByRole('alert')).toHaveTextContent('Only 4 distinct fixtures qualified');
+    expect(await panel.findByRole('alert')).toHaveTextContent('Only 2 distinct fixtures qualified');
     expect(panel.getByRole('button', { name: 'Publish manual daily bet list' })).toBeDisabled();
     await userEvent.click(selection);
     await waitFor(() => expect(panel.queryByText(/Daily bet list preview/)).not.toBeInTheDocument());
@@ -177,7 +203,7 @@ describe('manual daily publication without jobs', () => {
       new ApiRequestError('Unavailable', 503, { detail: 'Provider request budget exhausted; retry later.' }),
     );
     renderScreen();
-    await userEvent.click(await screen.findByRole('checkbox', { name: /League 39/ }));
+    await userEvent.click(await screen.findByRole('checkbox', { name: /^League 39/ }));
     const panel = within(screen.getByRole('region', { name: 'Manual daily bet list (no jobs)' }));
     await userEvent.click(panel.getByRole('button', { name: 'Predict manually and preview' }));
     expect(await panel.findByRole('alert')).toHaveTextContent('Provider request budget exhausted');
@@ -318,6 +344,22 @@ describe('admin screen access', () => {
 });
 
 describe('league selection is a filter', () => {
+  it('shows mapped names and countries in controls and coverage, retaining unknown IDs', async () => {
+    mocked.getAdminCoverage.mockResolvedValue({
+      data: coverageOf([league(), league({ leagueId: 71 }), league({ leagueId: 99999 })]),
+    } as never);
+    renderScreen();
+    const england = await screen.findByRole('checkbox', { name: /^League 39 - Premier League \(England\)/ });
+    const brazil = screen.getByRole('checkbox', { name: /^League 71 - Serie A \(Brazil\)/ });
+    expect(screen.getByRole('cell', { name: 'League 39 - Premier League (England)' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: 'League 71 - Serie A (Brazil)' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /^League 99999/ })).toBeInTheDocument();
+    await userEvent.click(england);
+    await userEvent.click(brazil);
+    expect(england).toBeChecked();
+    expect(brazil).toBeChecked();
+  });
+
   it('describes league selection as filtering, not splitting the run', async () => {
     renderScreen();
     await screen.findByRole('heading', { name: 'Prediction workflow' });
@@ -340,8 +382,8 @@ describe('league selection is a filter', () => {
     renderScreen();
     await screen.findByRole('heading', { name: 'Prediction workflow' });
 
-    await userEvent.click(await screen.findByRole('checkbox', { name: /League 39/ }));
-    await userEvent.click(await screen.findByRole('checkbox', { name: /League 140/ }));
+    await userEvent.click(await screen.findByRole('checkbox', { name: /^League 39/ }));
+    await userEvent.click(await screen.findByRole('checkbox', { name: /^League 140/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Predict' }));
 
     await waitFor(() => expect(mocked.startAdminRun).toHaveBeenCalledTimes(1));
@@ -437,10 +479,10 @@ describe('job tracking', () => {
         data: { date: '2026-03-10', selectedLeagues: [39], effectiveLeagues: [39] },
       } as never);
       renderScreen();
-      await userEvent.click(await screen.findByRole('checkbox', { name: 'Scheduled league 39' }));
+      await userEvent.click(await screen.findByRole('checkbox', { name: 'Scheduled League 39 - Premier League (England)' }));
       await userEvent.click(screen.getByRole('button', { name: 'Save ingestion schedule' }));
       await waitFor(() => expect(mocked.saveIngestionSchedule).toHaveBeenCalledWith(expect.any(String), [39]));
-      expect(screen.getByRole('checkbox', { name: /League 39 \(4 eligible\)/ })).not.toBeChecked();
+      expect(screen.getByRole('checkbox', { name: /League 39 - Premier League \(England\) \(4 eligible\)/ })).not.toBeChecked();
       expect(await screen.findByText('Ingestion selection saved.')).toBeInTheDocument();
       expect(screen.getByText(/04:00 SAST/)).toBeInTheDocument();
     });
@@ -489,7 +531,7 @@ describe('job tracking', () => {
       });
       renderScreen();
       expect(await screen.findByText(/daily: partial/)).toBeInTheDocument();
-      expect(screen.getByText('Skipped leagues: 39')).toBeInTheDocument();
+      expect(screen.getByText('Skipped leagues: League 39 - Premier League (England)')).toBeInTheDocument();
       expect(screen.getByText(/after 2 attempt/)).toBeInTheDocument();
       expect(screen.getByText(/An earlier step for this league failed/)).toBeInTheDocument();
       expect(screen.getByText(/7 fetched/)).toBeInTheDocument();
@@ -506,7 +548,7 @@ describe('job tracking', () => {
       renderScreen();
       await screen.findByText('#7');
       await act(async () => {
-        userEvent.click(screen.getByRole('checkbox', { name: /League 39/ }));
+        userEvent.click(screen.getByRole('checkbox', { name: /^League 39/ }));
       });
       await act(async () => {
         userEvent.click(screen.getByRole('button', { name: 'Predict' }));
@@ -569,7 +611,7 @@ describe('job tracking', () => {
 
     renderScreen();
     await screen.findByRole('heading', { name: 'Prediction workflow' });
-    await userEvent.click(await screen.findByRole('checkbox', { name: /League 39/ }));
+    await userEvent.click(await screen.findByRole('checkbox', { name: /^League 39/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Predict' }));
 
     // The response is immediate; the UI reports queued rather than waiting.
@@ -591,7 +633,7 @@ describe('job tracking', () => {
     });
     renderScreen();
     await screen.findByRole('heading', { name: 'Prediction workflow' });
-    await userEvent.click(await screen.findByRole('checkbox', { name: /League 39/ }));
+    await userEvent.click(await screen.findByRole('checkbox', { name: /^League 39/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Predict' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/not configured for this project/i);
   });
@@ -647,7 +689,7 @@ describe('publication state', () => {
     });
     renderScreen();
     await screen.findByRole('heading', { name: 'Prediction workflow' });
-    await userEvent.click(await screen.findByRole('checkbox', { name: /League 39/ }));
+    await userEvent.click(await screen.findByRole('checkbox', { name: /^League 39/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Predict' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/already queued or running/i);
   });

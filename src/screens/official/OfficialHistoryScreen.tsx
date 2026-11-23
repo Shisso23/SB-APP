@@ -77,7 +77,7 @@ const ListCard: React.FC<{ list: OfficialList }> = ({ list }) => {
           <div>
             <div className="text-sm font-semibold text-slate-900">{formatBusinessDate(list.businessDate)}</div>
             <p className="mt-1 text-sm text-slate-600">
-              {list.message ?? 'No official five-match list was published for this date.'}
+              {list.message ?? 'No official daily list was published for this date.'}
             </p>
           </div>
           <StatusPill label="Not published" glyph="—" className="bg-slate-100 text-slate-600 border-slate-300" />
@@ -95,6 +95,7 @@ const ListCard: React.FC<{ list: OfficialList }> = ({ list }) => {
             <StatusPill {...status} />
           </div>
           <p className="mt-1 text-xs text-slate-500">
+            {list.legCount ?? list.legs.length} selections ·{' '}
             Published {formatTimestamp(list.publishedAt) ?? '—'}
             {list.lastCheckedAt ? ` · Last checked ${formatTimestamp(list.lastCheckedAt)}` : ''}
           </p>
@@ -194,7 +195,9 @@ const ListCard: React.FC<{ list: OfficialList }> = ({ list }) => {
                   </td>
                   <td className="py-2.5 pr-3 text-right tabular-nums text-slate-800">
                     {formatOdds(leg.odds?.decimalOdds ?? null) ?? <span className="text-slate-400">—</span>}
-                    {leg.odds?.bookmaker ? (
+                    {leg.odds?.source === 'model-fair' ? (
+                      <div className="text-xs text-amber-700">Estimated model fair odds (not a bookmaker quote)</div>
+                    ) : leg.odds?.bookmaker ? (
                       <div className="text-xs text-slate-500">{leg.odds.bookmaker}</div>
                     ) : (
                       <div className="text-xs text-amber-700">No quote</div>
@@ -311,7 +314,7 @@ const OfficialHistoryScreen: React.FC = () => {
           <span className="text-xs font-bold uppercase tracking-widest text-teal-700">Public record</span>
           <h1 className="mt-3 text-3xl font-extrabold tracking-tight">Prediction history</h1>
           <p className="mt-3 max-w-2xl text-slate-600">
-            Every official five-match list, published before the earliest kickoff and never rewritten
+            Every official daily list of three to five matches, published before the earliest kickoff and never rewritten
             afterwards. Wins, losses and unresolved lists are all shown — this is the complete record,
             not a selection of highlights.
           </p>
@@ -342,7 +345,7 @@ const OfficialHistoryScreen: React.FC = () => {
                 <h2 id="metrics-heading" className="text-lg font-bold tracking-tight">Track record</h2>
                 <p className="mt-1 text-sm text-slate-600">
                   Two different things are measured. A <strong className="font-semibold">betlist</strong> is
-                  all five selections taken together; a <strong className="font-semibold">selection</strong> is
+                  all published selections taken together; a <strong className="font-semibold">selection</strong> is
                   one match. Void, pending and unresolved are counted separately and excluded from both rates.
                 </p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

@@ -57,6 +57,8 @@ export interface ManualBetListPreview {
   date: string;
   predictionIds: number[];
   requiredSize: number;
+  /** Minimum distinct fixtures; omitted by older backends requiring a full list. */
+  minimumSize?: number;
   canPublish: boolean;
   reason: string;
   selectionHash: string;
@@ -71,6 +73,7 @@ export interface ManualBetListPreview {
     probability: number;
     decimalOdds: string | null;
     bookmaker: string;
+    oddsSource?: 'api-football' | 'model-fair';
   }[];
 }
 

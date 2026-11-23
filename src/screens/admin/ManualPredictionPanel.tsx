@@ -5,6 +5,7 @@ import { ApiRequestError } from '../../services/api/client';
 import { describeFailure } from '../../services/api/failures';
 import { predictAdminManualLeague, previewAdminManualList, publishAdminManualList } from '../../services/admin';
 import type { ManualBetListPreview, ManualPredictionResponse } from '../../services/admin/types';
+import { formatLeagueLabel } from '../../config/league-labels';
 
 const errorMessage = (error: unknown) => {
   if (error instanceof ApiRequestError && typeof error.validationErrors === 'object'
@@ -62,7 +63,7 @@ const ManualPredictionPanel: React.FC<{
       for (let index = 0; index < leagues.length; index += 1) {
         const league = leagues[index];
         if (!active.current) return;
-        setProgress(`Fetching data and predicting league ${league} (${index + 1}/${leagues.length})…`);
+        setProgress(`Fetching data and predicting ${formatLeagueLabel(league)} (${index + 1}/${leagues.length})…`);
         try {
           const response = await predictAdminManualLeague(date, league);
           if (!active.current) return;
@@ -70,7 +71,7 @@ const ManualPredictionPanel: React.FC<{
           setResults([...generated]);
         } catch (caught) {
           if (!active.current) return;
-          failures.push(`League ${league}: ${errorMessage(caught)}`);
+          failures.push(`${formatLeagueLabel(league)}: ${errorMessage(caught)}`);
           setError(failures.join(' '));
         }
       }
@@ -151,11 +152,22 @@ const ManualPredictionPanel: React.FC<{
       {preview && (
         <div className="mt-5">
           <h3 className="font-bold">Daily bet list preview — {preview.date}</h3>
+          <p className="mt-2 text-sm text-slate-600">
+            {preview.suggestions.length} distinct qualifying matches selected. Publication requires at least{' '}
+            {preview.minimumSize ?? preview.requiredSize}, with up to {preview.requiredSize} matches.
+            Estimated model fair odds are 1 / forecast probability, not bookmaker quotes or proof of value.
+          </p>
           <ol className="mt-3 space-y-2">{preview.suggestions.map(pick => (
             <li key={pick.providerFixtureId} className="rounded-lg border border-slate-200 p-3 text-sm">
               <strong>{pick.homeTeam} v {pick.awayTeam}</strong>
               <p>{pick.marketLabel} — {(pick.probability * 100).toFixed(1)}%</p>
-              <p className="text-slate-500">{pick.decimalOdds ? `Odds ${pick.decimalOdds} (${pick.bookmaker})` : 'No stored pre-match price'}</p>
+              <p className="text-slate-500">
+                {pick.decimalOdds
+                  ? pick.oddsSource === 'model-fair'
+                    ? `Estimated model fair odds ${pick.decimalOdds} (not a bookmaker quote)`
+                    : `Odds ${pick.decimalOdds} (${pick.bookmaker})`
+                  : 'No stored pre-match price'}
+              </p>
             </li>
           ))}</ol>
           {!preview.canPublish && <p role="alert" className="mt-3 text-sm text-amber-800">{preview.reason}</p>}

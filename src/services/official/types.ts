@@ -13,7 +13,7 @@ export type OfficialListStatus = 'pending' | 'won' | 'lost' | 'void' | 'unresolv
 /** State of one selection. Mirrors `LegStatus`. */
 export type OfficialLegStatus = 'pending' | 'won' | 'lost' | 'void' | 'unresolved';
 
-/** Frozen pre-kickoff odds for one leg, or null when none were available. */
+/** Frozen bookmaker quote or labelled model fair odds; null in older unpriced lists. */
 export interface OfficialLegOdds {
   /** Decimal string, e.g. "1.85". Never parsed to a float for authority. */
   decimalOdds: string;

@@ -184,6 +184,29 @@ describe('public history screen', () => {
     expect(screen.queryByText('R0.00')).not.toBeInTheDocument();
   });
 
+  it('labels frozen model fair odds and shows the actual number of selections', async () => {
+    const original = publishedList();
+    const legs = [1, 2, 3].map(id => ({
+      ...original.legs[0], providerFixtureId: id,
+      odds: { decimalOdds: '1.2500', bookmaker: '', source: 'model-fair', capturedAt: null },
+    }));
+    mockAll({
+      today: publishedList({
+        legCount: 3, legs,
+        hypothetical: {
+          stake: '1000.00', available: false, settledFully: true, isPotential: true,
+          disclosure: 'Hypothetical example - no bet placed.',
+          reason: 'Original odds are incomplete for this list, so no monetary figure is shown.',
+          combinedOdds: null, totalReturn: null, net: null,
+        },
+      }),
+    });
+    renderScreen();
+    expect(await screen.findByText(/3 selections/)).toBeInTheDocument();
+    expect(screen.getAllByText('Estimated model fair odds (not a bookmaker quote)')).toHaveLength(3);
+    expect(screen.getByText(/Monetary figure unavailable/)).toBeInTheDocument();
+  });
+
   it('labels unsettled figures as potential rather than realised', async () => {
     mockAll({
       today: publishedList({

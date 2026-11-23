@@ -22,7 +22,7 @@ The [admin screen](src/screens/admin/AdminScreen.tsx) queues backend jobs:
 - **Predict** prepares historical data, refreshes fixtures/standings/odds, then
   generates and saves forecasts for selected leagues. Refresh is not required first.
 - **Refresh latest data** updates inputs only.
-- **Publish official list** separately freezes five qualifying saved forecasts
+- **Publish official list** separately freezes three to five qualifying saved forecasts
   across configured leagues for the chosen date; existing lists are not overwritten.
 - **Refresh view** reloads the dashboard without requesting prediction work.
 
@@ -30,6 +30,14 @@ On a page refresh, admin access waits for Firebase to restore the signed-in user
 before asking the backend for current permissions. Signing out or switching
 accounts clears the previous account's dashboard and access result. Connection
 failures offer an access-check retry rather than reporting an admin denial.
+
+Admin league selections, coverage and run history show league names and countries
+alongside IDs using [the supplied mapping](leagues-mapping.md). Unknown IDs remain
+visible as `League <id>`. Daily lists require at least three distinct qualifying
+matches. Missing bookmaker prices use frozen, explicitly labelled model fair odds
+(`1 / forecast probability`); these are not bookmaker quotes or proof of value
+and are excluded from monetary-return calculations. These publication changes
+require deploying the updated backend.
 
 Queued/running jobs and coverage update automatically, even after reopening the
 page. Queued means waiting for the backend worker. The current scheduled worker

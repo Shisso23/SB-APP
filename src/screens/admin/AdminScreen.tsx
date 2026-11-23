@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { formatLeagueLabel } from '../../config/league-labels';
 
 import {
   getAdminCoverage,
@@ -323,7 +324,7 @@ const AuthenticatedAdminScreen: React.FC = () => {
                         onChange={() => toggleLeague(row.leagueId)}
                         className="h-4 w-4"
                       />
-                      <span>League {row.leagueId}</span>
+                      <span>{formatLeagueLabel(row.leagueId)}</span>
                       <span className="text-xs text-slate-500">
                         ({row.eligibleFixtures} eligible)
                       </span>
@@ -392,7 +393,7 @@ const AuthenticatedAdminScreen: React.FC = () => {
             Predict prepares historical data, refreshes fixtures, standings and odds, then generates
             and saves predictions. You do not need to run Refresh first. Refresh latest data only
             updates inputs; it does not generate predictions. Publish official list separately freezes
-            five qualifying stored predictions across the configured leagues for the selected date.
+            three to five qualifying stored predictions across the configured leagues for the selected date.
             An existing official list is not overwritten. Predict and Refresh use the same bounded
             pipeline as the automated schedules. The selected date sets the season and coverage date;
             prediction itself processes upcoming fixtures in that season, not just that date.
@@ -448,7 +449,7 @@ const AuthenticatedAdminScreen: React.FC = () => {
                   const fresh = coverage?.freshness?.[String(row.leagueId)];
                   return (
                     <tr key={row.leagueId} className="border-b border-slate-100 last:border-0">
-                      <td className="px-4 py-3 font-medium text-slate-900">League {row.leagueId}</td>
+                      <td className="px-4 py-3 font-medium text-slate-900">{formatLeagueLabel(row.leagueId)}</td>
                       <td className="px-4 py-3">
                         <StatusPill {...presentation} />
                       </td>
@@ -532,7 +533,7 @@ const AuthenticatedAdminScreen: React.FC = () => {
                       <span className="text-slate-400">·</span>{' '}
                       <span className="text-slate-600">{job.targetDate}</span>
                       <span className="ml-2 text-xs text-slate-500">
-                        Leagues {job.leagues.join(', ')}
+                        {job.leagues.map(formatLeagueLabel).join(', ')}
                       </span>
                     </div>
                     <span className={`text-sm font-semibold ${presentation.className}`}>
@@ -557,7 +558,7 @@ const AuthenticatedAdminScreen: React.FC = () => {
                               : 'border-rose-300 bg-rose-50 text-rose-800'
                           }`}
                         >
-                          League {leagueId}: {result.status}
+                          {formatLeagueLabel(Number(leagueId))}: {result.status}
                           {result.error ? ` (${result.error})` : ''}
                           {result.steps && Object.values(result.steps).includes('skipped')
                             ? ` · already completed this five-minute slot: ${Object.entries(result.steps)
