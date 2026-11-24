@@ -16,10 +16,11 @@ import type {
   AdminJobsResponse,
   AdminRunResponse,
   AdminStatusResponse,
+  AdminUsersResponse,
   CoverageResponse,
-  IngestionScheduleResponse,
   ManualPredictionResponse,
   ManualBetListPreview,
+  ManualResultUpdateResponse,
   ManualTaskKind,
   ManualTasksResponse,
 } from './types';
@@ -38,6 +39,12 @@ export const setAdminAccessProductActive = (code: string, isActive: boolean) =>
 /** Whether to render the Admin section, and the configured league list. */
 export const getAdminStatus = () => apiGet<AdminStatusResponse>(`${base}status/`);
 
+export const getAdminUsers = (page = 1, pageSize = 25, search = '') => {
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  if (search.trim()) params.set('search', search.trim());
+  return apiGet<AdminUsersResponse>(`${base}users/?${params.toString()}`);
+};
+
 export const predictAdminManualLeague = (date: string, leagueId: number) =>
   apiClient.post<ManualPredictionResponse>(`${base}manual/predictions/`, { date, leagueId }, { timeout: 110_000 });
 
@@ -45,7 +52,9 @@ export const getManualTasks = (date: string) =>
   apiGet<ManualTasksResponse>(`${base}manual/tasks/?${new URLSearchParams({ date }).toString()}`);
 
 export const runManualTask = (date: string, leagueId: number, kind: ManualTaskKind) =>
-  apiClient.post<{ id: number; status: string }>(`${base}manual/tasks/`, { date, leagueId, kind }, { timeout: 110_000 });
+  apiClient.post<Partial<ManualResultUpdateResponse> & { id: number; status: string }>(
+    `${base}manual/tasks/`, { date, leagueId, kind }, { timeout: 110_000 },
+  );
 
 export const previewAdminManualList = (date: string, predictionIds: number[]) =>
   apiClient.post<ManualBetListPreview>(`${base}manual/bet-list/`, { date, predictionIds });
@@ -95,11 +104,3 @@ export const getAdminJobs = (targetDate?: string, limit = 25) => {
 
 /** One run's status, polled while it is not terminal. */
 export const getAdminJob = (jobId: number) => apiGet<AdminJobDetail>(`${base}jobs/${jobId}/`);
-
-export const getIngestionSchedule = (date: string) =>
-  apiGet<IngestionScheduleResponse>(`${base}ingestion-schedule/?${new URLSearchParams({ date }).toString()}`);
-
-export const saveIngestionSchedule = (date: string, leagues: number[]) =>
-  apiClient.put<Pick<IngestionScheduleResponse, 'date' | 'selectedLeagues' | 'effectiveLeagues'>>(
-    `${base}ingestion-schedule/`, { date, leagues },
-  );

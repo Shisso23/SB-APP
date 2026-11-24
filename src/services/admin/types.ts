@@ -53,7 +53,18 @@ export interface ManualPredictionResponse {
   forecasts: ManualForecast[];
 }
 
-export type ManualTaskKind = 'catalog' | 'daily' | 'odds' | 'predict-settle' | 'settle';
+export type ManualTaskKind = 'catalog' | 'daily' | 'odds' | 'predict-settle' | 'settle' | 'update-results';
+
+/** Settlement counts returned by an `update-results` pass. */
+export interface ManualResultUpdateResponse {
+  id: number;
+  status: string;
+  datesChecked: number;
+  legsSettled: number;
+  legsVoided: number;
+  legsUnresolved: number;
+  listsFinalised: number;
+}
 
 export interface ManualTaskProgress {
   leagueId: number;
@@ -96,6 +107,43 @@ export interface ManualBetListPreview {
     bookmaker: string;
     oddsSource?: 'api-football' | 'model-fair';
   }[];
+}
+
+export interface AdminUserLatestPurchase {
+  id: number;
+  status: string;
+  provider: string;
+  productCode: string;
+  productName: string;
+  amountExpected: string;
+  currency: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminUserRecord {
+  id: number;
+  firebaseUid: string;
+  email: string;
+  isActive: boolean;
+  isStaff: boolean;
+  isSuperuser: boolean;
+  createdAt: string;
+  membership: {
+    active: boolean;
+    startsAt: string | null;
+    endsAt: string | null;
+    revoked: boolean;
+  };
+  latestPurchase: AdminUserLatestPurchase | null;
+}
+
+export interface AdminUsersResponse {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  users: AdminUserRecord[];
 }
 
 export interface AdminAccessProduct {
@@ -177,36 +225,3 @@ export interface AdminJobDetail extends AdminJob {
   isTerminal: boolean;
 }
 
-export interface IngestionStep {
-  status: 'completed' | 'skipped' | 'failed';
-  recordsFetched?: number;
-  error?: string;
-  attempts?: number;
-  reason?: string;
-}
-
-export interface IngestionRun {
-  id: number;
-  schedule: string;
-  scheduledAt: string;
-  startedAt: string;
-  finishedAt: string | null;
-  status: string;
-  leagues: number[];
-  error: string;
-  results: {
-    global?: Record<string, IngestionStep>;
-    leagues?: Record<string, Record<string, IngestionStep>>;
-    skippedLeagues?: number[];
-  };
-}
-
-export interface IngestionScheduleResponse {
-  date: string;
-  selectedLeagues: number[];
-  effectiveLeagues: number[];
-  selectionError?: string;
-  timezone: string;
-  schedules: { name: string; times: string[]; modes: string[] }[];
-  runs: IngestionRun[];
-}

@@ -101,25 +101,43 @@ beforeEach(() => {
   mocked.getAdminCoverage.mockResolvedValue({ data: coverageOf([league()]) } as never);
   mocked.getAdminJobs.mockResolvedValue({ data: { jobs: [] } } as never);
   mocked.getAdminAccessProducts.mockResolvedValue({ data: { products: [], minimumPrice: '5.00' } } as never);
+  mocked.getAdminUsers.mockResolvedValue({
+    data: { page: 1, pageSize: 25, total: 0, totalPages: 1, users: [] },
+  } as never);
   mocked.getManualTasks.mockResolvedValue({
     data: { date: '2026-03-10', today: '2026-03-10',
-      counts: { catalog: 0, daily: 1, odds: 2, 'predict-settle': 0, settle: 0, predict: 0 },
+      counts: { catalog: 0, daily: 1, odds: 2, 'predict-settle': 0, settle: 0, 'update-results': 0, predict: 0 },
       leagueCounts: { '39': { daily: 1, odds: 2 } }, manualPublicationsToday: 0,
       progress: [{ leagueId: 39, kind: 'daily', status: 'completed', error: '',
         startedAt: '2026-03-10T02:00:00Z', finishedAt: '2026-03-10T02:01:00Z', checkpoint: {} }],
     },
   } as never);
-  mocked.getIngestionSchedule.mockResolvedValue({
-    data: {
-      date: '2026-03-10', selectedLeagues: [], effectiveLeagues: [39],
-      timezone: 'Africa/Johannesburg',
-      schedules: [{ name: 'daily', times: ['04:00'], modes: ['leagues', 'bootstrap', 'refresh'] }],
-      runs: [],
-    },
-  } as never);
 });
 
 describe('manual tasks', () => {
+  it('shows paginated users and active membership details', async () => {
+    mocked.getAdminUsers.mockResolvedValue({
+      data: {
+        page: 1, pageSize: 25, total: 1, totalPages: 1,
+        users: [{
+          id: 7, firebaseUid: 'firebase-7', email: 'member@example.com',
+          isActive: true, isStaff: false, isSuperuser: false,
+          createdAt: '2026-11-20T10:00:00Z',
+          membership: { active: true, startsAt: '2026-11-20T10:00:00Z', endsAt: '2026-12-20T10:00:00Z', revoked: false },
+          latestPurchase: {
+            id: 3, status: 'granted', provider: 'payfast', productCode: '30day',
+            productName: '30-day pass', amountExpected: '49.00', currency: 'ZAR',
+            createdAt: '2026-11-20T10:00:00Z', updatedAt: '2026-11-20T10:05:00Z',
+          },
+        }],
+      },
+    } as never);
+    renderScreen();
+    expect(await screen.findByText('member@example.com')).toBeInTheDocument();
+    expect(screen.getByText('Active membership')).toBeInTheDocument();
+    expect(screen.getByText('30-day pass')).toBeInTheDocument();
+  });
+
   it('shows recommendations, today counts and per-league remaining work', async () => {
     renderScreen();
     expect(await screen.findByText(/Daily ingestion: completed · 1 started today/)).toBeInTheDocument();
@@ -139,6 +157,17 @@ describe('manual tasks', () => {
     await userEvent.click(button);
     await waitFor(() => expect(mocked.runManualTask).toHaveBeenCalledTimes(2));
     expect(mocked.startAdminRun).not.toHaveBeenCalled();
+  });
+
+  it('reports what an update final results pass settled', async () => {
+    mocked.runManualTask.mockResolvedValue({
+      data: { id: 1, status: 'completed', datesChecked: 2, legsSettled: 3, legsVoided: 1, legsUnresolved: 0, listsFinalised: 2 },
+    } as never);
+    renderScreen();
+    await userEvent.click(await screen.findByRole('checkbox', { name: /^League 39/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Run update final results' }));
+    await waitFor(() => expect(mocked.runManualTask).toHaveBeenCalledWith(expect.any(String), 39, 'update-results'));
+    expect(await screen.findByText(/3 settled, 1 void, 0 unresolved, 2 list\(s\) finalised/)).toBeInTheDocument();
   });
 
   it('keeps task failures visible after progress reloads', async () => {

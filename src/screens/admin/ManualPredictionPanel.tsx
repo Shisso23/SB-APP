@@ -137,12 +137,12 @@ const ManualPredictionPanel: React.FC<{
         standings and odds, generate forecasts immediately, then review and publish the daily list.
         No queue or background worker is used. Provider limits and forecast eligibility still apply.
       </p>
-      <button type="button" disabled={busy || otherBusy || !leagues.length || leagues.length > 7}
+      <button type="button" disabled={busy || otherBusy || !leagues.length || leagues.length > 4}
         onClick={() => void prepare()}
         className="mt-4 rounded-xl bg-teal-700 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">
         {busy ? 'Working…' : 'Predict manually and preview'}
       </button>
-      {leagues.length > 7 && <p role="alert" className="mt-2 text-sm text-rose-700">Select up to seven leagues for a manual batch.</p>}
+      {leagues.length > 4 && <p role="alert" className="mt-2 text-sm text-rose-700">Select up to four leagues for a manual batch.</p>}
       {progress && <p role="status" className="mt-3 text-sm text-teal-900">{progress}</p>}
       {error && <p role="alert" className="mt-3 text-sm text-rose-700">{error}</p>}
       {results.map(result => (

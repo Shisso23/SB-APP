@@ -15,6 +15,7 @@ import type {
 import ManualTasksPanel from './ManualTasksPanel';
 import AccessProductsPanel from './AccessProductsPanel';
 import ManualPredictionPanel from './ManualPredictionPanel';
+import AdminUsersPanel from './AdminUsersPanel';
 import { useAuth } from '../../services/auth/AuthProvider';
 import { PremiumRequiredError, SessionExpiredError, SignInRequiredError } from '../../services/api/client';
 
@@ -108,6 +109,7 @@ const AuthenticatedAdminScreen: React.FC = () => {
   const [manualVersion, setManualVersion] = useState(0);
   const [coverageError, setCoverageError] = useState<string | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
 
   /** Ask the server whether this user is an admin. Never inferred locally. */
   useEffect(() => {
@@ -140,6 +142,7 @@ const AuthenticatedAdminScreen: React.FC = () => {
       const response = await getAdminCoverage(date);
       setCoverage(response.data);
       setCoverageError(null);
+      setLastRefreshedAt(new Date());
       return response.data;
     } catch {
       setCoverageError('We could not load league coverage.');
@@ -235,13 +238,22 @@ const AuthenticatedAdminScreen: React.FC = () => {
               <div className="mt-1 flex flex-wrap gap-2">
                 {(coverage?.leagues ?? []).map((row) => {
                   const checked = selectedLeagues.includes(row.leagueId);
+                  const fresh = coverage?.freshness?.[String(row.leagueId)];
+                  const published = row.status === 'published' || fresh?.hasPublished;
+                  const refreshing = row.status === 'refreshing' || row.status === 'running';
                   const inputId = `admin-league-${row.leagueId}`;
                   return (
                     <label
                       key={row.leagueId}
                       htmlFor={inputId}
-                      className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-sm ${
-                        checked ? 'border-teal-400 bg-teal-50 text-teal-900' : 'border-slate-300 bg-white text-slate-700'
+                      className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border-2 px-3 py-1.5 text-sm ${
+                        published
+                          ? 'border-blue-500 bg-blue-50 text-blue-950'
+                          : refreshing
+                            ? 'border-cyan-500 bg-cyan-50 text-cyan-950'
+                            : checked
+                              ? 'border-teal-400 bg-teal-50 text-teal-900'
+                              : 'border-slate-300 bg-white text-slate-700'
                       }`}
                     >
                       <input
@@ -253,6 +265,8 @@ const AuthenticatedAdminScreen: React.FC = () => {
                         className="h-4 w-4"
                       />
                       <span>{formatLeagueLabel(row.leagueId)}</span>
+                      {published && <span className="text-xs font-semibold text-blue-700">Published</span>}
+                      {refreshing && <span className="text-xs font-semibold text-cyan-700">Refreshing</span>}
                       <span className="text-xs text-slate-500">
                         ({row.eligibleFixtures} eligible)
                       </span>
@@ -301,6 +315,7 @@ const AuthenticatedAdminScreen: React.FC = () => {
         <ManualTasksPanel date={targetDate} leagues={selectedLeagues} configuredLeagues={status.configuredLeagues}
           busy={manualBusy} onBusyChange={setManualBusy} version={manualVersion}
           onActivity={() => { setManualVersion(value => value + 1); void loadCoverage(targetDate); }} />
+        <AdminUsersPanel />
         <AccessProductsPanel />
 
         {/* Coverage */}
@@ -309,13 +324,16 @@ const AuthenticatedAdminScreen: React.FC = () => {
             <div>
               <h2 id="coverage-heading" className="text-lg font-bold tracking-tight">League coverage</h2>
               <p className="mt-1 text-sm text-slate-600">{coverage?.summary.label ?? 'Loading coverage…'}</p>
+              {lastRefreshedAt && (
+                <p className="mt-1 text-xs text-slate-500">Refreshed {lastRefreshedAt.toLocaleTimeString()} · includes the latest published and refresh state.</p>
+              )}
               <p className="mt-1 text-xs text-slate-500">
                 Coverage may still show older queued or failed jobs; use manual task progress above for current work.
               </p>
             </div>
             <button
               type="button"
-              onClick={() => void loadCoverage(targetDate)}
+              onClick={() => { void loadCoverage(targetDate); void loadJobs(targetDate); }}
               className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
               Refresh view

@@ -83,7 +83,7 @@ const describePredictionsFailure = (error: unknown) => {
 
 
 // ======= Config =======
-const MAX_BATCH = 7;
+const MAX_BATCH = 4;
 const COOLDOWN_MS = 60_000; // 1 minute
 const STANDINGS_CACHE_KEY = 'standingsCache_v2';
 const FAVORITES_CACHE_KEY = 'favoritePredictions_v1';
@@ -589,6 +589,13 @@ const BetAndFixturesScreen: React.FC = () => {
 
   // Selection
   const [selectedBatch, setSelectedBatch] = useState<LeagueDataModel[]>([]);
+  const [showPredictionGuide, setShowPredictionGuide] = useState(() => {
+    try {
+      return sessionStorage.getItem('predictxi_prediction_guide_dismissed') !== 'true';
+    } catch {
+      return true;
+    }
+  });
 
   // Fixtures & predictions
   const [allFixtures, setAllFixtures] = useState<FixtureDataModel[]>([]);
@@ -858,9 +865,10 @@ const BetAndFixturesScreen: React.FC = () => {
   }, []);
   const msLeft = lastBetAt ? Math.max(0, lastBetAt + COOLDOWN_MS - nowTick) : 0;
 
-  // <<< CHANGE: allow bets during countdown if batch < 7
+  // The maximum batch is enforced in the league selector, while the countdown
+  // remains applicable to each prediction run.
   const canBet = cacheReady && !clearingPredictions && (predictionMode !== 'statistical' || workspaceReady)
-    && selectedBatch.length > 0 && (selectedBatch.length < MAX_BATCH || msLeft === 0);
+    && selectedBatch.length > 0 && msLeft === 0;
 
   // Do not attempt work that must fail: sign-in is authoritative server-side.
   const betDisabledReason = initialising
@@ -1547,7 +1555,7 @@ const BetAndFixturesScreen: React.FC = () => {
     setCurrentFixtures(filterBetweenDates(finalFuture, fromDate, toDate));
     setPredictedFixtures(mergedPred);
 
-    // <<< CHANGE: start cooldown ONLY if we actually fetched 7 leagues now
+    // Start cooldown only after the full allowed batch has been fetched.
     if (fetchedLeagueCount >= MAX_BATCH) {
       setLastBetAt(Date.now());
     }
@@ -1690,6 +1698,27 @@ const BetAndFixturesScreen: React.FC = () => {
   // ===== Render =====
   return (
     <div className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-100" style={{ fontFamily: '"Avenir Next", "Segoe UI", sans-serif' }}>
+      {showPredictionGuide && (
+        <aside aria-label="How to run predictions" className="border-b border-cyan-300/30 bg-gradient-to-r from-cyan-950 via-slate-900 to-sky-950">
+          <div className="mx-auto flex max-w-[1440px] items-start gap-3 px-4 py-3 sm:px-6">
+            <div className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full border border-cyan-300/40 bg-cyan-400/15 text-sm font-bold text-cyan-100">1</div>
+            <div className="min-w-0 flex-1 text-sm">
+              <div className="font-bold text-white">How to run predictions</div>
+              <p className="mt-0.5 text-slate-200">
+                Select up to <strong className="text-cyan-100">4 leagues</strong>, then scroll down and press <strong className="text-cyan-100">“Bet (run predictions)”</strong>. It usually takes about <strong className="text-cyan-100">1 minute</strong> to prepare.
+              </p>
+            </div>
+            <button type="button" aria-label="Dismiss prediction guide"
+              onClick={() => {
+                setShowPredictionGuide(false);
+                try { sessionStorage.setItem('predictxi_prediction_guide_dismissed', 'true'); } catch { /* Keep in-memory dismissal if storage is unavailable. */ }
+              }}
+              className="-mr-1 shrink-0 rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white" title="Dismiss guide">
+              <span aria-hidden="true">×</span>
+            </button>
+          </div>
+        </aside>
+      )}
       <div className="relative">
         <div className="sticky top-0 z-30 border-b border-slate-700 bg-slate-900 backdrop-blur-xl">
           <div className="mx-auto max-w-[1440px] px-4 py-4 sm:px-6">
@@ -1698,7 +1727,7 @@ const BetAndFixturesScreen: React.FC = () => {
                 <h1 className="text-2xl font-bold tracking-tight text-white">PredictXI Prediction Desk</h1>
                 <p className="mt-1 text-sm text-slate-200">Search leagues fast, pick options, and view published forecasts for fixtures in your date window.</p>
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                  <span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-cyan-100">Selected leagues: {selectedBatch.length}/{MAX_BATCH}</span>
+                  <span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-cyan-100">Selected leagues: {selectedBatch.length}/{MAX_BATCH} · maximum 4 leagues</span>
                   {predictionMode === 'legacy' && (
                     <span className="rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-sky-100">Active legacy options: {selectedOptions.length}</span>
                   )}

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navbar from '../components/navBar';
 import HomeScreen from '../screens/home/home.screen';
@@ -10,11 +11,16 @@ import PayFastRedirectScreen from '../screens/access/PayFastRedirectScreen';
 import PayFastResultScreen from '../screens/access/PayFastResultScreen';
 import OfficialHistoryScreen from '../screens/official/OfficialHistoryScreen';
 import AdminScreen from '../screens/admin/AdminScreen';
+import { recordVisitorPageView } from '../services/analytics';
 
-const RootRouter: React.FC = () => {
+const RoutedContent: React.FC = () => {
+  const location = useLocation();
+  useEffect(() => {
+    recordVisitorPageView(`${location.pathname}${location.search}`);
+  }, [location.pathname, location.search]);
   return (
-  <BrowserRouter>
-    <Navbar/>
+    <>
+      <Navbar/>
       <Routes>
           <Route index element={<HomeScreen />} />
           <Route path='/BetAndFixturesScreen' element={<BetAndFixturesScreen />} />
@@ -39,8 +45,14 @@ const RootRouter: React.FC = () => {
           */}
           <Route path='/admin' element={<AdminScreen />} />
       </Routes>
-  </BrowserRouter>
+    </>
   );
 };
+
+const RootRouter: React.FC = () => (
+  <BrowserRouter>
+    <RoutedContent />
+  </BrowserRouter>
+);
 
 export default RootRouter;

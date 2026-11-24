@@ -22,10 +22,15 @@ The [admin screen](src/screens/admin/AdminScreen.tsx) executes tasks directly:
 - **Global league catalogue** refreshes the catalogue once; **Daily ingestion**
   prepares history, fixtures and standings for selected leagues.
 - **Refresh odds** updates odds. **Predict and settle** refreshes fixtures and odds,
-  then predicts and settles bounded batches; **Settle only** is a recovery option.
+  then predicts and settles bounded batches. **Update final results** re-fetches the
+  selected league's stored fixtures, re-checks the provider's final scores, and
+  settles that league's published selections, so the history and win stats move from
+  pending to won/lost/void. It works on past dates and never touches other leagues.
 - **Predict manually and preview** prepares a daily list, which must be reviewed and
   explicitly published. Existing lists are not overwritten.
 - **Refresh view** reloads the dashboard without requesting prediction work.
+- **Users** provides a searchable, paginated staff-only directory with account state,
+  Firebase UID/email, active membership expiry, revocation history and latest purchase.
 
 The former daily/odds/predict-settle cadences (1/5/3 daily passes per league)
 are guidance, not limits. The screen records attempts and per-league progress in

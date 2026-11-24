@@ -10,7 +10,12 @@ const tasks: { kind: ManualTaskKind; label: string; guidance: string }[] = [
   { kind: 'daily', label: 'Daily ingestion', guidance: '1 pass per league per day: league data, history, fixtures and standings.' },
   { kind: 'odds', label: 'Refresh odds', guidance: 'Up to 5 passes per league per day, when odds are needed. Refresh fixtures first.' },
   { kind: 'predict-settle', label: 'Predict and settle', guidance: 'Up to 3 passes per league per day around match times. Refreshes fixtures and odds first.' },
-  { kind: 'settle', label: 'Settle only', guidance: 'Recovery option if prediction fails; refreshes results before settlement.' },
+  {
+    kind: 'update-results',
+    label: 'Update final results',
+    guidance: 'Re-fetches stored fixtures for the selected league only, then settles its published selections. '
+      + 'Updates the public history and win stats. Available for past dates.',
+  },
 ];
 
 const errorMessage = (error: unknown) => {
@@ -63,6 +68,7 @@ const ManualTasksPanel: React.FC<{
     onBusyChange(true);
     setError('');
     const failures: string[] = [];
+    const decimals: string[] = [];
     try {
       const targets = kind === 'catalog' ? [0] : leagues;
       for (let index = 0; index < targets.length; index += 1) {
@@ -71,7 +77,12 @@ const ManualTasksPanel: React.FC<{
         const label = league === 0 ? 'global catalogue' : formatLeagueLabel(league);
         setMessage(`Running ${kind} for ${label} (${index + 1}/${targets.length})…`);
         try {
-          await runManualTask(date, league, kind);
+          const response = await runManualTask(date, league, kind);
+          if (kind === 'update-results') {
+            decimals.push(`${label}: ${response.data.legsSettled ?? 0} settled, `
+              + `${response.data.legsVoided ?? 0} void, ${response.data.legsUnresolved ?? 0} unresolved, `
+              + `${response.data.listsFinalised ?? 0} list(s) finalised.`);
+          }
         } catch (caught) {
           failures.push(`${label}: ${errorMessage(caught)}`);
         } finally {
@@ -79,7 +90,8 @@ const ManualTasksPanel: React.FC<{
         }
       }
       if (!active.current) return;
-      setMessage(failures.length ? 'Pass finished with errors. Review and retry the affected leagues.' : 'Pass completed.');
+      const suffix = decimals.length ? ` ${decimals.join(' ')}` : '';
+      setMessage(failures.length ? 'Pass finished with errors. Review and retry the affected leagues.' : `Pass completed.${suffix}`);
       setError(failures.join(' '));
     } finally {
       inFlight.current = false;
@@ -95,7 +107,7 @@ const ManualTasksPanel: React.FC<{
         Refresh the global catalogue and run daily ingestion first, then odds and predict/settle as needed. Recommendations reflect the
         previous schedule, not hard limits. Each pass consumes provider quota. Keep this page open while it runs.
         Prediction and settlement process bounded batches of fixtures in the current season, not only the selected date.
-        If prediction fails, use Settle only to refresh results and settle separately.
+        If prediction fails or completed fixtures need fresh scores, use Update final results to refresh and settle the published selections separately.
       </p>
       {message && <p role="status" className="mt-3 text-sm text-teal-900">{message}</p>}
       {error && <p role="alert" className="mt-3 text-sm text-rose-700">{error}</p>}
