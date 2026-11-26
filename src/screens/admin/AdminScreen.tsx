@@ -171,6 +171,11 @@ const AuthenticatedAdminScreen: React.FC = () => {
     [coverage],
   );
 
+  const allLeagues = useMemo(
+    () => (coverage?.leagues ?? []).map((row) => row.leagueId),
+    [coverage],
+  );
+
   const toggleLeague = (leagueId: number) => {
     setSelectedLeagues((current) =>
       current.includes(leagueId) ? current.filter((id) => id !== leagueId) : [...current, leagueId],
@@ -285,6 +290,14 @@ const AuthenticatedAdminScreen: React.FC = () => {
                   className="rounded-lg border border-slate-300 px-3 py-1 font-semibold text-slate-700 hover:bg-slate-50"
                 >
                   Select all eligible
+                </button>
+                <button
+                  type="button"
+                  disabled={manualBusy || !allLeagues.length}
+                  onClick={() => setSelectedLeagues(allLeagues)}
+                  className="rounded-lg border border-slate-300 px-3 py-1 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Select all
                 </button>
                 <button
                   type="button"

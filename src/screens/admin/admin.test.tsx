@@ -449,6 +449,21 @@ describe('league selection is a filter', () => {
     renderScreen();
     expect(await screen.findByRole('checkbox', { name: /League 78/ })).toBeEnabled();
   });
+
+  it('allows selecting all configured leagues for past dates with zero eligible fixtures', async () => {
+    mocked.getAdminCoverage.mockResolvedValue({
+      data: coverageOf([
+        league({ leagueId: 39, eligibleFixtures: 0, status: 'no_eligible_fixtures' }),
+        league({ leagueId: 140, eligibleFixtures: 0, status: 'no_eligible_fixtures' }),
+      ]),
+    } as never);
+    renderScreen();
+    const pl = await screen.findByRole('checkbox', { name: /^League 39/ });
+    const laLiga = screen.getByRole('checkbox', { name: /^League 140/ });
+    await userEvent.click(screen.getByRole('button', { name: 'Select all' }));
+    expect(pl).toBeChecked();
+    expect(laLiga).toBeChecked();
+  });
 });
 
 describe('coverage dashboard', () => {
