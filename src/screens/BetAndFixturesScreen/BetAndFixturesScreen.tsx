@@ -1697,7 +1697,7 @@ const BetAndFixturesScreen: React.FC = () => {
 
   // ===== Render =====
   return (
-    <div className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-100" style={{ fontFamily: '"Avenir Next", "Segoe UI", sans-serif' }}>
+    <div className="relative min-h-screen overflow-hidden bg-slate-950 text-white" style={{ fontFamily: '"Avenir Next", "Segoe UI", sans-serif' }}>
       {showPredictionGuide && (
         <aside aria-label="How to run predictions" className="border-b border-cyan-300/30 bg-gradient-to-r from-cyan-950 via-slate-900 to-sky-950">
           <div className="mx-auto flex max-w-[1440px] items-start gap-3 px-4 py-3 sm:px-6">
@@ -1802,7 +1802,7 @@ const BetAndFixturesScreen: React.FC = () => {
             <div className="rounded-2xl border border-slate-600 bg-slate-900 p-4">
               <div className="mb-3 flex items-center justify-between">
                 <div>
-                  <h2 className="text-base font-semibold text-white">League Selection</h2>
+                  <h2 className="text-base font-bold text-white">League Selection</h2>
                   <p className="text-xs text-slate-200">Search by country or league and build your batch quickly.</p>
                 </div>
                 <button
@@ -1911,7 +1911,7 @@ const BetAndFixturesScreen: React.FC = () => {
                 onClick={() => setIsBetOptionsCollapsed((value) => !value)}
                 className="mb-2 flex w-full items-center justify-between text-left"
               >
-                <div className="text-sm font-semibold text-white">Bet Options</div>
+                <div className="text-sm font-bold text-white">Bet Options</div>
                 <span className="text-xs text-slate-300">{isBetOptionsCollapsed ? 'Show' : 'Hide'}</span>
               </button>
               {!isBetOptionsCollapsed && (
@@ -1945,7 +1945,7 @@ const BetAndFixturesScreen: React.FC = () => {
                 onClick={() => setIsLeaguesByCountryCollapsed((value) => !value)}
                 className="flex w-full items-center justify-between border-b border-slate-700/50 px-4 py-3 text-left"
               >
-                <div className="text-sm font-semibold text-slate-100">Leagues by Country</div>
+                <div className="text-sm font-bold text-white">Leagues by Country</div>
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] text-slate-400">{filteredGroups.reduce((acc, [, leagues]) => acc + leagues.length, 0)} results</span>
                   <span className="text-xs text-slate-300">{isLeaguesByCountryCollapsed ? 'Show' : 'Hide'}</span>
