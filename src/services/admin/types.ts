@@ -124,7 +124,8 @@ export interface AdminUserLatestPurchase {
 export interface AdminUserRecord {
   id: number;
   firebaseUid: string;
-  email: string;
+  /** Some accounts (e.g. anonymous or phone auth) have no email on record. */
+  email: string | null;
   isActive: boolean;
   isStaff: boolean;
   isSuperuser: boolean;

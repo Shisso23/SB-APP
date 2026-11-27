@@ -85,8 +85,19 @@ const AdminUsersPanel: React.FC = () => {
             {users.map((user) => (
               <tr key={user.id} className="border-b border-slate-100 align-top">
                 <td className="px-3 py-3">
-                  <div className="font-semibold text-slate-900">{user.email || 'No email on record'}</div>
-                  <div className="mt-1 max-w-[280px] break-all font-mono text-xs text-slate-500">{user.firebaseUid}</div>
+                  {user.email ? (
+                    <>
+                      <div className="font-semibold text-slate-900">{user.email}</div>
+                      <div className="mt-1 max-w-[280px] break-all font-mono text-xs text-slate-500">{user.firebaseUid}</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="mt-1 font-semibold text-slate-400">No email on record</div>
+                      <div className="mt-1 max-w-[280px] break-all font-mono text-xs text-slate-500">
+                        Firebase UID: {user.firebaseUid}
+                      </div>
+                    </>
+                  )}
                 </td>
                 <td className="px-3 py-3">
                   <span className={`rounded-full px-2 py-1 text-xs font-semibold ${user.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
