@@ -42,6 +42,7 @@ const ManualTasksPanel: React.FC<{
   const [message, setMessage] = useState('');
   const active = useRef(true);
   const inFlight = useRef(false);
+  const [progressExpanded, setProgressExpanded] = useState(false);
 
   useEffect(() => {
     active.current = true;
@@ -140,30 +141,41 @@ const ManualTasksPanel: React.FC<{
           </div>
         ))}
       </div>
-      <h3 className="mt-5 font-semibold">Progress by league for {date}</h3>
-      <p className="text-xs text-slate-500">Latest pass for each task; a failed or interrupted pass should be reviewed and retried. “Remaining” means no pass recorded for this date.</p>
-      {data && <ul className="mt-2 space-y-2 text-sm">
-        {configuredLeagues.map(league => (
-          <li key={league} className="rounded-lg border p-3">
-            <strong>{formatLeagueLabel(league)}</strong>
-            {tasks.map(task => {
-              const progress = data.progress.find(row => row.leagueId === league && row.kind === task.kind);
-              const count = data.leagueCounts[String(league)]?.[task.kind] ?? 0;
-              const steps = progress ? Object.keys(progress.checkpoint)
-                .filter(key => key.startsWith('completed:')).map(key => key.slice('completed:'.length)) : [];
-              return <p key={task.kind}>{task.label}: {progress ? progress.status : 'Remaining'} · {count} started today
-                {steps.length ? ` · completed steps: ${steps.join(', ')}` : ''}
-                {progress?.error ? ` (${progress.error})` : ''}</p>;
-            })}
-            <p>Daily list prediction: {data.progress.find(row => row.leagueId === league && row.kind === 'predict')?.status ?? 'Remaining'}
-              {' '}· {data.leagueCounts[String(league)]?.predict ?? 0} started today</p>
-          </li>
-        ))}
-      </ul>}
-      {data && <p className="mt-2 text-sm text-slate-600">
-        Daily list prediction passes started today by admins: {data.counts.predict}.
-        Manual list publications today: {data.manualPublicationsToday}.
-      </p>}
+      <button
+        aria-label="Toggle Progress by league"
+        onClick={() => setProgressExpanded((v) => !v)}
+        className="flex w-full items-center justify-between text-left mt-5 mb-2"
+      >
+        <h3 className="font-semibold">Progress by league for {date}</h3>
+        <span className="text-xs text-slate-300">{progressExpanded ? 'Hide' : 'Show'}</span>
+      </button>
+      {progressExpanded && (
+        <>
+          <p className="text-xs text-slate-500">Latest pass for each task; a failed or interrupted pass should be reviewed and retried. “Remaining” means no pass recorded for this date.</p>
+          {data && <ul className="mt-2 space-y-2 text-sm">
+            {configuredLeagues.map(league => (
+              <li key={league} className="rounded-lg border p-3">
+                <strong>{formatLeagueLabel(league)}</strong>
+                {tasks.map(task => {
+                  const progress = data.progress.find(row => row.leagueId === league && row.kind === task.kind);
+                  const count = data.leagueCounts[String(league)]?.[task.kind] ?? 0;
+                  const steps = progress ? Object.keys(progress.checkpoint)
+                    .filter(key => key.startsWith('completed:')).map(key => key.slice('completed:'.length)) : [];
+                  return <p key={task.kind}>{task.label}: {progress ? progress.status : 'Remaining'} · {count} started today
+                    {steps.length ? ` · completed steps: ${steps.join(', ')}` : ''}
+                    {progress?.error ? ` (${progress.error})` : ''}</p>;
+                })}
+                <p>Daily list prediction: {data.progress.find(row => row.leagueId === league && row.kind === 'predict')?.status ?? 'Remaining'}
+                  {' '}· {data.leagueCounts[String(league)]?.predict ?? 0} started today</p>
+              </li>
+            ))}
+          </ul>}
+          {data && <p className="mt-2 text-sm text-slate-600">
+            Daily list prediction passes started today by admins: {data.counts.predict}.
+            Manual list publications today: {data.manualPublicationsToday}.
+          </p>}
+        </>
+      )}
     </section>
   );
 };

@@ -110,6 +110,7 @@ const AuthenticatedAdminScreen: React.FC = () => {
   const [coverageError, setCoverageError] = useState<string | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
+  const [coverageExpanded, setCoverageExpanded] = useState(false);
 
   /** Ask the server whether this user is an admin. Never inferred locally. */
   useEffect(() => {
@@ -320,6 +321,8 @@ const AuthenticatedAdminScreen: React.FC = () => {
           ) : null}
         </section>
 
+        <AdminUsersPanel />
+
         <ManualPredictionPanel date={targetDate} leagues={selectedLeagues}
           onBusyChange={setManualBusy}
           otherBusy={manualBusy}
@@ -328,12 +331,15 @@ const AuthenticatedAdminScreen: React.FC = () => {
         <ManualTasksPanel date={targetDate} leagues={selectedLeagues} configuredLeagues={status.configuredLeagues}
           busy={manualBusy} onBusyChange={setManualBusy} version={manualVersion}
           onActivity={() => { setManualVersion(value => value + 1); void loadCoverage(targetDate); }} />
-        <AdminUsersPanel />
         <AccessProductsPanel />
 
         {/* Coverage */}
-        <section aria-labelledby="coverage-heading" className="mt-8">
-          <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="mt-8">
+          <button
+            aria-label="Toggle League coverage"
+            onClick={() => setCoverageExpanded((v) => !v)}
+            className="flex w-full items-center justify-between text-left mb-4"
+          >
             <div>
               <h2 id="coverage-heading" className="text-lg font-bold tracking-tight">League coverage</h2>
               <p className="mt-1 text-sm text-slate-600">{coverage?.summary.label ?? 'Loading coverage…'}</p>
@@ -344,14 +350,10 @@ const AuthenticatedAdminScreen: React.FC = () => {
                 Coverage may still show older queued or failed jobs; use manual task progress above for current work.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => { void loadCoverage(targetDate); void loadJobs(targetDate); }}
-              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              Refresh view
-            </button>
-          </div>
+            <span className="text-xs text-slate-300">{coverageExpanded ? 'Hide' : 'Show'}</span>
+          </button>
+          {coverageExpanded && (
+            <>
 
           <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
             <table className="w-full min-w-[760px] border-collapse text-sm">
@@ -432,7 +434,9 @@ const AuthenticatedAdminScreen: React.FC = () => {
               </tbody>
             </table>
           </div>
-        </section>
+            </>
+          )}
+        </div>
 
         {/* Job status */}
         <section aria-labelledby="jobs-heading" className="mt-8">

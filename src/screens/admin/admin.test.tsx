@@ -88,6 +88,24 @@ const renderScreen = () =>
     </MemoryRouter>,
   );
 
+const expandCoverage = async () => {
+  const buttons = await screen.findAllByRole('button');
+  const button = buttons.find(
+    (b) => b.getAttribute('aria-label') === 'Toggle League coverage',
+  );
+  if (!button) throw new Error('Coverage toggle button not found');
+  await userEvent.click(button);
+};
+
+const expandProgress = async () => {
+  const buttons = await screen.findAllByRole('button');
+  const button = buttons.find(
+    (b) => b.getAttribute('aria-label') === 'Toggle Progress by league',
+  );
+  if (!button) throw new Error('Progress toggle button not found');
+  await userEvent.click(button);
+};
+
 beforeEach(() => {
   jest.clearAllMocks();
   mockedSubscribe.mockImplementation((listener) => {
@@ -140,6 +158,7 @@ describe('manual tasks', () => {
 
   it('shows recommendations, today counts and per-league remaining work', async () => {
     renderScreen();
+    await expandProgress();
     expect(await screen.findByText(/Daily ingestion: completed · 1 started today/)).toBeInTheDocument();
     expect(screen.getByText(/Refresh odds: Remaining · 2 started today/)).toBeInTheDocument();
     expect(screen.getByText(/Up to 5 passes per league per day/)).toBeInTheDocument();
@@ -422,6 +441,7 @@ describe('league selection is a filter', () => {
       data: coverageOf([league(), league({ leagueId: 71 }), league({ leagueId: 99999 })]),
     } as never);
     renderScreen();
+    await expandCoverage();
     const england = await screen.findByRole('checkbox', { name: /^League 39 - Premier League \(England\)/ });
     const brazil = screen.getByRole('checkbox', { name: /^League 71 - Serie A \(Brazil\)/ });
     expect(screen.getByRole('cell', { name: 'League 39 - Premier League (England)' })).toBeInTheDocument();
@@ -476,6 +496,7 @@ describe('coverage dashboard', () => {
     } as never);
 
     renderScreen();
+    await expandCoverage();
     expect(await screen.findByText('Not generated')).toBeInTheDocument();
     expect(screen.getByText('No eligible fixtures')).toBeInTheDocument();
     // The distinction is explained rather than left to the reader.
@@ -497,6 +518,7 @@ describe('coverage dashboard', () => {
       ]),
     } as never);
     renderScreen();
+    await expandCoverage();
     expect(await screen.findByText('Failed')).toBeInTheDocument();
     expect(screen.getByText('ProviderError')).toBeInTheDocument();
     expect(screen.getByText(/earlier published version is still available/i)).toBeInTheDocument();
@@ -507,6 +529,7 @@ describe('coverage dashboard', () => {
       data: coverageOf([league({ status: 'queued' }), league({ leagueId: 140, status: 'running' })]),
     } as never);
     renderScreen();
+    await expandCoverage();
     const queued = (await screen.findByText('Queued')).closest('span');
     expect(queued?.textContent).toMatch(/⋯/);
     const running = screen.getByText('Running').closest('span');
@@ -544,6 +567,7 @@ describe('publication state', () => {
       }),
     } as never);
     renderScreen();
+    await expandCoverage();
     expect(await screen.findByText('Stale')).toBeInTheDocument();
   });
 
@@ -554,6 +578,7 @@ describe('publication state', () => {
       }),
     } as never);
     renderScreen();
+    await expandCoverage();
     expect(await screen.findByText('Nothing published')).toBeInTheDocument();
   });
 
