@@ -1697,7 +1697,7 @@ const BetAndFixturesScreen: React.FC = () => {
 
   // ===== Render =====
   return (
-    <div className="relative min-h-screen overflow-hidden bg-slate-950 text-white" style={{ fontFamily: '"Avenir Next", "Segoe UI", sans-serif' }}>
+    <div className="relative min-h-screen overflow-hidden bg-slate-900 text-white" style={{ fontFamily: '"Avenir Next", "Segoe UI", sans-serif' }}>
       {showPredictionGuide && (
         <aside aria-label="How to run predictions" className="border-b border-cyan-300/30 bg-gradient-to-r from-cyan-950 via-slate-900 to-sky-950">
           <div className="mx-auto flex max-w-[1440px] items-start gap-3 px-4 py-3 sm:px-6">
