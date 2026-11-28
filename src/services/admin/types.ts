@@ -148,6 +148,13 @@ export interface AdminUsersResponse {
   users: AdminUserRecord[];
 }
 
+export interface AdminAccessGrantResponse {
+  id: number;
+  userId: number;
+  startsAt: string;
+  endsAt: string;
+}
+
 export interface AdminAccessProduct {
   code: string;
   name: string;

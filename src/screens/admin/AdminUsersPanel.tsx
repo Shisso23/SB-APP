@@ -1,11 +1,69 @@
 import React, { useCallback, useEffect, useState } from 'react';
 
-import { getAdminUsers } from '../../services/admin';
+import { getAdminUsers, grantAdminUserAccess } from '../../services/admin';
 import type { AdminUserRecord } from '../../services/admin/types';
 import { describeFailure } from '../../services/api/failures';
 
 const formatDate = (value: string | null) =>
   value ? new Date(value).toLocaleString() : '—';
+
+const GrantAccessForm: React.FC<{
+  user: AdminUserRecord;
+  onCancel: () => void;
+  onGranted: (endsAt: string) => void;
+}> = ({ user, onCancel, onGranted }) => {
+  const [duration, setDuration] = useState('1');
+  const [reason, setReason] = useState('');
+  const [submitted, setSubmitted] = useState<{ requestId: string; durationDays: number; reason: string }>();
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (sending) return;
+    const days = Number(duration);
+    if (!Number.isInteger(days) || days < 1 || days > 90 || !reason.trim()) return;
+    const request = submitted ?? { requestId: crypto.randomUUID(), durationDays: days, reason: reason.trim() };
+    setSubmitted(request);
+    setSending(true);
+    setError('');
+    try {
+      const { data } = await grantAdminUserAccess(user.id, request);
+      onGranted(data.endsAt);
+    } catch {
+      setError('Could not confirm the grant. Retry to check the same request.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <form aria-labelledby="grant-access-heading" onSubmit={submit} className="mt-4 space-y-3 rounded-xl border border-teal-200 bg-teal-50 p-4">
+      <div>
+        <h3 id="grant-access-heading" className="font-bold">Grant prediction access</h3>
+        <p className="break-all text-sm text-slate-700">User #{user.id} · {user.email || user.firebaseUid}</p>
+        <p className="mt-1 text-sm text-slate-700">Adds time to any active pass. The payment stays in its current state.</p>
+      </div>
+      <div className="flex flex-wrap gap-3">
+        <label className="text-sm font-semibold">Duration in days
+          <input type="number" min={1} max={90} step={1} required value={duration} disabled={!!submitted}
+            onChange={event => setDuration(event.target.value)} className="mt-1 block min-h-[44px] w-28 rounded-lg border border-slate-400 bg-white px-3" />
+        </label>
+        <label className="min-w-0 flex-1 text-sm font-semibold">Reason
+          <input required maxLength={240} value={reason} disabled={!!submitted} placeholder="e.g. Pending payment accommodation"
+            onChange={event => setReason(event.target.value)} className="mt-1 block min-h-[44px] w-full rounded-lg border border-slate-400 bg-white px-3" />
+        </label>
+      </div>
+      {error && <p role="alert" className="text-sm text-rose-800">{error}</p>}
+      <div className="flex flex-wrap gap-2">
+        <button type="submit" disabled={sending || !reason.trim()} className="min-h-[44px] rounded-lg bg-teal-800 px-4 text-sm font-bold text-white disabled:opacity-60">
+          {sending ? 'Granting…' : error ? 'Retry grant' : 'Confirm access grant'}
+        </button>
+        <button type="button" disabled={sending} onClick={onCancel} className="min-h-[44px] rounded-lg border border-slate-400 px-4 text-sm font-semibold">Cancel</button>
+      </div>
+    </form>
+  );
+};
 
 const AdminUsersPanel: React.FC = () => {
   const [users, setUsers] = useState<AdminUserRecord[]>([]);
@@ -14,6 +72,8 @@ const AdminUsersPanel: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
   const [submittedSearch, setSubmittedSearch] = useState('');
+  const [grantTarget, setGrantTarget] = useState<AdminUserRecord>();
+  const [grantMessage, setGrantMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -58,7 +118,7 @@ const AdminUsersPanel: React.FC = () => {
       <form onSubmit={submitSearch} className="mt-4 flex gap-2">
         <label className="sr-only" htmlFor="admin-user-search">Search users</label>
         <input id="admin-user-search" value={search} onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search email or Firebase UID"
+          placeholder="Search email, Firebase UID, or user ID"
           className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
         <button type="submit" disabled={loading}
           className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
@@ -66,6 +126,13 @@ const AdminUsersPanel: React.FC = () => {
         </button>
       </form>
 
+      {grantTarget && <GrantAccessForm key={grantTarget.id} user={grantTarget} onCancel={() => setGrantTarget(undefined)}
+        onGranted={endsAt => {
+          setGrantMessage(`Prediction access granted to user #${grantTarget.id} through ${formatDate(endsAt)}.`);
+          setGrantTarget(undefined);
+          void load(page, submittedSearch);
+        }} />}
+      {grantMessage && <p role="status" className="mt-3 text-sm text-teal-800">{grantMessage}</p>}
       {error && <p role="alert" className="mt-3 text-sm text-rose-700">{error}</p>}
       {loading && <p role="status" className="mt-3 text-sm text-slate-500">Loading users…</p>}
 
@@ -115,6 +182,13 @@ const AdminUsersPanel: React.FC = () => {
                   </div>
                   {user.membership.endsAt && <div className="mt-1 text-xs text-slate-500">Ends {formatDate(user.membership.endsAt)}</div>}
                   {user.membership.revoked && <div className="text-xs font-semibold text-rose-700">Previously revoked</div>}
+                  {user.isActive && !user.isStaff && !user.isSuperuser && (
+                    <button type="button" disabled={loading || !!grantTarget}
+                      onClick={() => { setGrantMessage(''); setGrantTarget(user); }}
+                      className="mt-1 min-h-[44px] text-xs font-bold text-teal-800 underline underline-offset-4 disabled:opacity-50">
+                      Grant access <span className="sr-only">to user #{user.id}</span>
+                    </button>
+                  )}
                 </td>
                 <td className="px-3 py-3">
                   {user.latestPurchase ? (

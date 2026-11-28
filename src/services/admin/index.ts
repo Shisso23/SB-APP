@@ -17,6 +17,7 @@ import type {
   AdminRunResponse,
   AdminStatusResponse,
   AdminUsersResponse,
+  AdminAccessGrantResponse,
   CoverageResponse,
   ManualPredictionResponse,
   ManualBetListPreview,
@@ -44,6 +45,12 @@ export const getAdminUsers = (page = 1, pageSize = 25, search = '') => {
   if (search.trim()) params.set('search', search.trim());
   return apiGet<AdminUsersResponse>(`${base}users/?${params.toString()}`);
 };
+
+export const grantAdminUserAccess = (userId: number, input: {
+  requestId: string;
+  durationDays: number;
+  reason: string;
+}) => apiClient.post<AdminAccessGrantResponse>(`${base}users/${userId}/grant-access/`, input);
 
 export const predictAdminManualLeague = (date: string, leagueId: number) =>
   apiClient.post<ManualPredictionResponse>(`${base}manual/predictions/`, { date, leagueId }, { timeout: 110_000 });

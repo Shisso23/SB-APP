@@ -163,6 +163,44 @@ describe('manual tasks', () => {
     expect(screen.getByText('No phone on record')).toBeInTheDocument();
   });
 
+  it('grants access to the selected user and retries a lost response with the same request ID', async () => {
+    const uuid = '24c9bff6-5d55-460e-8abb-073029b6fcfb';
+    const previous = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
+    Object.defineProperty(globalThis, 'crypto', { configurable: true, value: { randomUUID: () => uuid } });
+    try {
+      mocked.getAdminUsers.mockResolvedValue({
+        data: { page: 1, pageSize: 25, total: 1, totalPages: 1, users: [{
+          id: 5, firebaseUid: 'selected-customer', email: 'fan@example.com',
+          isActive: true, isStaff: false, isSuperuser: false,
+          createdAt: '2026-11-20T10:00:00Z',
+          membership: { active: false, startsAt: null, endsAt: null, revoked: false },
+          latestPurchase: null,
+        }] },
+      } as never);
+      mocked.grantAdminUserAccess
+        .mockRejectedValueOnce(new Error('Connection interrupted'))
+        .mockResolvedValueOnce({ data: { id: 1, userId: 5, startsAt: '2026-11-28T10:00:00Z', endsAt: '2026-11-29T10:00:00Z' } } as never);
+      renderScreen();
+      await userEvent.click(await screen.findByRole('button', { name: 'Grant access to user #5' }));
+      const form = screen.getByRole('form', { name: 'Grant prediction access' });
+      expect(within(form).getByText(/User #5/)).toHaveTextContent('fan@example.com');
+      const confirm = within(form).getByRole('button', { name: 'Confirm access grant' });
+      expect(confirm).toBeDisabled();
+      await userEvent.type(within(form).getByLabelText('Reason'), 'Payment support');
+      await userEvent.click(confirm);
+      expect(await within(form).findByRole('alert')).toHaveTextContent('Could not confirm the grant');
+      await userEvent.click(within(form).getByRole('button', { name: 'Retry grant' }));
+      expect(await screen.findByText(/Prediction access granted to user #5/)).toBeInTheDocument();
+      expect(mocked.grantAdminUserAccess.mock.calls).toEqual([
+        [5, { requestId: uuid, durationDays: 1, reason: 'Payment support' }],
+        [5, { requestId: uuid, durationDays: 1, reason: 'Payment support' }],
+      ]);
+    } finally {
+      if (previous) Object.defineProperty(globalThis, 'crypto', previous);
+      else Reflect.deleteProperty(globalThis, 'crypto');
+    }
+  });
+
   it('shows recommendations, today counts and per-league remaining work', async () => {
     renderScreen();
     await expandProgress();
