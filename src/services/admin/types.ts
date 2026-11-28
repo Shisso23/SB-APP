@@ -204,6 +204,8 @@ export interface AdminJob {
   season: number;
   leagues: number[];
   trigger: string;
+  scheduleId?: string | null;
+  executionMechanism?: string;
   requestedBy: string;
   createdAt: string;
   startedAt: string | null;
@@ -234,3 +236,32 @@ export interface AdminJobDetail extends AdminJob {
   isTerminal: boolean;
 }
 
+
+export interface AdminScheduleResponse {
+  date: string;
+  selectedLeagues: number[];
+  effectiveLeagues: number[];
+  selectionError: string;
+  timezone: string;
+  schedules: { name: string; times: string[]; modes: string[] }[];
+  runs: {
+    id: number; schedule: string; scheduledAt: string; startedAt: string | null; finishedAt: string | null;
+    status: string; leagues: number[]; error: string;
+    results: {
+      global?: Record<string, AdminIngestionStep>;
+      leagues?: Record<string, Record<string, AdminIngestionStep>>;
+      skippedLeagues?: number[];
+    };
+  }[];
+}
+
+export interface AdminTrafficResponse {
+  page: number;
+  total: number;
+  totalPages: number;
+  uniqueVisitors: number;
+  visitsToday: number;
+  visitors: { id: number; deviceType: string; browser: string; operatingSystem: string; pagePath: string; visitedAt: string }[];
+}
+
+interface AdminIngestionStep { status: string; recordsFetched?: number; attempts?: number; error?: string; reason?: string }

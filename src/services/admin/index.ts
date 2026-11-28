@@ -16,6 +16,8 @@ import type {
   AdminJobsResponse,
   AdminRunResponse,
   AdminStatusResponse,
+  AdminScheduleResponse,
+  AdminTrafficResponse,
   AdminUsersResponse,
   AdminAccessGrantResponse,
   CoverageResponse,
@@ -111,3 +113,15 @@ export const getAdminJobs = (targetDate?: string, limit = 25) => {
 
 /** One run's status, polled while it is not terminal. */
 export const getAdminJob = (jobId: number) => apiGet<AdminJobDetail>(`${base}jobs/${jobId}/`);
+
+
+export const getAdminSchedule = (date: string) =>
+  apiGet<AdminScheduleResponse>(`${base}ingestion-schedule/?${new URLSearchParams({ date })}`);
+
+export const saveAdminSchedule = (date: string, leagues: number[]) =>
+  apiClient.put<Pick<AdminScheduleResponse, 'date' | 'selectedLeagues' | 'effectiveLeagues'>>(
+    `${base}ingestion-schedule/`, { date, leagues },
+  );
+
+export const getAdminTraffic = (page: number) =>
+  apiGet<AdminTrafficResponse>(`${base}visitors/?${new URLSearchParams({ page: String(page), pageSize: '25' })}`);

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 
 import { createAdminAccessProduct, getAdminAccessProducts, setAdminAccessProductActive } from '../../services/admin';
 import type { AdminAccessProductsResponse } from '../../services/admin/types';
+import { Badge, Feedback, Panel } from './admin-ui';
 import { ApiRequestError } from '../../services/api/client';
 
 const validationMessage = (error: unknown): string => {
@@ -21,6 +22,7 @@ const AccessProductsPanel: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
@@ -28,13 +30,14 @@ const AccessProductsPanel: React.FC = () => {
   const [confirmed, setConfirmed] = useState(false);
 
   const load = useCallback(async () => {
+    setLoading(true);
     setError(null);
     try {
       const response = await getAdminAccessProducts();
       setData(response.data);
     } catch (caught) {
       setError(`Could not load products: ${validationMessage(caught)}`);
-    }
+    } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { void load(); }, [load]);
@@ -76,34 +79,27 @@ const AccessProductsPanel: React.FC = () => {
   };
 
   return (
-    <section aria-labelledby="access-products-heading" className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 id="access-products-heading" className="text-lg font-bold">Membership products</h2>
-      <p className="mt-2 text-sm text-slate-600">
-        New products are immediately available for purchase. Product terms cannot be edited; create a product
-        with a new code and deactivate the old one to change them. Deactivation does not cancel existing purchases.
-        Payment gateway configuration is separate.
-      </p>
-      {error && <p role="alert" className="mt-3 text-sm text-rose-700">{error}</p>}
-      {notice && <p role="status" className="mt-3 text-sm text-teal-700">{notice}</p>}
-      {!data ? (
-        <button type="button" onClick={() => void load()} className="mt-3 text-sm font-semibold text-teal-700">
-          Retry loading products
-        </button>
-      ) : (
-        <>
-          <ul className="mt-4 space-y-2">
-            {data.products.map((product) => (
-              <li key={product.code} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 p-3 text-sm">
-                <span>{product.name} ({product.code}) — {product.currency} {product.price_amount}, {product.duration_days} days — {product.is_active ? 'Active' : 'Inactive'}</span>
-                <button type="button" disabled={busy} onClick={() => void toggle(product.code, !product.is_active)}
-                  aria-label={`${product.is_active ? 'Deactivate' : 'Activate'} ${product.name} (${product.code})`}
-                  className="rounded-lg border border-slate-300 px-3 py-1 font-semibold disabled:opacity-50">
-                  {product.is_active ? 'Deactivate' : 'Activate'}
-                </button>
-              </li>
-            ))}
-            {!data.products.length && <li className="text-sm text-slate-500">No products configured.</li>}
-          </ul>
+    <>
+      {error && <Feedback error>{error}</Feedback>}
+      {notice && <Feedback>{notice}</Feedback>}
+      <div className="ax-grid">
+        <Panel title="Membership products" subtitle="Current and retired checkout products"
+          action={<button type="button" onClick={() => void load()} disabled={loading || busy} className="ax-button">Refresh products</button>}>
+          {loading && <Feedback>Loading products…</Feedback>}
+          {!data && error && <button type="button" onClick={() => void load()} className="ax-button">Retry loading products</button>}
+          {data && <ul className="ax-row-list">
+            {data.products.map(product => <li key={product.code}>
+              <div className="min-w-0 break-words"><strong>{product.name} ({product.code})</strong><p className="ax-muted text-xs">{product.currency} {product.price_amount} · {product.duration_days} days</p>
+                <Badge state={product.is_active ? 'active' : 'inactive'} label={product.is_active ? 'Active' : 'Inactive'} /></div>
+              <button type="button" disabled={busy || loading} onClick={() => void toggle(product.code, !product.is_active)}
+                className="ax-button" aria-label={`${product.is_active ? 'Deactivate' : 'Activate'} ${product.name} (${product.code})`}>
+                {product.is_active ? 'Deactivate' : 'Activate'}
+              </button>
+            </li>)}
+            {data.products.length === 0 && <li className="ax-muted">No products configured.</li>}
+          </ul>}
+        </Panel>
+        {data && <Panel title="Create a pass" subtitle="New products are immediately available for purchase. Use a new product code when terms change.">
           <form onSubmit={create} className="mt-5 grid gap-3 sm:grid-cols-2">
             <label className="text-sm">Product code
               <input required maxLength={60} pattern="[A-Za-z0-9][A-Za-z0-9_-]*" value={code} onChange={(e) => setCode(e.target.value)}
@@ -126,14 +122,15 @@ const AccessProductsPanel: React.FC = () => {
               I confirm this product will be active immediately.
             </label>
             <div className="sm:col-span-2">
-              <button type="submit" disabled={busy || !confirmed} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+              <button type="submit" disabled={busy || loading || !confirmed} className="ax-button ax-primary">
                 Create active product
               </button>
             </div>
           </form>
-        </>
-      )}
-    </section>
+          <p className="ax-muted mt-3 text-xs">Retiring a product leaves existing purchases and access in place.</p>
+        </Panel>}
+      </div>
+    </>
   );
 };
 

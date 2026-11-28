@@ -20,7 +20,7 @@ const RoutedContent: React.FC = () => {
   }, [location.pathname, location.search]);
   return (
     <>
-      <Navbar/>
+      {!/^\/admin\/?$/i.test(location.pathname) && <Navbar />}
       <Routes>
           <Route index element={<HomeScreen />} />
           <Route path='/BetAndFixturesScreen' element={<BetAndFixturesScreen />} />

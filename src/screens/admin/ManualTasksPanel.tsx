@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Feedback, sastTime } from './admin-ui';
 
 import { formatLeagueLabel } from '../../config/league-labels';
-import { getManualTasks, runManualTask } from '../../services/admin';
+import { runManualTask } from '../../services/admin';
 import { describeFailure } from '../../services/api/failures';
 import { ApiRequestError } from '../../services/api/client';
 import type { ManualTaskKind, ManualTasksResponse } from '../../services/admin/types';
@@ -10,6 +11,7 @@ const tasks: { kind: ManualTaskKind; label: string; guidance: string }[] = [
   { kind: 'daily', label: 'Daily ingestion', guidance: '1 pass per league per day: league data, history, fixtures and standings.' },
   { kind: 'odds', label: 'Refresh odds', guidance: 'Up to 5 passes per league per day, when odds are needed. Refresh fixtures first.' },
   { kind: 'predict-settle', label: 'Predict and settle', guidance: 'Up to 3 passes per league per day around match times. Refreshes fixtures and odds first.' },
+  { kind: 'settle', label: 'Settle only', guidance: 'Refreshes results and settles eligible predictions independently of prediction generation.' },
   {
     kind: 'update-results',
     label: 'Update final results',
@@ -33,12 +35,12 @@ const ManualTasksPanel: React.FC<{
   configuredLeagues: number[];
   busy: boolean;
   onBusyChange: (busy: boolean) => void;
-  version: number;
+  resource: { data?: ManualTasksResponse; error?: string; loading: boolean };
+  onRefresh: () => void;
   onActivity: () => void;
-}> = ({ date, leagues, configuredLeagues, busy, onBusyChange, version, onActivity }) => {
-  const [data, setData] = useState<ManualTasksResponse | null>(null);
+}> = ({ date, leagues, configuredLeagues, busy, onBusyChange, resource, onRefresh, onActivity }) => {
+  const { data, error: loadError, loading } = resource;
   const [error, setError] = useState('');
-  const [loadError, setLoadError] = useState('');
   const [message, setMessage] = useState('');
   const active = useRef(true);
   const inFlight = useRef(false);
@@ -48,20 +50,6 @@ const ManualTasksPanel: React.FC<{
     active.current = true;
     return () => { active.current = false; };
   }, []);
-
-  useEffect(() => {
-    let active = true;
-    setData(null);
-    getManualTasks(date).then(response => {
-      if (active) {
-        setData(response.data);
-        setLoadError('');
-      }
-    }).catch(caught => {
-      if (active) setLoadError(`Could not load manual task progress: ${describeFailure(caught)}`);
-    });
-    return () => { active = false; };
-  }, [date, version]);
 
   const run = async (kind: ManualTaskKind) => {
     if (inFlight.current) return;
@@ -101,21 +89,20 @@ const ManualTasksPanel: React.FC<{
   };
 
   return (
-    <section aria-labelledby="manual-tasks-heading" className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section aria-labelledby="manual-tasks-heading" className="ax-panel">
       <h2 id="manual-tasks-heading" className="text-lg font-bold">Manual ingestion and prediction tasks</h2>
       <p className="mt-2 text-sm text-slate-600">
-        Select leagues above. Tasks execute immediately, one league at a time; no background job is sent.
-        Refresh the global catalogue and run daily ingestion first, then odds and predict/settle as needed. Recommendations reflect the
-        previous schedule, not hard limits. Each pass consumes provider quota. Keep this page open while it runs.
-        Prediction and settlement process bounded batches of fixtures in the current season, not only the selected date.
-        If prediction fails or completed fixtures need fresh scores, use Update final results to refresh and settle the published selections separately.
+        Operations run directly, one league at a time. Start with the global catalogue and daily ingestion, then refresh odds, predict or settle as needed.
+        Prediction and settlement process bounded batches in the current season. Keep this workspace open while a request runs.
       </p>
-      {message && <p role="status" className="mt-3 text-sm text-teal-900">{message}</p>}
-      {error && <p role="alert" className="mt-3 text-sm text-rose-700">{error}</p>}
-      {loadError && <p role="alert" className="mt-3 text-sm text-rose-700">{loadError}</p>}
-      {!data && !loadError && <p className="mt-3 text-sm">Loading task progress…</p>}
-      <button type="button" onClick={onActivity}
-        className="mt-3 rounded-lg border px-4 py-2 text-sm font-semibold">Reload task progress</button>
+      <div className="ax-toolbar mt-3">
+        <strong>{date} SAST</strong><span className="ax-muted">{leagues.length ? leagues.map(formatLeagueLabel).join(', ') : 'No leagues selected'}</span>
+        <button type="button" className="ax-button sm:ml-auto" onClick={onRefresh}>Reload task progress</button>
+      </div>
+      {message && <Feedback>{message}</Feedback>}
+      {error && <Feedback error>{error}</Feedback>}
+      {loadError && <Feedback error>Could not load manual task progress. {loadError}</Feedback>}
+      {loading && <Feedback>Loading task progress…</Feedback>}
       <div className="mt-4 rounded-lg border p-3">
         <h3 className="font-semibold">Global league catalogue</h3>
         <p className="text-sm text-slate-600">1 pass per day; refreshes the global league catalogue.</p>
@@ -124,30 +111,30 @@ const ManualTasksPanel: React.FC<{
           {data.progress.find(row => row.leagueId === 0 && row.kind === 'catalog')?.status ?? 'Remaining'}.
         </p>}
         <button type="button" disabled={busy} onClick={() => void run('catalog')}
-          className="mt-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+          className="ax-button mt-2">
           Run global league catalogue
         </button>
       </div>
-      <div className="mt-4 space-y-3">
+      <div className="mt-3 grid gap-3 xl:grid-cols-2">
         {tasks.map(task => (
           <div key={task.kind} className="rounded-lg border p-3">
             <h3 className="font-semibold">{task.label}</h3>
             <p className="text-sm text-slate-600">{task.guidance}</p>
             {data && <p className="text-sm">Admin league passes started today ({data.today}, SAST): {data.counts[task.kind]}</p>}
             <button type="button" disabled={busy || !leagues.length} onClick={() => void run(task.kind)}
-              className="mt-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+              className="ax-button mt-2">
               Run {task.label.toLowerCase()}
             </button>
           </div>
         ))}
       </div>
       <button
-        aria-label="Toggle Progress by league"
+        aria-label="Toggle Progress by league" aria-expanded={progressExpanded}
         onClick={() => setProgressExpanded((v) => !v)}
         className="flex w-full items-center justify-between text-left mt-5 mb-2"
       >
         <h3 className="font-semibold">Progress by league for {date}</h3>
-        <span className="text-xs text-slate-300">{progressExpanded ? 'Hide' : 'Show'}</span>
+        <span className="ax-muted text-xs">{progressExpanded ? 'Hide' : 'Show'}</span>
       </button>
       {progressExpanded && (
         <>
@@ -163,7 +150,7 @@ const ManualTasksPanel: React.FC<{
                     .filter(key => key.startsWith('completed:')).map(key => key.slice('completed:'.length)) : [];
                   return <p key={task.kind}>{task.label}: {progress ? progress.status : 'Remaining'} · {count} started today
                     {steps.length ? ` · completed steps: ${steps.join(', ')}` : ''}
-                    {progress?.error ? ` (${progress.error})` : ''}</p>;
+                    {progress?.error ? ` (${progress.error})` : ''}{progress?.startedAt ? ` · ${sastTime(progress.startedAt)} SAST` : ''}</p>;
                 })}
                 <p>Daily list prediction: {data.progress.find(row => row.leagueId === league && row.kind === 'predict')?.status ?? 'Remaining'}
                   {' '}· {data.leagueCounts[String(league)]?.predict ?? 0} started today</p>

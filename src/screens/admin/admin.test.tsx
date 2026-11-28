@@ -17,12 +17,15 @@ import type { User } from 'firebase/auth';
 
 import AdminScreen from './AdminScreen';
 import * as service from '../../services/admin';
-import { ApiRequestError } from '../../services/api/client';
+import { ApiRequestError, apiGet } from '../../services/api/client';
 import type { AdminJob, CoverageResponse, LeagueCoverage, ManualBetListPreview } from '../../services/admin/types';
 import { AuthProvider } from '../../services/auth/AuthProvider';
+import * as official from '../../services/official';
 import { subscribeToAuthChanges } from '../../services/auth/firebase';
 
 jest.mock('../../services/admin');
+jest.mock('../../services/official');
+jest.mock('../../services/api/client', () => ({ ...jest.requireActual('../../services/api/client'), apiGet: jest.fn() }));
 jest.mock('../../services/auth/firebase');
 
 const mocked = service as jest.Mocked<typeof service>;
@@ -79,23 +82,14 @@ const job = (overrides: Partial<AdminJob> = {}): AdminJob => ({
   ...overrides,
 });
 
-const renderScreen = () =>
+const renderScreen = (view = 'overview') =>
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[view === 'overview' ? '/admin' : `/admin?view=${view}`]}>
       <AuthProvider>
         <AdminScreen />
       </AuthProvider>
     </MemoryRouter>,
   );
-
-const expandCoverage = async () => {
-  const buttons = await screen.findAllByRole('button');
-  const button = buttons.find(
-    (b) => b.getAttribute('aria-label') === 'Toggle League coverage',
-  );
-  if (!button) throw new Error('Coverage toggle button not found');
-  await userEvent.click(button);
-};
 
 const expandProgress = async () => {
   const buttons = await screen.findAllByRole('button');
@@ -108,6 +102,13 @@ const expandProgress = async () => {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  (apiGet as jest.Mock).mockResolvedValue({ data: { response: [], paging: { total: 1 } } });
+  (official.getOfficialToday as jest.Mock).mockResolvedValue({ data: { businessDate: '2026-03-10', published: false } });
+  (official.getOfficialHistory as jest.Mock).mockResolvedValue({ data: { results: [], totalPages: 1 } });
+  (official.getOfficialSummary as jest.Mock).mockResolvedValue({ data: { scope: { period: {}, listsConsidered: 0 }, metrics: {} } });
+  mocked.getAdminSchedule.mockResolvedValue({ data: { date: '2026-03-10', selectedLeagues: [], effectiveLeagues: [39],
+    selectionError: '', timezone: 'Africa/Johannesburg', schedules: [], runs: [] } } as never);
+  mocked.getAdminTraffic.mockResolvedValue({ data: { page: 1, total: 0, totalPages: 1, uniqueVisitors: 0, visitsToday: 0, visitors: [] } } as never);
   mockedSubscribe.mockImplementation((listener) => {
     authListener = listener;
     listener(adminUser);
@@ -155,7 +156,7 @@ describe('manual tasks', () => {
         }],
       },
     } as never);
-    renderScreen();
+    renderScreen('customers');
     expect(await screen.findByText('member@example.com')).toBeInTheDocument();
     expect(screen.getByText('Active membership')).toBeInTheDocument();
     expect(screen.getByText('30-day pass')).toBeInTheDocument();
@@ -180,7 +181,7 @@ describe('manual tasks', () => {
       mocked.grantAdminUserAccess
         .mockRejectedValueOnce(new Error('Connection interrupted'))
         .mockResolvedValueOnce({ data: { id: 1, userId: 5, startsAt: '2026-11-28T10:00:00Z', endsAt: '2026-11-29T10:00:00Z' } } as never);
-      renderScreen();
+      renderScreen('customers');
       await userEvent.click(await screen.findByRole('button', { name: 'Grant access to user #5' }));
       const form = screen.getByRole('form', { name: 'Grant prediction access' });
       expect(within(form).getByText(/User #5/)).toHaveTextContent('fan@example.com');
@@ -202,7 +203,7 @@ describe('manual tasks', () => {
   });
 
   it('shows recommendations, today counts and per-league remaining work', async () => {
-    renderScreen();
+    renderScreen('operations');
     await expandProgress();
     expect(await screen.findByText(/Daily ingestion: completed · 1 started today/)).toBeInTheDocument();
     expect(screen.getByText(/Refresh odds: Remaining · 2 started today/)).toBeInTheDocument();
@@ -212,7 +213,7 @@ describe('manual tasks', () => {
 
   it('runs selected leagues directly and allows a repeated pass', async () => {
     mocked.runManualTask.mockResolvedValue({ data: { id: 1, status: 'completed' } } as never);
-    renderScreen();
+    renderScreen('operations');
     await userEvent.click(await screen.findByRole('checkbox', { name: /^League 39/ }));
     const button = screen.getByRole('button', { name: 'Run refresh odds' });
     await userEvent.click(button);
@@ -227,7 +228,7 @@ describe('manual tasks', () => {
     mocked.runManualTask.mockResolvedValue({
       data: { id: 1, status: 'completed', datesChecked: 2, legsSettled: 3, legsVoided: 1, legsUnresolved: 0, listsFinalised: 2 },
     } as never);
-    renderScreen();
+    renderScreen('operations');
     await userEvent.click(await screen.findByRole('checkbox', { name: /^League 39/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Run update final results' }));
     await waitFor(() => expect(mocked.runManualTask).toHaveBeenCalledWith(expect.any(String), 39, 'update-results'));
@@ -238,7 +239,7 @@ describe('manual tasks', () => {
     mocked.runManualTask.mockRejectedValue(
       new ApiRequestError('Unavailable', 503, { detail: 'Provider request budget exhausted; retry later.' }),
     );
-    renderScreen();
+    renderScreen('operations');
     await userEvent.click(await screen.findByRole('checkbox', { name: /^League 39/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Run refresh odds' }));
     expect(await screen.findByText(/Provider request budget exhausted/)).toBeInTheDocument();
@@ -275,7 +276,7 @@ describe('manual daily publication without jobs', () => {
     prepareMocks();
     mocked.getAdminJobs.mockResolvedValue({ data: { jobs: [job({ status: 'failed' })] } } as never);
     mocked.publishAdminManualList.mockResolvedValue({ data: { published: true, date: manualPreview.date, listId: 5 } } as never);
-    renderScreen();
+    renderScreen('predictions');
     await userEvent.click(await screen.findByRole('checkbox', { name: /^League 39/ }));
     const panel = within(screen.getByRole('region', { name: 'Manual daily bet list (no jobs)' }));
     await userEvent.click(panel.getByRole('button', { name: 'Predict manually and preview' }));
@@ -302,7 +303,7 @@ describe('manual daily publication without jobs', () => {
     };
     mocked.previewAdminManualList.mockResolvedValue({ data: preview } as never);
     mocked.publishAdminManualList.mockResolvedValue({ data: { published: true } } as never);
-    renderScreen();
+    renderScreen('predictions');
     await userEvent.click(await screen.findByRole('checkbox', { name: /^League 39/ }));
     const panel = within(screen.getByRole('region', { name: 'Manual daily bet list (no jobs)' }));
     await userEvent.click(panel.getByRole('button', { name: 'Predict manually and preview' }));
@@ -323,7 +324,7 @@ describe('manual daily publication without jobs', () => {
     mocked.previewAdminManualList.mockResolvedValue({
       data: { ...manualPreview, canPublish: false, reason: 'Only 2 distinct fixtures qualified; 3 are required.', suggestions: manualPreview.suggestions.slice(0, 2) },
     } as never);
-    renderScreen();
+    renderScreen('predictions');
     const selection = await screen.findByRole('checkbox', { name: /^League 39/ });
     await userEvent.click(selection);
     const panel = within(screen.getByRole('region', { name: 'Manual daily bet list (no jobs)' }));
@@ -339,7 +340,7 @@ describe('manual daily publication without jobs', () => {
     mocked.predictAdminManualLeague.mockRejectedValueOnce(
       new ApiRequestError('Unavailable', 503, { detail: 'Provider request budget exhausted; retry later.' }),
     );
-    renderScreen();
+    renderScreen('predictions');
     await userEvent.click(await screen.findByRole('checkbox', { name: /^League 39/ }));
     const panel = within(screen.getByRole('region', { name: 'Manual daily bet list (no jobs)' }));
     await userEvent.click(panel.getByRole('button', { name: 'Predict manually and preview' }));
@@ -355,7 +356,7 @@ describe('membership product management', () => {
     mocked.createAdminAccessProduct.mockResolvedValue({
       data: { code: 'pass-30', name: 'Monthly pass', price_amount: '49.00', currency: 'ZAR', duration_days: 30, is_active: true },
     } as never);
-    renderScreen();
+    renderScreen('passes');
     const create = await screen.findByRole('button', { name: 'Create active product' });
     expect(create).toBeDisabled();
     await userEvent.type(screen.getByLabelText('Product code'), 'pass-30');
@@ -367,7 +368,7 @@ describe('membership product management', () => {
     await waitFor(() => expect(mocked.createAdminAccessProduct).toHaveBeenCalledWith({
       code: 'pass-30', name: 'Monthly pass', price_amount: '49.00', duration_days: 30, confirm_activation: true,
     }));
-    expect(await screen.findByText(/Monthly pass \(pass-30\).*Active/)).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Deactivate Monthly pass (pass-30)' })).toBeInTheDocument();
   });
 
   it('changes availability and reports backend validation failures', async () => {
@@ -375,9 +376,9 @@ describe('membership product management', () => {
     mocked.getAdminAccessProducts.mockResolvedValue({ data: { products: [product], minimumPrice: '5.00' } } as never);
     mocked.setAdminAccessProductActive.mockResolvedValueOnce({ data: { ...product, is_active: false } } as never);
     mocked.setAdminAccessProductActive.mockRejectedValueOnce(new ApiRequestError('Rejected', 400, { detail: 'Price is below the minimum.' }));
-    renderScreen();
+    renderScreen('passes');
     await userEvent.click(await screen.findByRole('button', { name: 'Deactivate Monthly pass (pass-30)' }));
-    expect(await screen.findByText(/Monthly pass \(pass-30\).*Inactive/)).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Activate Monthly pass (pass-30)' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Activate Monthly pass (pass-30)' }));
     expect(await screen.findByText('Price is below the minimum.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Activate Monthly pass (pass-30)' })).toBeEnabled();
@@ -397,7 +398,7 @@ describe('admin screen access', () => {
     expect(screen.queryByText('Admin access required')).not.toBeInTheDocument();
 
     act(() => authListener(adminUser));
-    expect(await screen.findByRole('heading', { name: 'Prediction workflow' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Operations overview' })).toBeInTheDocument();
     expect(mocked.getAdminStatus).toHaveBeenCalledTimes(1);
   });
 
@@ -412,16 +413,16 @@ describe('admin screen access', () => {
     expect(mocked.getAdminStatus).not.toHaveBeenCalled();
 
     act(() => authListener(adminUser));
-    expect(await screen.findByRole('heading', { name: 'Prediction workflow' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Operations overview' })).toBeInTheDocument();
   });
 
   it('removes the admin dashboard immediately on sign-out', async () => {
     renderScreen();
-    await screen.findByRole('heading', { name: 'Prediction workflow' });
+    await screen.findByRole('heading', { name: 'Operations overview' });
 
     act(() => authListener(null));
     expect(screen.getByText('Admin access required')).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Prediction workflow' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Operations overview' })).not.toBeInTheDocument();
   });
 
   it('ignores a previous account access response after switching accounts', async () => {
@@ -452,7 +453,7 @@ describe('admin screen access', () => {
     expect(screen.queryByText('Admin access required')).not.toBeInTheDocument();
     expect(mocked.getAdminCoverage).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole('button', { name: 'Retry access check' }));
-    expect(await screen.findByRole('heading', { name: 'Prediction workflow' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Operations overview' })).toBeInTheDocument();
     expect(mocked.getAdminStatus).toHaveBeenCalledTimes(2);
   });
 
@@ -485,10 +486,9 @@ describe('league selection is a filter', () => {
     mocked.getAdminCoverage.mockResolvedValue({
       data: coverageOf([league(), league({ leagueId: 71 }), league({ leagueId: 99999 })]),
     } as never);
-    renderScreen();
-    await expandCoverage();
+    renderScreen('coverage');
     const england = await screen.findByRole('checkbox', { name: /^League 39 - Premier League \(England\)/ });
-    const brazil = screen.getByRole('checkbox', { name: /^League 71 - Serie A \(Brazil\)/ });
+    const brazil = await screen.findByRole('checkbox', { name: /^League 71 - Serie A \(Brazil\)/ });
     expect(screen.getByRole('cell', { name: 'League 39 - Premier League (England)' })).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: 'League 71 - Serie A (Brazil)' })).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: /^League 99999/ })).toBeInTheDocument();
@@ -499,8 +499,8 @@ describe('league selection is a filter', () => {
   });
 
   it('explains why no run can start when nothing is selected', async () => {
-    renderScreen();
-    await screen.findByRole('heading', { name: 'Prediction workflow' });
+    renderScreen('operations');
+    await screen.findByRole('heading', { name: 'Manual operations' });
     // The button is disabled, so the reason must be visible without a click.
     expect(screen.getByRole('button', { name: 'Run daily ingestion' })).toBeDisabled();
     expect(await screen.findByRole('alert')).toHaveTextContent(/select at least one league/i);
@@ -511,7 +511,7 @@ describe('league selection is a filter', () => {
     mocked.getAdminCoverage.mockResolvedValue({
       data: coverageOf([league({ leagueId: 78, eligibleFixtures: 0, status: 'no_eligible_fixtures' })]),
     } as never);
-    renderScreen();
+    renderScreen('operations');
     expect(await screen.findByRole('checkbox', { name: /League 78/ })).toBeEnabled();
   });
 
@@ -522,9 +522,9 @@ describe('league selection is a filter', () => {
         league({ leagueId: 140, eligibleFixtures: 0, status: 'no_eligible_fixtures' }),
       ]),
     } as never);
-    renderScreen();
+    renderScreen('operations');
     const pl = await screen.findByRole('checkbox', { name: /^League 39/ });
-    const laLiga = screen.getByRole('checkbox', { name: /^League 140/ });
+    const laLiga = await screen.findByRole('checkbox', { name: /^League 140/ });
     await userEvent.click(screen.getByRole('button', { name: 'Select all' }));
     expect(pl).toBeChecked();
     expect(laLiga).toBeChecked();
@@ -540,19 +540,18 @@ describe('coverage dashboard', () => {
       ]),
     } as never);
 
-    renderScreen();
-    await expandCoverage();
+    renderScreen('coverage');
     expect(await screen.findByText('Not generated')).toBeInTheDocument();
     expect(screen.getByText('No eligible fixtures')).toBeInTheDocument();
     // The distinction is explained rather than left to the reader.
-    expect(screen.getByText(/Nothing to generate for this date/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Nothing to generate for this date/i)).toBeInTheDocument();
   });
 
   it('shows the N of M published summary', async () => {
     mocked.getAdminCoverage.mockResolvedValue({
       data: coverageOf([league({ status: 'published' })], '1 of 1 eligible leagues published'),
     } as never);
-    renderScreen();
+    renderScreen('coverage');
     expect(await screen.findByText('1 of 1 eligible leagues published')).toBeInTheDocument();
   });
 
@@ -562,10 +561,9 @@ describe('coverage dashboard', () => {
         league({ status: 'failed', error: 'ProviderError', previousVersionAvailable: true }),
       ]),
     } as never);
-    renderScreen();
-    await expandCoverage();
+    renderScreen('coverage');
     expect(await screen.findByText('Failed')).toBeInTheDocument();
-    expect(screen.getByText('ProviderError')).toBeInTheDocument();
+    expect(await screen.findByText('ProviderError')).toBeInTheDocument();
     expect(screen.getByText(/earlier published version is still available/i)).toBeInTheDocument();
   });
 
@@ -573,8 +571,7 @@ describe('coverage dashboard', () => {
     mocked.getAdminCoverage.mockResolvedValue({
       data: coverageOf([league({ status: 'queued' }), league({ leagueId: 140, status: 'running' })]),
     } as never);
-    renderScreen();
-    await expandCoverage();
+    renderScreen('coverage');
     const queued = (await screen.findByText('Queued')).closest('span');
     expect(queued?.textContent).toMatch(/⋯/);
     const running = screen.getByText('Running').closest('span');
@@ -590,7 +587,7 @@ describe('job tracking', () => {
         leagueResults: { '39': { status: 'ok', steps: { refresh: 'completed', predict: 'skipped' } } },
       })] },
     } as never);
-    renderScreen();
+    renderScreen('executions');
     expect(await screen.findByText(/already completed this five-minute slot: predict/i)).toBeInTheDocument();
   });
 
@@ -598,7 +595,7 @@ describe('job tracking', () => {
     mocked.getAdminJobs.mockResolvedValue({
       data: { jobs: [job({ status: 'completed' })] },
     } as never);
-    renderScreen();
+    renderScreen('executions');
     expect(await screen.findByText(/Triggered by admin/)).toBeInTheDocument();
     expect(screen.getByText(/admin@example\.com/)).toBeInTheDocument();
   });
@@ -611,8 +608,7 @@ describe('publication state', () => {
         '39': { lastGeneratedAt: '2026-03-08T05:00:00Z', predictions: 4, state: 'stale', hasPublished: true },
       }),
     } as never);
-    renderScreen();
-    await expandCoverage();
+    renderScreen('coverage');
     expect(await screen.findByText('Stale')).toBeInTheDocument();
   });
 
@@ -622,9 +618,65 @@ describe('publication state', () => {
         '39': { lastGeneratedAt: null, predictions: 0, state: 'empty', hasPublished: false },
       }),
     } as never);
-    renderScreen();
-    await expandCoverage();
+    renderScreen('coverage');
     expect(await screen.findByText('Nothing published')).toBeInTheDocument();
   });
 
+});
+
+
+describe('admin workspace navigation', () => {
+  it('opens business deep links without loading football data, then navigates with an active indicator', async () => {
+    renderScreen('traffic');
+    expect(await screen.findByRole('heading', { name: 'Visitor analytics' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Traffic' })).toHaveAttribute('aria-current', 'page');
+    expect(mocked.getAdminCoverage).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('link', { name: 'Overview', exact: true }));
+    expect(await screen.findByRole('heading', { name: 'Operations overview' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Overview', exact: true })).toHaveAttribute('aria-current', 'page');
+    await userEvent.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
+    expect(screen.getByRole('button', { name: 'Expand sidebar' })).toBeInTheDocument();
+  });
+
+  it('saves a date-specific schedule scope and can restore the configured default', async () => {
+    const schedule = { date: '2026-03-10', selectedLeagues: [], effectiveLeagues: [39], selectionError: '',
+      timezone: 'Africa/Johannesburg', schedules: [{ name: 'daily', times: ['04:00'], modes: ['refresh'] }], runs: [] };
+    mocked.getAdminSchedule.mockResolvedValueOnce({ data: schedule } as never)
+      .mockResolvedValueOnce({ data: { ...schedule, selectedLeagues: [39] } } as never);
+    mocked.saveAdminSchedule.mockResolvedValue({ data: schedule } as never);
+    renderScreen('schedules');
+    await userEvent.click(await screen.findByRole('checkbox', { name: /League 39/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Save league scope' }));
+    await waitFor(() => expect(mocked.saveAdminSchedule).toHaveBeenLastCalledWith(expect.any(String), [39]));
+    await screen.findByText(/1 explicitly selected/);
+    await userEvent.click(screen.getByRole('button', { name: 'Use configured default' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Save league scope' }));
+    await waitFor(() => expect(mocked.saveAdminSchedule).toHaveBeenLastCalledWith(expect.any(String), []));
+    expect(screen.getByText('04:00 SAST')).toBeInTheDocument();
+  });
+
+  it('shows payment confirmation separately from grant and effective access', async () => {
+    mocked.getAdminUsers.mockResolvedValue({ data: { page: 1, totalPages: 1, total: 1, users: [{
+      id: 10, email: 'support@example.test', membership: { active: false, revoked: false },
+      latestPurchase: { id: 11, status: 'provider_confirmed', provider: 'payfast', productName: 'Daily pass', amountExpected: '9.99', currency: 'ZAR' },
+    }] } } as never);
+    renderScreen('payments');
+    expect(await screen.findByText('Provider confirmed · grant pending on this attempt')).toBeInTheDocument();
+    expect(screen.getByText('No active membership')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Grant access to user/ })).not.toBeInTheDocument();
+  });
+
+  it('keeps a pending direct operation alive across admin navigation', async () => {
+    let resolveRun: (result: Awaited<ReturnType<typeof service.runManualTask>>) => void;
+    mocked.runManualTask.mockImplementationOnce(() => new Promise(resolve => { resolveRun = resolve; }));
+    renderScreen('operations');
+    await userEvent.click(await screen.findByRole('checkbox', { name: /^League 39/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Run refresh odds' }));
+    await userEvent.click(screen.getByRole('link', { name: 'Overview', exact: true }));
+    expect(await screen.findByText(/A direct request is in progress/)).toBeInTheDocument();
+    await act(async () => { resolveRun({ data: { id: 2, status: 'completed' } } as never); });
+    await userEvent.click(screen.getByRole('link', { name: 'Manual operations', exact: true }));
+    expect(screen.getByText('Pass completed.')).toBeInTheDocument();
+    expect(mocked.runManualTask).toHaveBeenCalledTimes(1);
+  });
 });

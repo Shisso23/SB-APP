@@ -1,3 +1,4 @@
+import { Badge, Feedback, sastTime } from './admin-ui';
 import { marketDisplayLabel } from '../../services/predictions/market-label';
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -131,32 +132,31 @@ const ManualPredictionPanel: React.FC<{
   };
 
   return (
-    <section aria-labelledby="manual-heading" className="mt-6 rounded-2xl border border-teal-300 bg-white p-6 shadow-sm">
+    <section aria-labelledby="manual-heading" className="ax-panel">
       <h2 id="manual-heading" className="text-lg font-bold">Manual daily bet list (no jobs)</h2>
       <p className="mt-2 text-sm text-slate-600">
-        Use the date and league selection above for today or tomorrow (SAST). Fetch fresh fixtures,
-        standings and odds, generate forecasts immediately, then review and publish the daily list.
-        No queue or background worker is used. Provider limits and forecast eligibility still apply.
+        Generate forecasts directly for today or tomorrow. The request refreshes fixtures, standings and odds before opening an unpublished preview.
       </p>
+      <p className="mt-3 text-sm"><strong>{date} SAST</strong> · {leagues.length ? leagues.map(formatLeagueLabel).join(', ') : 'No leagues selected'}</p>
       <button type="button" disabled={busy || otherBusy || !leagues.length || leagues.length > 4}
         onClick={() => void prepare()}
-        className="mt-4 rounded-xl bg-teal-700 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">
+        className="ax-button ax-primary mt-3">
         {busy ? 'Working…' : 'Predict manually and preview'}
       </button>
       {leagues.length > 4 && <p role="alert" className="mt-2 text-sm text-rose-700">Select up to four leagues for a manual batch.</p>}
-      {progress && <p role="status" className="mt-3 text-sm text-teal-900">{progress}</p>}
+      {progress && <Feedback>{progress}</Feedback>}
       {error && <p role="alert" className="mt-3 text-sm text-rose-700">{error}</p>}
       {results.map(result => (
-        <details key={result.leagueId} className="mt-3 text-sm text-slate-700">
+        <details key={result.leagueId} className="ax-disclosure mt-3 text-sm text-slate-700">
           <summary>{result.leagueName}: {result.forecasts.length} saved forecasts</summary>
           <ul className="mt-2 space-y-1">{result.forecasts.map(forecast => (
-            <li key={forecast.id}>{forecast.homeTeam} v {forecast.awayTeam} — {new Date(forecast.kickoff).toLocaleString()}</li>
+            <li key={forecast.id}>{forecast.homeTeam} v {forecast.awayTeam} — {sastTime(forecast.kickoff)} SAST</li>
           ))}</ul>
         </details>
       ))}
       {preview && (
         <div className="mt-5">
-          <h3 className="font-bold">Daily bet list preview — {preview.date}</h3>
+          <h3 className="font-bold">Daily bet list preview — {preview.date} <Badge state={published ? 'published' : 'draft'} label={published ? 'Published' : 'Unpublished preview'} /></h3>
           <p className="mt-2 text-sm text-slate-600">
             {preview.suggestions.length} distinct qualifying matches selected. Publication requires at least{' '}
             {preview.minimumSize ?? preview.requiredSize}, with up to {preview.requiredSize} matches.
@@ -165,7 +165,8 @@ const ManualPredictionPanel: React.FC<{
           <ol className="mt-3 space-y-2">{preview.suggestions.map(pick => (
             <li key={pick.providerFixtureId} className="rounded-lg border border-slate-200 p-3 text-sm">
               <strong>{pick.homeTeam} v {pick.awayTeam}</strong>
-              <p>{marketDisplayLabel(pick.marketId, pick.marketLabel)} — {(pick.probability * 100).toFixed(1)}%</p>
+              <p className="ax-muted text-xs">{sastTime(pick.kickoff)} SAST</p>
+              <p>{marketDisplayLabel(pick.marketId, pick.marketLabel)} · <strong>{(pick.probability * 100).toFixed(1)}%</strong> model probability</p>
               <p className="text-slate-500">
                 {pick.decimalOdds
                   ? pick.oddsSource === 'model-fair'
@@ -184,7 +185,7 @@ const ManualPredictionPanel: React.FC<{
             </label>
             <button type="button" disabled={busy || otherBusy || !confirmed || !preview.canPublish}
               onClick={() => void publish()}
-              className="mt-3 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">
+              className="ax-button ax-primary mt-3">
               Publish manual daily bet list
             </button>
           </>}
