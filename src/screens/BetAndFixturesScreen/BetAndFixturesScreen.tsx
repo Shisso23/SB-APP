@@ -69,11 +69,29 @@ Modal.setAppElement('#root');
 // private prediction engine. The browser never computes a forecast itself; it
 // only reads `Prediction.output`, which has the same shape as `FixturePrediction`
 // because both come from the same engine source.
-const predictionRowToFixturePrediction = (row: PredictionEnvelopeRow): FixturePrediction | null => {
-  const output = row.output as unknown as FixturePrediction | undefined;
+type DeskForecast = FixturePrediction & { isActionable?: boolean };
+
+const predictionRowToFixturePrediction = (row?: PredictionEnvelopeRow): DeskForecast | null => {
+  const output = row?.output as unknown as FixturePrediction | undefined;
   if (!output || typeof output !== 'object' || !output.fixture?.fixture?.id) return null;
-  return output;
+  const current = row?.fixture;
+  return {
+    ...output,
+    isActionable: row?.is_actionable,
+    // Preserve the model output and use the current kickoff, status and score
+    // for display and pre-match eligibility.
+    fixture: current?.fixture ? {
+      ...output.fixture,
+      fixture: current.fixture,
+      goals: current.goals ?? output.fixture.goals,
+      score: current.score ?? output.fixture.score,
+    } : output.fixture,
+  };
 };
+
+const workspaceDate = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit',
+});
 
 /** Turn an API failure into an explicit, non-misleading message. */
 const describePredictionsFailure = (error: unknown) => {
@@ -385,9 +403,10 @@ export const EnginePredictionPanel: React.FC<{
   prediction: FixturePrediction;
   highlights?: Record<string, MarketHighlight>;
   highlightsLoading?: boolean;
+  savedOnly?: boolean;
   oddsMessage?: string;
   onCaptureOdds: (prediction: FixturePrediction) => Promise<string>;
-}> = ({ prediction: sourcePrediction, highlights, highlightsLoading, oddsMessage, onCaptureOdds }) => {
+}> = ({ prediction: sourcePrediction, highlights, highlightsLoading, savedOnly, oddsMessage, onCaptureOdds }) => {
   const prediction = visibleForecastPrediction(sourcePrediction);
   const [capturingOdds, setCapturingOdds] = useState(false);
   const [captureMessage, setCaptureMessage] = useState('');
@@ -464,7 +483,7 @@ export const EnginePredictionPanel: React.FC<{
         </div>
       </details>
 
-      <div className="mt-2 flex flex-wrap items-center gap-2">
+      {!savedOnly && <div className="mt-2 flex flex-wrap items-center gap-2">
         <button
           type="button"
           disabled={capturingOdds || prediction.fixture.fixture.timestamp * 1000 <= Date.now()}
@@ -485,9 +504,9 @@ export const EnginePredictionPanel: React.FC<{
           {capturingOdds ? 'Capturing…' : dataQuality.oddsAvailable ? 'Refresh odds snapshot' : 'Capture pre-match odds'}
         </button>
         {captureMessage && <span className="text-[10px] text-slate-300">{captureMessage}</span>}
-      </div>
+      </div>}
 
-      {oddsMessage && <p className="mt-1 text-[10px] text-slate-400">{oddsMessage}</p>}
+      {!savedOnly && oddsMessage && <p className="mt-1 text-[10px] text-slate-400">{oddsMessage}</p>}
 
       {dataQuality.warnings.length > 0 && (
         <div className="mt-1 text-[10px] text-amber-200/80">
@@ -521,6 +540,10 @@ const BetAndFixturesScreen: React.FC = () => {
   const [savedLeagues, setSavedLeagues] = useState<SavedPredictionLeague[]>([]);
   const [clearingPredictions, setClearingPredictions] = useState(false);
   const workspaceOwnerRef = useRef<string | null>(null);
+  const adoptedRangeRef = useRef<{ owner: string; from: string; to: string }>();
+  const [restoredBatch, setRestoredBatch] = useState<{ owner: string; ids: number[] }>();
+  const selectionEditedRef = useRef(false);
+  const restoredSelectionOwnerRef = useRef<string>();
   const accountRef = useRef(user?.uid);
   accountRef.current = user?.uid;
   useEffect(() => {
@@ -573,7 +596,7 @@ const BetAndFixturesScreen: React.FC = () => {
   const [currentFixtures, setCurrentFixtures] = useState<FixtureDataModel[]>([]);
   const [predictedFixtures, setPredictedFixtures] = useState<{ fixtures: FixtureDataModel[]; option: betOptionModel; }[]>([]);
   const [groupedData, setGroupedData] = useState<Record<number, betOptionModel[]>>({});
-  const [enginePredictions, setEnginePredictions] = useState<Record<number, FixturePrediction>>({});
+  const [enginePredictions, setEnginePredictions] = useState<Record<number, DeskForecast>>({});
   const [highlightResult, setHighlightResult] = useState<{
     predictions: FixturePrediction[];
     matches: Record<number, Record<string, MarketHighlight>>;
@@ -617,21 +640,22 @@ const BetAndFixturesScreen: React.FC = () => {
   };
 
   // Date range
-  const [fromDate, setFromDate] = useState(() => new Date(`${moment().format('YYYY-MM-DD')}T00:00:00`));
-  const [toDate, setToDate] = useState(() => new Date(`${moment().add(1, 'days').format('YYYY-MM-DD')}T00:00:00`));
+  const [fromDate, setFromDate] = useState(() => new Date(`${workspaceDate.format(Date.now())}T00:00:00`));
+  const [toDate, setToDate] = useState(() => new Date(`${workspaceDate.format(Date.now() + 86_400_000)}T00:00:00`));
 
   // Cooldown
   const [lastBetAt, setLastBetAt] = useState<number | null>(null);
   const [nowTick, setNowTick] = useState<number>(Date.now());
   const hasPredictionAccess = me === null ? null : isAccessActive(me, nowTick);
   const predictionDeadline = useMemo(() => predictionHorizonOf(me), [me]);
-  const maxPredictionDate = predictionDeadline === null ? undefined : new Date(predictionDeadline - 1);
+  const lastPredictionDay = predictionDeadline === null ? null : workspaceDate.format(predictionDeadline - 1);
+  const maxPredictionDate = lastPredictionDay ? new Date(`${lastPredictionDay}T00:00:00`) : undefined;
   useEffect(() => {
-    if (predictionDeadline === null || me === null) return;
-    const lastDay = moment(predictionDeadline - 1).startOf('day').toDate();
+    if (lastPredictionDay === null) return;
+    const lastDay = new Date(`${lastPredictionDay}T00:00:00`);
     if (moment(fromDate).isAfter(lastDay, 'day')) setFromDate(lastDay);
     if (moment(toDate).isAfter(lastDay, 'day')) setToDate(lastDay);
-  }, [predictionDeadline, me, fromDate, toDate]);
+  }, [lastPredictionDay, fromDate, toDate]);
   const tickRef = useRef<number | null>(null);
 
   // Modal & standings
@@ -782,6 +806,7 @@ const BetAndFixturesScreen: React.FC = () => {
     return saved ? saved.predictions > 0 ? 'Already predicted · saved' : 'Saved league · no current forecasts' : null;
   };
   const toggleLeague = (league: LeagueDataModel, checked?: boolean) => {
+    selectionEditedRef.current = true;
     setSelectedBatch((prev) => {
       const exists = prev.some((l) => l.league.id === league.league.id);
       const shouldAdd = checked ?? !exists;
@@ -791,6 +816,7 @@ const BetAndFixturesScreen: React.FC = () => {
     });
   };
   const selectAllInCountry = (leagues: LeagueDataModel[]) => {
+    selectionEditedRef.current = true;
     setSelectedBatch((prev) => {
       const ids = new Set(prev.map((l) => l.league.id));
       const merged = [...prev];
@@ -802,9 +828,13 @@ const BetAndFixturesScreen: React.FC = () => {
     });
   };
   const clearAllInCountry = (leagues: LeagueDataModel[]) => {
+    selectionEditedRef.current = true;
     setSelectedBatch((prev) => prev.filter((l) => !leagues.some((x) => x.league.id === l.league.id)));
   };
-  const resetSelection = () => setSelectedBatch([]);
+  const resetSelection = () => {
+    selectionEditedRef.current = true;
+    setSelectedBatch([]);
+  };
   const addMoreLeagues = () => {
     resetSelection();
     setRawSearch('');
@@ -922,13 +952,16 @@ const BetAndFixturesScreen: React.FC = () => {
       setEnginePredictions({});
       setSavedLeagues([]);
     }
-    setWorkspaceReady(false);
     const range = { from: moment(fromDate).format('YYYY-MM-DD'), to: moment(toDate).format('YYYY-MM-DD') };
+    const adoptedRange = adoptedRangeRef.current;
+    adoptedRangeRef.current = undefined;
+    if (adoptedRange?.owner === owner && adoptedRange.from === range.from && adoptedRange.to === range.to) return;
+    setWorkspaceReady(false);
     getPredictionWorkspace(firstRestore ? undefined : range).then(response => {
       if (!active) return;
       workspaceOwnerRef.current = owner;
       const restored = response.data.response.map(predictionRowToFixturePrediction)
-        .filter((prediction): prediction is FixturePrediction => prediction !== null);
+        .filter((prediction): prediction is DeskForecast => prediction !== null);
       setEnginePredictions(Object.fromEntries(restored.map(prediction => [prediction.fixture.fixture.id, prediction])));
       setSavedLeagues(response.data.leagues);
       setAllFixtures(previous => dedupeFixtures([...previous, ...restored.map(prediction => prediction.fixture)]));
@@ -939,7 +972,14 @@ const BetAndFixturesScreen: React.FC = () => {
       const restoredFuture = filterFutureFixtures(restored.map(prediction => prediction.fixture));
       setFutureFixtures(restoredFuture);
       setCurrentFixtures(filterBetweenDates(restoredFuture, restoredFrom, restoredTo));
-      if (firstRestore && predictionMode === 'statistical' && response.data.from && response.data.to) {
+      if (firstRestore && predictionMode === 'statistical') {
+        const lastBatch = response.data.lastBatch?.length
+          ? response.data.lastBatch : response.data.leagues.length <= MAX_BATCH ? response.data.leagues : [];
+        setRestoredBatch({ owner, ids: Array.from(new Set(lastBatch.map(league => league.leagueId))).slice(0, MAX_BATCH) });
+      }
+      if (firstRestore && predictionMode === 'statistical' && response.data.from && response.data.to
+        && (range.from !== response.data.from || range.to !== response.data.to)) {
+        adoptedRangeRef.current = { owner, from: response.data.from, to: response.data.to };
         setFromDate(new Date(`${response.data.from}T00:00:00`));
         setToDate(new Date(`${response.data.to}T00:00:00`));
       }
@@ -949,6 +989,23 @@ const BetAndFixturesScreen: React.FC = () => {
     }).finally(() => { if (active) setWorkspaceReady(true); });
     return () => { active = false; };
   }, [cacheReady, user?.uid, initialising, hasPredictionAccess, fromDate.toString(), toDate.toString(), predictionMode]);
+
+  useEffect(() => {
+    if (restoredSelectionOwnerRef.current && restoredSelectionOwnerRef.current !== user?.uid) {
+      restoredSelectionOwnerRef.current = undefined;
+      selectionEditedRef.current = false;
+      setSelectedBatch([]);
+    }
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!allLeagues || !restoredBatch || restoredBatch.owner !== user?.uid) return;
+    if (!selectionEditedRef.current) {
+      restoredSelectionOwnerRef.current = restoredBatch.owner;
+      setSelectedBatch(allLeagues.filter(league => restoredBatch.ids.includes(league.league.id)));
+    }
+    setRestoredBatch(undefined);
+  }, [allLeagues, restoredBatch, user?.uid]);
 
   // Derived fixtures & grouping
   useEffect(() => {
@@ -1166,7 +1223,7 @@ const BetAndFixturesScreen: React.FC = () => {
     // The server already publishes a forecast with embedded, priced markets for
     // every actionable fixture. Re-fetch that single prediction instead of
     // recomputing anything in the browser.
-    let withOdds: FixturePrediction;
+    let withOdds: DeskForecast;
     try {
       const response = await getPredictionsByFixture(fixture.fixture.id);
       const rows = (response.data as { response?: PredictionEnvelopeRow[] })?.response ?? [];
@@ -1344,7 +1401,7 @@ const BetAndFixturesScreen: React.FC = () => {
 
     // A league read returns the stored forecasts, after any synchronous
     // on-demand generation the server needed to build them.
-    const publishedPredictions = new Map<number, FixturePrediction>();
+    const publishedPredictions = new Map<number, DeskForecast>();
     const oddsMessages: Record<number, string> = {};
     if (predictionMode === 'statistical') {
       leagueLoop: for (const league of runLeagues) {
@@ -1392,14 +1449,14 @@ const BetAndFixturesScreen: React.FC = () => {
       return { ...updated, ...runFailures };
     });
 
-    let engineResultsForCache: FixturePrediction[] = [];
+    let engineResultsForCache: DeskForecast[] = [];
     let finalEngineMap = { ...enginePredictions };
     // Statistical engine: calibrated probabilities + explanations for every fixture.
     // Guarded so an unexpected error in the engine cannot break the existing bet flow.
     try {
       const engineResults = predictionWindow
         .map((fixture) => publishedPredictions.get(fixture.fixture.id))
-        .filter((prediction): prediction is FixturePrediction => Boolean(prediction));
+        .filter((prediction): prediction is DeskForecast => Boolean(prediction));
       engineResultsForCache = engineResults;
       if (predictionMode === 'statistical') {
         Object.values(finalEngineMap).forEach(prediction => {
@@ -1465,7 +1522,7 @@ const BetAndFixturesScreen: React.FC = () => {
           });
           if (accountRef.current !== runOwner) return;
           const consolidated = response.data.response.map(predictionRowToFixturePrediction)
-            .filter((prediction): prediction is FixturePrediction => prediction !== null);
+            .filter((prediction): prediction is DeskForecast => prediction !== null);
           finalEngineMap = Object.fromEntries(consolidated.map(prediction => [prediction.fixture.fixture.id, prediction]));
           setSavedLeagues(response.data.leagues);
           batchForecasts = consolidated.filter(prediction => runIds.has(prediction.fixture.league.id));
@@ -1639,23 +1696,28 @@ const BetAndFixturesScreen: React.FC = () => {
   const selectedPaperPicks = selectedStatisticalPickKeys
     .map((key) => paperSelectionsByKey.get(key))
     .filter((selection): selection is PaperSelection => Boolean(selection) && selection?.marketId !== 'btts_no');
+  const visibleForecasts = useMemo(() => {
+    if (initialising || hasPredictionAccess !== true || workspaceOwnerRef.current !== user?.uid) return [];
+    const from = moment(fromDate).format('YYYY-MM-DD');
+    const to = moment(toDate).format('YYYY-MM-DD');
+    return Object.values(enginePredictions).filter(({ fixture }) => {
+      const kickoff = fixture.fixture.timestamp * 1000;
+      if (!Number.isFinite(kickoff) || (predictionDeadline !== null && kickoff >= predictionDeadline)) return false;
+      const day = workspaceDate.format(kickoff);
+      return day >= from && day <= to;
+    });
+  }, [enginePredictions, fromDate, toDate, predictionDeadline, initialising, hasPredictionAccess, user?.uid]);
+  const visibleEnginePredictions = useMemo(() => visibleForecasts
+    .filter(prediction => prediction.isActionable !== false)
+    .map(visibleForecastPrediction), [visibleForecasts]);
   const displayedFixtureIds = predictionMode === 'legacy'
     ? Object.keys(groupedData).filter(id => currentFixtures.some(fixture => fixture.fixture.id === Number(id)))
-    : initialising || hasPredictionAccess !== true || workspaceOwnerRef.current !== user?.uid
-      ? [] : Object.keys(enginePredictions).filter(id => currentFixtures.some(fixture => fixture.fixture.id === Number(id)));
-  // The saved snapshot is the input for both analyses. Derive it directly
-  // from forecasts so updates to the parallel fixture and standings views do
-  // not restart requests with the same forecast data.
-  const visibleEnginePredictions = useMemo(() => {
-    if (initialising || hasPredictionAccess !== true || workspaceOwnerRef.current !== user?.uid) return [];
-    const withinWindow = new Set(filterBetweenDates(
-      filterFutureFixtures(Object.values(enginePredictions).map(prediction => prediction.fixture)), fromDate, toDate,
-    ).map(fixture => fixture.fixture.id));
-    return Object.values(enginePredictions)
-      .filter(prediction => withinWindow.has(prediction.fixture.fixture.id))
-      .map(visibleForecastPrediction);
-  }, [enginePredictions, fromDate, toDate, predictionDeadline, initialising, hasPredictionAccess, user?.uid]);
-
+    : visibleForecasts.map(prediction => String(prediction.fixture.fixture.id));
+  const savedLeagueNames = Array.from(new Set(savedLeagues.map(({ leagueId }) =>
+    allLeagues?.find(league => league.league.id === leagueId)?.league.name
+    ?? visibleForecasts.find(prediction => prediction.fixture.league.id === leagueId)?.fixture.league.name
+    ?? `League ${leagueId}`,
+  )));
   const analysisReady = workspaceReady && predictionMode === 'statistical' && visibleEnginePredictions.length > 0;
   const currentHighlights = highlightResult?.predictions === visibleEnginePredictions ? highlightResult : undefined;
   const highlightsLoading = analysisReady && !currentHighlights;
@@ -1750,6 +1812,14 @@ const BetAndFixturesScreen: React.FC = () => {
               ))}
             </div>
 
+            {predictionMode === 'statistical' && hasPredictionAccess === true && savedLeagueNames.length > 0 && (
+              <div className="mt-4">
+                <h3 className="text-sm font-semibold text-slate-200">Saved leagues</h3>
+                <ul aria-label="Saved leagues" className="mt-2 flex flex-wrap gap-1.5">
+                  {savedLeagueNames.map(name => <li key={name} className="rounded-full border border-emerald-300/30 px-2.5 py-1 text-xs text-emerald-200">{name}</li>)}
+                </ul>
+              </div>
+            )}
             <div className="mt-4">
               <label htmlFor="league-search" className="text-sm font-semibold text-slate-100">Find a league</label>
               <div className="mt-1.5 flex items-center gap-2">
@@ -1937,6 +2007,7 @@ const BetAndFixturesScreen: React.FC = () => {
           <SuggestedBetList
             key={user?.uid ?? 'guest'}
             predictions={visibleEnginePredictions}
+            hasSavedForecasts={visibleForecasts.length > 0}
             loading={loadingBatch}
             statistical={predictionMode === 'statistical'}
             ready={!initialising && workspaceReady && hasPredictionAccess === true}
@@ -1971,7 +2042,7 @@ const BetAndFixturesScreen: React.FC = () => {
               <div className="grid place-items-center py-16 text-sm text-slate-400">
                 {Object.keys(failedLeagueLoads).length > 0 || fixtureLoadWarnings.length > 0 ? (
                   <p className="max-w-xl text-center text-sm text-slate-200">Some data could not be loaded. See the notice and retry controls above.</p>
-                ) : feedback?.fixtures === 0 ? (
+                ) : feedback?.fixtures === 0 || (predictionMode === 'statistical' && savedLeagues.length > 0) ? (
                   <div className="max-w-xl text-center text-xs text-slate-300">
                     No forecasts are available in this date range.
                   </div>
@@ -1982,9 +2053,10 @@ const BetAndFixturesScreen: React.FC = () => {
             ) : (
               <div className="space-y-3">
                 {displayedFixtureIds.map((fixtureId) => {
-                  const currentFixture = currentFixtures.find((f) => `${f.fixture.id}` === fixtureId);
+                  const enginePrediction = predictionMode === 'statistical' ? enginePredictions[Number(fixtureId)] : undefined;
+                  const currentFixture = enginePrediction?.fixture ?? currentFixtures.find(fixture => String(fixture.fixture.id) === fixtureId);
                   if (!currentFixture) return null;
-                  const enginePrediction = enginePredictions[Number(fixtureId)];
+                  const savedOnly = enginePrediction?.isActionable === false;
                   const expanded = expandedForecasts[fixtureId] === true;
                   const finalScore = currentFixture.fixture.status.short === 'FT' ? currentFixture.score?.fulltime : null;
                   const matchLabel = `${currentFixture.teams.home.name} vs ${currentFixture.teams.away.name}`;
@@ -2006,6 +2078,7 @@ const BetAndFixturesScreen: React.FC = () => {
                           <span className="min-w-0 break-words">{currentFixture.teams.away.name}</span>
                         </span>
                       </h3>
+                      {savedOnly && <p className="mt-2 text-xs text-slate-300">Saved forecast · for review</p>}
                       {finalScore && Number.isFinite(finalScore.home) && Number.isFinite(finalScore.away) && (
                         <p className="mt-2 text-sm font-bold text-slate-200">Final score · {finalScore.home}–{finalScore.away}</p>
                       )}
@@ -2030,7 +2103,8 @@ const BetAndFixturesScreen: React.FC = () => {
                           <EnginePredictionPanel
                             prediction={enginePrediction}
                             highlights={currentHighlights?.matches[currentFixture.fixture.id]}
-                            highlightsLoading={highlightsLoading}
+                            highlightsLoading={highlightsLoading && !savedOnly}
+                            savedOnly={savedOnly}
                             oddsMessage={oddsLoadMessages[currentFixture.fixture.id]}
                             onCaptureOdds={capturePaperOdds}
                           />

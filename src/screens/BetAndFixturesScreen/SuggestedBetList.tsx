@@ -48,13 +48,14 @@ const formatSuggestionsForClipboard = (
 
 export const SuggestedBetList: React.FC<{
   predictions: FixturePrediction[];
+  hasSavedForecasts?: boolean;
   loading: boolean;
   statistical: boolean;
   ready?: boolean;
   selectedPickKeys: string[];
   onReview: (prediction: FixturePrediction) => void;
   onTogglePick: (fixtureId: number, market: MarketValue) => void;
-}> = ({ predictions, loading, statistical, ready = true, selectedPickKeys, onReview, onTogglePick }) => {
+}> = ({ predictions, hasSavedForecasts, loading, statistical, ready = true, selectedPickKeys, onReview, onTogglePick }) => {
   const [limit, setLimit] = useState(DEFAULT_BET_LIST_SIZE);
   const [copyMessage, setCopyMessage] = useState('');
   const [result, setResult] = useState<{
@@ -145,7 +146,7 @@ export const SuggestedBetList: React.FC<{
       </div>
     )}
     {!statistical ? <p className="mt-3 text-sm text-slate-300">Switch to Statistical to generate this list. Legacy rules do not supply forecast probabilities.</p>
-      : !suggestions.length ? (!showError && <p className="mt-3 text-sm text-slate-300">{isLoading ? 'Your suggested list will appear when forecasts are ready.' : !ready ? 'An active pass and match forecasts are needed to build a suggested list.' : predictions.length ? 'No upcoming matches meet your suggestion thresholds.' : 'Load match forecasts to see suggested selections.'}</p>)
+      : !suggestions.length ? (!showError && <p className="mt-3 text-sm text-slate-300">{isLoading ? 'Your suggested list will appear when forecasts are ready.' : !ready ? 'An active pass and match forecasts are needed to build a suggested list.' : predictions.length ? 'No upcoming matches meet your suggestion thresholds.' : hasSavedForecasts ? 'Saved forecasts are available below. Suggestions use current pre-match forecasts.' : 'Load match forecasts to see suggested selections.'}</p>)
       : <>
         <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-300">
           <span>{suggestions.length} of up to {currentResult?.limit ?? limit} matches</span><span>·</span><span>{familyCount} market {familyCount === 1 ? 'type' : 'types'}</span><span>·</span><span>{checkedCount} with price checks passed</span><span>·</span><span>{suggestions.length - checkedCount} need price review</span>

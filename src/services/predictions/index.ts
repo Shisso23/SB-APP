@@ -14,6 +14,7 @@
 import { apiClient, apiGet, ApiRequestError } from '../api/client';
 import type { AxiosResponse } from 'axios';
 import { FixturePrediction } from '../../prediction-engine/types';
+import type { FixtureDataModel } from '../../models/fixtures';
 
 const endpoint = '/predictions/';
 
@@ -34,6 +35,7 @@ export interface PredictionEnvelopeRow {
   as_of: string;
   valid_until: string | null;
   is_actionable: boolean;
+  fixture?: Pick<FixtureDataModel, 'fixture' | 'goals' | 'score'>;
   /** Same shape as `FixturePrediction` (src/prediction-engine/types.ts) - produced by the same engine source. */
   output: Record<string, unknown>;
 }
@@ -68,18 +70,19 @@ export interface SavedPredictionLeague {
 
 export interface PredictionWorkspacePayload extends PredictionsPayload {
   leagues: SavedPredictionLeague[];
+  lastBatch?: Pick<SavedPredictionLeague, 'leagueId' | 'season'>[];
   from: string | null;
   to: string | null;
 }
 
 export const getPredictionWorkspace = (range?: { from: string; to: string }) =>
-  readPredictionPages<PredictionWorkspacePayload>(`${endpoint}workspace/`, range);
+  readPredictionPages<PredictionWorkspacePayload>(`${endpoint}workspace/`, { ...range, include_saved: 'true' });
 
 export const savePredictionWorkspace = async (workspace: {
   leagues: { leagueId: number; season: number }[]; from: string; to: string;
 }) => readPredictionPages<PredictionWorkspacePayload>(
-  `${endpoint}workspace/`, { from: workspace.from, to: workspace.to },
-  await apiClient.post<PredictionWorkspacePayload>(`${endpoint}workspace/`, workspace, { params: { page_size: 200 } }),
+  `${endpoint}workspace/`, { from: workspace.from, to: workspace.to, include_saved: 'true' },
+  await apiClient.post<PredictionWorkspacePayload>(`${endpoint}workspace/`, workspace, { params: { page_size: 200, include_saved: 'true' } }),
 );
 
 export const clearPredictionWorkspace = () => apiClient.delete(`${endpoint}workspace/`);

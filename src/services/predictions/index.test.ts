@@ -40,8 +40,8 @@ test('an additive save returns every consolidated page, not just the newly selec
   get.mockResolvedValue({ data: { response: [row(140)], paging: { current: 2, total: 2 } } });
   const response = await savePredictionWorkspace(workspace);
   expect(response.data.response.map(prediction => prediction.id)).toEqual([39, 140]);
-  expect(post).toHaveBeenCalledWith('/predictions/workspace/', workspace, { params: { page_size: 200 } });
+  expect(post).toHaveBeenCalledWith('/predictions/workspace/', workspace, { params: { page_size: 200, include_saved: 'true' } });
   expect(get).toHaveBeenCalledWith('/predictions/workspace/', {
-    params: { from: workspace.from, to: workspace.to, page_size: 200, page: 2 },
+    params: { from: workspace.from, to: workspace.to, include_saved: 'true', page_size: 200, page: 2 },
   });
 });

@@ -59,6 +59,9 @@ const remove = apiClient.delete as jest.Mock;
 type TestPredictionRow = Omit<PredictionEnvelopeRow, 'output'> & { output: FixturePrediction };
 const serverPredictions = new Map<number, TestPredictionRow>();
 const serverWorkspaces = new Map<string, PredictionWorkspacePayload>();
+const businessDate = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Africa/Johannesburg', year: 'numeric', month: '2-digit', day: '2-digit',
+});
 const workspaceResponse = (range?: { from?: string; to?: string }) => {
   const workspace = serverWorkspaces.get(mockAuth.user?.uid ?? '') ?? {
     leagues: [], from: null, to: null, response: [],
@@ -67,7 +70,7 @@ const workspaceResponse = (range?: { from?: string; to?: string }) => {
   const to = range?.to ?? workspace.to;
   const response = Array.from(serverPredictions.values()).filter(row => {
     const fixture = row.output.fixture;
-    const day = fixture.fixture.date.slice(0, 10);
+    const day = businessDate.format((row.fixture?.fixture.timestamp ?? fixture.fixture.timestamp) * 1000);
     return workspace.leagues.some(league => league.leagueId === fixture.league.id && league.season === fixture.league.season)
       && (!from || day >= from) && (!to || day <= to);
   });
@@ -162,7 +165,7 @@ beforeEach(async () => {
       const previous = serverWorkspaces.get(owner);
       const leagues = new Map((previous?.leagues ?? []).map(league => [`${league.leagueId}:${league.season}`, league]));
       body.leagues.forEach(league => leagues.set(`${league.leagueId}:${league.season}`, league));
-      serverWorkspaces.set(owner, { from: body.from, to: body.to, leagues: Array.from(leagues.values()) });
+      serverWorkspaces.set(owner, { from: body.from, to: body.to, leagues: Array.from(leagues.values()), lastBatch: body.leagues });
       return Promise.resolve(workspaceResponse());
     }
     throw new Error(`Unexpected test POST request: ${path}`);
@@ -529,6 +532,41 @@ it('filters cached legacy fixtures whose exact kickoff exceeds the pass, even on
   await renderPredictionDesk();
   await screen.findByText(/Eligible kickoffs must be before/);
   expect(screen.getByText(/Legacy fixture results/)).toHaveTextContent('0 fixtures');
+});
+
+it('restores saved completed forecasts, their original probabilities and the last selected league after reload', async () => {
+  const pastKickoff = Date.now() - 3 * 86_400_000;
+  const fixture = makeApiFixture(123_456, pastKickoff, currentYear, false);
+  const output = predictFixture({ fixture, allFixtures: [], leaguesStandings: [] });
+  const homeWin = output.markets.find(market => market.marketId === 'home_win');
+  if (!homeWin) throw new Error('Missing home win market.');
+  homeWin.modelProbability = .73;
+  const completed = makeApiFixture(123_456, pastKickoff, currentYear, true);
+  const day = businessDate.format(pastKickoff);
+  serverPredictions.set(123_456, {
+    id: 123_456, engine_version: 'test', config_hash: 'test', generated_at: new Date(pastKickoff - 1).toISOString(),
+    as_of: new Date(pastKickoff - 1).toISOString(), valid_until: new Date(pastKickoff).toISOString(),
+    is_actionable: false,
+    fixture: { fixture: completed.fixture, score: completed.score, goals: completed.goals },
+    output,
+  });
+  serverWorkspaces.set('test-user', {
+    from: day, to: day, leagues: [{ leagueId: 39, season: currentYear, predictions: 1 }],
+    lastBatch: [{ leagueId: 39, season: currentYear }],
+  });
+  await renderPredictionDesk();
+  const league = await screen.findByRole('button', { name: /Premier League.*Already predicted/ });
+  expect(league).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByRole('list', { name: 'Saved leagues' })).toHaveTextContent('Premier League');
+  expect(screen.getByText(/All forecasts and market details/)).toHaveTextContent('1 fixture');
+  expect(screen.getByText('Saved forecast · for review')).toBeVisible();
+  expect(screen.getByText(/Final score/)).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: /Expand forecast for/ }));
+  expect(screen.getByText('73%')).toBeVisible();
+  expect(screen.queryByText('Probability unavailable')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Capture pre-match odds' })).not.toBeInTheDocument();
+  expect(post).not.toHaveBeenCalled();
+  expect(get.mock.calls.filter(([path]) => path === '/predictions/workspace/')).toHaveLength(1);
 });
 
 it('restores valid backend forecasts even when the browser snapshot has expired', async () => {
