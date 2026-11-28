@@ -126,6 +126,7 @@ export interface AdminUserRecord {
   firebaseUid: string;
   /** Some accounts (e.g. anonymous or phone auth) have no email on record. */
   email: string | null;
+  phoneNumber?: string | null;
   isActive: boolean;
   isStaff: boolean;
   isSuperuser: boolean;

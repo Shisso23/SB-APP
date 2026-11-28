@@ -59,11 +59,9 @@ export default function Navbar() {
     return () => window.cancelAnimationFrame(frame);
   }, [location]);
 
-  React.useEffect(() => {
-    if (hash === "#account" && user) {
-      navigate({ pathname, search }, { replace: true, state });
-    }
-  }, [hash, navigate, pathname, search, state, user]);
+  const closeSignIn = () => {
+    if (hash === "#account") navigate({ pathname, search }, { replace: true, state });
+  };
 
   React.useEffect(() => {
     if (!hash && ["/", "/access", "/BetAndFixturesScreen"].includes(pathname)) {
@@ -123,8 +121,8 @@ export default function Navbar() {
                   {user || initialising ? "My Account" : "Sign in"}
                   <span aria-hidden="true">⌄</span>
                 </summary>
-                <div className="mt-2 rounded-xl border border-slate-200 bg-white p-4 shadow-lg lg:absolute lg:right-0 lg:w-72">
-                  <SignInScreen />
+                <div className="mt-2 rounded-xl border border-slate-600 bg-[#152136] p-4 shadow-lg lg:absolute lg:right-0 lg:w-80">
+                  <SignInScreen onSignedIn={closeSignIn} />
                 </div>
               </details>
             </li>

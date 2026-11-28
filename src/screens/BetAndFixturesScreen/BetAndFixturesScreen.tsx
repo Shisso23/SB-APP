@@ -633,14 +633,17 @@ const BetAndFixturesScreen: React.FC = () => {
     writeFavoritesCache(favoritePredictions);
   }, [favoritePredictions]);
 
-  // Init leagues: always fetch fresh, the backend now owns caching. Wait for Firebase's
-  // async session restore (`initialising`) before firing, otherwise `requireIdToken()` reads
-  // a still-null `currentUser` and throws SignInRequiredError even for a signed-in user.
-  // Re-fires on `signedIn` flips too, so a later sign-in (no reload) also loads leagues.
+  const [leagueLoadFailed, setLeagueLoadFailed] = useState(false);
+  const [leagueLoadAttempt, setLeagueLoadAttempt] = useState(0);
+
   useEffect(() => {
-    if (initialising) return;
-    dispatch(geFilteredLeaguesAction(leaguesFilters));
-  }, [dispatch, leaguesFilters, initialising, signedIn]);
+    let active = true;
+    setLeagueLoadFailed(false);
+    void Promise.resolve(dispatch(geFilteredLeaguesAction(leaguesFilters))).catch(() => {
+      if (active) setLeagueLoadFailed(true);
+    });
+    return () => { active = false; };
+  }, [dispatch, leaguesFilters, leagueLoadAttempt]);
 
   useEffect(() => {
     const data = leagues?.response?.map((l: LeagueDataModel) => new LeagueDataModel(l));
@@ -1748,6 +1751,13 @@ const BetAndFixturesScreen: React.FC = () => {
             </div>
 
             <h3 className="mb-2 mt-4 text-sm font-semibold text-slate-300">{searchQuery.trim() ? 'Search results' : 'Popular leagues'}</h3>
+            {leagueLoadFailed && (
+              <div className="mb-2 text-sm text-amber-100">
+                <p role="alert">Could not load the league catalogue.</p>
+                <button type="button" onClick={() => setLeagueLoadAttempt(value => value + 1)}
+                  className="min-h-[44px] font-semibold text-emerald-200 underline">Retry loading leagues</button>
+              </div>
+            )}
             {displayedLeagues.length ? (
               <ul className="max-h-60 space-y-2 overflow-y-auto pr-1">
                 {displayedLeagues.map(league => (
@@ -1758,10 +1768,9 @@ const BetAndFixturesScreen: React.FC = () => {
                   </li>
                 ))}
               </ul>
-            ) : (
+            ) : !leagueLoadFailed && (
               <p role="status" className="text-sm text-slate-300">{isLoadingLeagues ? 'Loading leagues…' :
-                searchQuery.trim() ? 'No leagues match your search.' :
-                  signedIn ? 'Search or browse by country to find a league.' : 'Sign in to load the league catalogue.'}</p>
+                searchQuery.trim() ? 'No leagues match your search.' : 'Search or browse by country to find a league.'}</p>
             )}
 
             <div className="mt-4 overflow-hidden rounded-xl border border-slate-700 bg-[#111c2e]">

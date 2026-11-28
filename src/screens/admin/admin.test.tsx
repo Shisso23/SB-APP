@@ -136,9 +136,9 @@ describe('manual tasks', () => {
   it('shows paginated users and active membership details', async () => {
     mocked.getAdminUsers.mockResolvedValue({
       data: {
-        page: 1, pageSize: 25, total: 1, totalPages: 1,
+        page: 1, pageSize: 25, total: 2, totalPages: 1,
         users: [{
-          id: 7, firebaseUid: 'firebase-7', email: 'member@example.com',
+          id: 7, firebaseUid: 'firebase-7', email: 'member@example.com', phoneNumber: '+27821234567',
           isActive: true, isStaff: false, isSuperuser: false,
           createdAt: '2026-11-20T10:00:00Z',
           membership: { active: true, startsAt: '2026-11-20T10:00:00Z', endsAt: '2026-12-20T10:00:00Z', revoked: false },
@@ -147,6 +147,11 @@ describe('manual tasks', () => {
             productName: '30-day pass', amountExpected: '49.00', currency: 'ZAR',
             createdAt: '2026-11-20T10:00:00Z', updatedAt: '2026-11-20T10:05:00Z',
           },
+        }, {
+          id: 8, firebaseUid: 'firebase-8', email: 'fan@example.com', phoneNumber: null,
+          isActive: true, isStaff: false, isSuperuser: false, createdAt: '2026-11-20T10:00:00Z',
+          membership: { active: false, startsAt: null, endsAt: null, revoked: false },
+          latestPurchase: null,
         }],
       },
     } as never);
@@ -154,6 +159,8 @@ describe('manual tasks', () => {
     expect(await screen.findByText('member@example.com')).toBeInTheDocument();
     expect(screen.getByText('Active membership')).toBeInTheDocument();
     expect(screen.getByText('30-day pass')).toBeInTheDocument();
+    expect(screen.getByText('Phone +27821234567 · unverified')).toBeInTheDocument();
+    expect(screen.getByText('No phone on record')).toBeInTheDocument();
   });
 
   it('shows recommendations, today counts and per-league remaining work', async () => {

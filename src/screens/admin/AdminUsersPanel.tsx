@@ -98,6 +98,9 @@ const AdminUsersPanel: React.FC = () => {
                       </div>
                     </>
                   )}
+                  <div className="mt-1 text-xs text-slate-600">
+                    {user.phoneNumber ? `Phone ${user.phoneNumber} · unverified` : 'No phone on record'}
+                  </div>
                 </td>
                 <td className="px-3 py-3">
                   <span className={`rounded-full px-2 py-1 text-xs font-semibold ${user.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>

@@ -5,8 +5,7 @@ import { LeaguesFilterModel, LeaguesModel } from "../../models/leagues";
 /**
  * Load the league catalogue from the PredictXI Django API.
  *
- * Auth/premium failures are re-thrown so screens can show an explicit state rather
- * than an empty list that looks like "no leagues".
+ * Request failures propagate to the caller for display.
  */
 export const geFilteredLeaguesAction = (filters: LeaguesFilterModel) => async (dispatch: any) => {
   dispatch(setIsLoadingLeagues(true));
