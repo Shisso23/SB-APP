@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import moment from 'moment';
 import { FixturePrediction, MarketValue } from '../../prediction-engine/types';
 import { BetListSuggestion, getSuggestedBetList } from '../../services/predictions';
+import { marketDisplayLabel, selectionAlternativeLabel } from '../../services/predictions/market-label';
 import { ForecastHighlight } from './ForecastHighlight';
 import { ProbabilityTrack } from './ProbabilityTrack';
 
@@ -37,10 +38,11 @@ const formatSuggestionsForClipboard = (
     const fixture = prediction?.fixture;
     const quote = suggestion.priceStatus === 'unpriced' ? 'No available odds'
       : `Odds ${suggestion.decimalOdds?.toFixed(2)}${suggestion.bookmaker ? ` (${suggestion.bookmaker})` : ''}`;
+    const marketLabel = marketDisplayLabel(suggestion.marketId, suggestion.marketLabel);
     const header = fixture
       ? `${index + 1}. ${fixture.teams.home.name} vs ${fixture.teams.away.name} | ${fixture.league.name} | ${fixture.fixture.date}`
-      : `${index + 1}. ${suggestion.marketLabel}`;
-    return `${header}\n${suggestion.marketLabel} | Forecast ${(suggestion.probability * 100).toFixed(2)}% | Threshold ${(suggestion.preference.suggest * 100).toFixed(0)}%\n${suggestion.explanation}\n${quote} | ${PRICE_STATUS_LABELS[suggestion.priceStatus]}${suggestion.preference.isRange ? '\nSource: base scoreline model, separate from prior-blended totals.' : ''}${suggestion.historyLimited ? '\nLimited team history; inspect the statistics.' : ''}${suggestion.impliedBy ? '\nQualifies via combined markets that already passed their own thresholds.' : ''}${suggestion.diversityAlternative ? `\nChosen for variety; strongest qualifying option for this match: ${suggestion.diversityAlternative.label} (${(suggestion.diversityAlternative.probability * 100).toFixed(2)}%).` : ''}`;
+      : `${index + 1}. ${marketLabel}`;
+    return `${header}\n${marketLabel} | Forecast ${(suggestion.probability * 100).toFixed(2)}% | Threshold ${(suggestion.preference.suggest * 100).toFixed(0)}%\n${suggestion.explanation}\n${quote} | ${PRICE_STATUS_LABELS[suggestion.priceStatus]}${suggestion.preference.isRange ? '\nSource: base scoreline model, separate from prior-blended totals.' : ''}${suggestion.historyLimited ? '\nLimited team history; inspect the statistics.' : ''}${suggestion.impliedBy ? '\nQualifies via combined markets that already passed their own thresholds.' : ''}${suggestion.diversityAlternative ? `\nChosen for variety; strongest qualifying option for this match: ${selectionAlternativeLabel(suggestion.diversityAlternative.label)} (${(suggestion.diversityAlternative.probability * 100).toFixed(2)}%).` : ''}`;
   }),
 ].join('\n\n');
 
@@ -55,44 +57,60 @@ export const SuggestedBetList: React.FC<{
 }> = ({ predictions, loading, statistical, ready = true, selectedPickKeys, onReview, onTogglePick }) => {
   const [limit, setLimit] = useState(DEFAULT_BET_LIST_SIZE);
   const [copyMessage, setCopyMessage] = useState('');
-  const [suggestions, setSuggestions] = useState<BetListSuggestion[]>([]);
+  const [result, setResult] = useState<{
+    suggestions: BetListSuggestion[];
+    predictionsById: Map<number, FixturePrediction>;
+    limit: number;
+  }>();
   const [attempt, setAttempt] = useState(0);
   const [fetchError, setFetchError] = useState('');
-  const [fetching, setFetching] = useState(false);
+  const [completedRequest, setCompletedRequest] = useState<{ predictions: FixturePrediction[]; limit: number; attempt: number }>();
   const requestIdRef = useRef(0);
 
   useEffect(() => {
-    const requestId = ++requestIdRef.current;
-    if (!ready || !statistical || !predictions.length) {
-      setSuggestions([]);
+    if (!ready || !statistical || (!loading && !predictions.length)) {
+      setResult(undefined);
       setFetchError('');
-      setFetching(false);
+      setCompletedRequest(undefined);
       return;
     }
-    setFetching(true);
+    if (loading) return;
+    const requestId = ++requestIdRef.current;
     setFetchError('');
+    const request = { predictions, limit, attempt };
     getSuggestedBetList({ predictions, limit })
       .then((response) => {
         if (requestIdRef.current !== requestId) return;
-        setSuggestions(response.data.response);
-        setFetching(false);
+        if (!Array.isArray(response.data.response) || response.data.errors?.length) {
+          throw new Error('The server returned an incomplete suggested bet list.');
+        }
+        setResult({
+          suggestions: response.data.response,
+          predictionsById: new Map(predictions.map(prediction => [prediction.fixture.fixture.id, prediction])),
+          limit,
+        });
+        setCompletedRequest(request);
       })
       .catch((error) => {
         if (requestIdRef.current !== requestId) return;
-        setSuggestions([]);
-        setFetching(false);
         setFetchError(error instanceof Error ? error.message : 'Could not load the suggested bet list.');
+        setCompletedRequest(request);
       });
     return () => { requestIdRef.current += 1; };
-  }, [predictions, limit, statistical, ready, attempt]);
+  }, [predictions, limit, statistical, ready, attempt, loading]);
 
-  const predictionsById = new Map(predictions.map((prediction) => [prediction.fixture.fixture.id, prediction]));
-  const isLoading = loading || fetching;
+  const currentResult = ready && statistical && (loading || predictions.length > 0) ? result : undefined;
+  const suggestions = currentResult?.suggestions ?? [];
+  const analysisPending = predictions.length > 0 && (completedRequest?.predictions !== predictions
+    || completedRequest.limit !== limit || completedRequest.attempt !== attempt);
+  const isLoading = ready && statistical && (loading || analysisPending);
+  const showError = ready && statistical && !isLoading && !!fetchError;
   const familyCount = new Set(suggestions.map((suggestion) => suggestion.family)).size;
   const checkedCount = suggestions.filter((suggestion) => suggestion.priceStatus === 'checked').length;
   const copyList = async () => {
     try {
-      await navigator.clipboard.writeText(formatSuggestionsForClipboard(suggestions, predictionsById));
+      if (!currentResult) return;
+      await navigator.clipboard.writeText(formatSuggestionsForClipboard(suggestions, currentResult.predictionsById));
       setCopyMessage('List copied.');
     } catch { setCopyMessage('Copy is unavailable in this browser. You can select the list text below.'); }
   };
@@ -105,7 +123,7 @@ export const SuggestedBetList: React.FC<{
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <label className="text-xs text-slate-300">Up to{' '}
-          <select aria-label="Suggested bet list size" value={limit} onChange={event => { setLimit(Number(event.target.value)); setCopyMessage(''); }} className="rounded-lg border border-slate-600 bg-slate-800 px-2 py-1.5 text-slate-100">
+          <select aria-label="Suggested bet list size" disabled={loading} value={limit} onChange={event => { setLimit(Number(event.target.value)); setCopyMessage(''); }} className="rounded-lg border border-slate-600 bg-slate-800 px-2 py-1.5 text-slate-100">
             {[3, 5, 8, 10].map(size => <option key={size} value={size}>{size} matches</option>)}
           </select>
         </label>
@@ -115,24 +133,28 @@ export const SuggestedBetList: React.FC<{
     <p className="mt-2 text-xs text-slate-400">Suggestions use the configured market thresholds. Open the analysis to see why a market was selected.</p>
     <p className="mt-2 text-xs text-amber-200">Percentages estimate the likelihood of specific match outcomes. They are separate from historical performance.</p>
     {copyMessage && <p role="status" className="mt-2 text-xs text-slate-200">{copyMessage}</p>}
-    {isLoading && <p className="mt-3 text-sm text-cyan-100">Updating the suggested list with the current prediction batch…</p>}
-    {fetchError && (
+    {isLoading && <p aria-live="polite" className="mt-3 text-sm text-cyan-100">
+      <span aria-hidden="true" className="mr-2 inline-block h-3 w-3 animate-spin rounded-full border-2 border-slate-500 border-t-cyan-200 motion-reduce:animate-none" />
+      {suggestions.length ? 'Updating the suggested list. Your previous selections are shown below.' : 'Preparing the suggested list…'}
+    </p>}
+    {showError && (
       <div className="mt-3 rounded-lg border border-amber-300/40 p-3">
-        <p role="alert" className="text-sm text-amber-200">{fetchError}</p>
+        <p role="alert" className="text-sm text-amber-200">Suggested list could not be updated. {fetchError}{suggestions.length > 0 && ' Your previous selections are shown below.'}</p>
         <button type="button" disabled={loading} onClick={() => setAttempt(value => value + 1)}
           className="min-h-[44px] text-sm font-semibold text-emerald-200 underline underline-offset-4 disabled:opacity-50">Retry suggested list</button>
       </div>
     )}
     {!statistical ? <p className="mt-3 text-sm text-slate-300">Switch to Statistical to generate this list. Legacy rules do not supply forecast probabilities.</p>
-      : !suggestions.length ? (!fetchError && <p className="mt-3 text-sm text-slate-300">{isLoading ? 'Your suggested list will appear when forecasts are ready.' : !ready ? 'An active pass and match forecasts are needed to build a suggested list.' : 'No upcoming matches meet your suggestion thresholds.'}</p>)
+      : !suggestions.length ? (!showError && <p className="mt-3 text-sm text-slate-300">{isLoading ? 'Your suggested list will appear when forecasts are ready.' : !ready ? 'An active pass and match forecasts are needed to build a suggested list.' : predictions.length ? 'No upcoming matches meet your suggestion thresholds.' : 'Load match forecasts to see suggested selections.'}</p>)
       : <>
         <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-300">
-          <span>{suggestions.length} of up to {limit} matches</span><span>·</span><span>{familyCount} market {familyCount === 1 ? 'type' : 'types'}</span><span>·</span><span>{checkedCount} with price checks passed</span><span>·</span><span>{suggestions.length - checkedCount} need price review</span>
+          <span>{suggestions.length} of up to {currentResult?.limit ?? limit} matches</span><span>·</span><span>{familyCount} market {familyCount === 1 ? 'type' : 'types'}</span><span>·</span><span>{checkedCount} with price checks passed</span><span>·</span><span>{suggestions.length - checkedCount} need price review</span>
         </div>
         <ol className="mt-3 space-y-3">
           {suggestions.map((suggestion, index) => {
             const { marketId, marketLabel, preference, probability, priceStatus, historyLimited, impliedBy, diversityAlternative, family, decimalOdds, bookmaker } = suggestion;
-            const prediction = predictionsById.get(suggestion.providerFixtureId);
+            const label = marketDisplayLabel(marketId, marketLabel);
+            const prediction = currentResult?.predictionsById.get(suggestion.providerFixtureId);
             if (!prediction) return null;
             const fixture = prediction.fixture;
             const market = prediction.markets.find((entry) => entry.marketId === marketId);
@@ -146,15 +168,15 @@ export const SuggestedBetList: React.FC<{
                 </div>
                 <span className={`rounded-full border px-2 py-1 text-[10px] font-semibold ${priceStatus === 'checked' ? 'border-emerald-400/40 text-emerald-200' : 'border-amber-400/30 text-amber-200'}`}>{PRICE_STATUS_LABELS[priceStatus]}</span>
               </div>
-              <div className="mt-3 font-bold text-emerald-200">{marketLabel} · {(probability * 100).toFixed(2)}%</div>
+              <div className="mt-3 font-bold text-emerald-200">{label} · {(probability * 100).toFixed(2)}%</div>
               <ProbabilityTrack value={probability} />
               <details className="mt-3 rounded-lg border border-slate-700 px-3">
                 <summary className="cursor-pointer py-2.5 text-sm font-semibold text-slate-200">Selection analysis</summary>
                 <div className="space-y-1 pb-3">
                   <p className="text-xs text-slate-300">{FORECAST_FAMILY_LABELS[family] ?? family}</p>
                   {impliedBy && <p className="mt-2 text-xs text-cyan-200">Qualifies via combined markets that already passed their own thresholds.</p>}
-                  {diversityAlternative && <p className="mt-2 text-xs text-cyan-200">Chosen for variety. Strongest qualifying option for this match: {diversityAlternative.label} ({(diversityAlternative.probability * 100).toFixed(2)}%).</p>}
-                  <ForecastHighlight probability={probability} preference={preference} progressive={marketId === 'btts_yes'} level={suggestion.level}
+                  {diversityAlternative && <p className="mt-2 text-xs text-cyan-200">Chosen for variety. Strongest qualifying option for this match: {selectionAlternativeLabel(diversityAlternative.label)} ({(diversityAlternative.probability * 100).toFixed(2)}%).</p>}
+                  <ForecastHighlight probability={probability} preference={{ ...preference, label }} progressive={marketId === 'btts_yes'} level={suggestion.level}
                     note={impliedBy ? `qualifies via combined markets, not its own threshold.` : undefined} />
                   <p className="mt-2 text-xs text-slate-300">{suggestion.explanation}</p>
                   {preference.isRange && <p className="mt-1 text-xs text-slate-400">Base scoreline model; separate from prior-blended totals. This range model is unvalidated.</p>}

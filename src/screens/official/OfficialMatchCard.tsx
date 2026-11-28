@@ -1,3 +1,4 @@
+import { marketDisplayLabel } from '../../services/predictions/market-label';
 import React from 'react';
 import { ProbabilityTrack } from '../BetAndFixturesScreen/ProbabilityTrack';
 import { describeLegStatus, formatOdds, formatProbability, formatScore, formatTimestamp, tallyList } from '../../services/official/presentation';
@@ -30,8 +31,8 @@ const Selection: React.FC<{ leg: OfficialListLeg; showOutcome?: boolean }> = ({ 
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0 break-words">
         <p className="text-xs font-semibold text-slate-300">Published prediction</p>
-        <p className="mt-1 text-sm font-bold">{leg.marketLabel || leg.marketId}</p>
-        {leg.marketLine && <p className="text-xs text-slate-300">{leg.marketLine}</p>}
+        <p className="mt-1 text-sm font-bold">{marketDisplayLabel(leg.marketId, leg.marketLabel)}</p>
+        {leg.marketLine && leg.marketId !== 'total_0_3' && <p className="text-xs text-slate-300">{leg.marketLine}</p>}
       </div>
       <div className="shrink-0 text-right">
         <p className="text-xs text-slate-300">Model probability</p>

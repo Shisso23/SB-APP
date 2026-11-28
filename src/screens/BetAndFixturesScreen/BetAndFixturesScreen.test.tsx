@@ -226,16 +226,8 @@ const renderPredictionDesk = async () => {
   return rendered;
 };
 
-/** The batched per-market highlight fetch (see BetAndFixturesScreen's
- * highlightsByFixtureId effect) is a genuine network round trip, unlike the
- * synchronous computation it replaced. Real test fixtures here always produce
- * a defined probability for every market (verified: predictFixture never
- * leaves `markets`/`probabilities.baseScorelines` empty, even with no fixture
- * history), so "no 'Probability unavailable' placeholder remains" is a
- * reliable, generic signal that batch has settled - used wherever a test
- * captures or compares forecast panel content. */
 const awaitHighlightsSettled = async () => {
-  await waitFor(() => expect(screen.queryAllByText('Probability unavailable')).toHaveLength(0));
+  await waitFor(() => expect(screen.queryByText('Checking forecast highlights…')).not.toBeInTheDocument());
 };
 
 const runInitialBatch = async () => {
@@ -329,7 +321,7 @@ it('does not fetch fixtures while access is still being checked in legacy mode',
   const implementation = get.getMockImplementation();
   if (!implementation) throw new Error('Missing API fixture mock');
   get.mockImplementation((endpoint, options) => {
-    if (endpoint === '/me/') return new Promise(() => {});
+    if (endpoint === '/me/') return new Promise(() => { /* Simulate an access request that has not resolved. */ });
     return implementation(endpoint, options);
   });
   render(<MemoryRouter><BetAndFixturesScreen /></MemoryRouter>);
@@ -386,11 +378,21 @@ it('keeps every forecast visible with an honest empty suggestion state when prob
   prediction.selections = [...prediction.markets];
   prediction.headline = 'BTTS No is leading';
   prediction.probabilities.baseScorelines = undefined;
-  render(<EnginePredictionPanel prediction={prediction} onCaptureOdds={jest.fn()} />);
+  const { rerender } = render(<EnginePredictionPanel prediction={prediction} highlightsLoading onCaptureOdds={jest.fn()} />);
+  expect(screen.getAllByText('Loading probability…')).toHaveLength(25);
+  expect(screen.queryByText('Probability unavailable')).not.toBeInTheDocument();
+  expect(screen.queryByText('No forecasts meet the configured suggestion thresholds.')).not.toBeInTheDocument();
+  rerender(<EnginePredictionPanel prediction={prediction} highlights={{}} onCaptureOdds={jest.fn()} />);
   expect(screen.getByRole('status')).toHaveTextContent('No forecasts meet the configured suggestion thresholds.');
   expect(screen.getAllByText('Probability unavailable')).toHaveLength(25);
   expect(screen.queryByText(/BTTS No/)).not.toBeInTheDocument();
-  expect(screen.getByText('Both teams to score')).toBeInTheDocument();
+  const primary = within(screen.getByRole('group', { name: 'Primary model probabilities' }));
+  for (const name of ['Both teams to score', 'Over 1.5 goals', 'Home or Draw (1X)', 'Away or Draw (X2)',
+    'Home Team Over 1.5 Goals', 'Away Team Over 1.5 Goals', 'Under 3.5 goals']) {
+    expect(primary.getByText(name)).toBeInTheDocument();
+  }
+  expect(screen.getAllByText('Over 1.5 goals')).toHaveLength(1);
+  expect(screen.getByText('Base scoreline model')).toBeInTheDocument();
   expect(screen.queryByText('Model picks and explanations')).not.toBeInTheDocument();
 });
 
@@ -404,7 +406,7 @@ it('restores statistical forecasts from the backend after remount without regene
   cleanup();
   await renderPredictionDesk();
   await screen.findAllByText('2–5 total goals');
-  expect(screen.getByText(/All forecasts and market details/).closest('details')!.textContent).toBe(forecastsBefore);
+  await waitFor(() => expect(screen.getByText(/All forecasts and market details/).closest('details')!.textContent).toBe(forecastsBefore));
   const dataRequestsAfter = get.mock.calls.slice(requestsBefore).filter(([endpoint]) =>
     endpoint !== '/me/' && endpoint !== '/predictions/workspace/');
   expect(dataRequestsAfter).toHaveLength(0);
@@ -790,6 +792,76 @@ it('consolidates separate league batches and restores the complete fixture and b
   expect(screen.getAllByRole('button', { name: /Premier League/ })[0]).toHaveTextContent('Already predicted');
 });
 
+it('keeps single-league results and suggestions during a slow second save, then analyses the consolidated forecasts once', async () => {
+  setupLeagueRetryApi();
+  const read = get.getMockImplementation();
+  if (!read) throw new Error('Missing API fixture mock.');
+  get.mockImplementation(async (endpoint, options) => {
+    const result = await read(endpoint, options);
+    if (endpoint === '/predictions/') {
+      result.data.response.forEach(({ output }: { output: FixturePrediction }) => {
+        const homeWin = output.markets.find(market => market.marketId === 'home_win');
+        if (!homeWin) throw new Error('Missing forecast for the home team.');
+        homeWin.modelProbability = .99;
+      });
+    }
+    return result;
+  });
+  await renderPredictionDesk();
+  fireEvent.click(screen.getByRole('button', { name: /Premier League/ }));
+  const run = screen.getByRole('button', { name: 'Generate Predictions' });
+  await waitFor(() => expect(run).toBeEnabled());
+  fireEvent.click(run);
+  const shortlist = within(screen.getByRole('region', { name: 'Suggested bet list' }));
+  expect(await shortlist.findAllByRole('listitem')).toHaveLength(1);
+  const save = post.getMockImplementation();
+  if (!save) throw new Error('Missing API fixture mock.');
+  let releaseSave!: () => void;
+  let releaseSuggestions!: () => void;
+  const pendingSave = new Promise<void>(resolve => { releaseSave = resolve; });
+  const pendingSuggestions = new Promise<void>(resolve => { releaseSuggestions = resolve; });
+  let failHighlights = true;
+  post.mockClear();
+  post.mockImplementation(async (path, body) => {
+    if (path === '/predictions/workspace/') await pendingSave;
+    if (path === '/predictions/bet-list/') await pendingSuggestions;
+    if (path === '/predictions/highlights/' && failHighlights) throw new Error('Temporary runner error.');
+    return save(path, body);
+  });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Add More Leagues' }));
+  fireEvent.click(screen.getByRole('button', { name: /Bundesliga/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'Generate Predictions' }));
+  await waitFor(() => expect(post.mock.calls.some(([path]) => path === '/predictions/workspace/')).toBe(true));
+  expect(screen.getByRole('region', { name: 'Prediction loading' })).toHaveTextContent('Your previous forecasts remain below');
+  expect(screen.getByText(/All forecasts and market details/)).toHaveTextContent('1 fixture');
+  expect(shortlist.getAllByRole('listitem')).toHaveLength(1);
+  expect(shortlist.getByText(/Updating the suggested list/)).toBeInTheDocument();
+  expect(post.mock.calls.filter(([path]) => path.endsWith('/highlights/') || path.endsWith('/bet-list/'))).toHaveLength(0);
+
+  await act(async () => { releaseSave(); });
+  expect(await screen.findByText(/Forecast highlights could not be loaded/)).toBeInTheDocument();
+  expect(screen.getByText(/All forecasts and market details/)).toHaveTextContent('2 fixtures');
+  expect(screen.getAllByText('99%')).toHaveLength(2);
+  expect(screen.queryByText('Probability unavailable')).not.toBeInTheDocument();
+  expect(shortlist.getAllByRole('listitem')).toHaveLength(1);
+  const selectionCalls = post.mock.calls.filter(([path]) => path.endsWith('/bet-list/'));
+  expect(selectionCalls).toHaveLength(1);
+  const inputs = selectionCalls[0][1].predictions;
+  expect(inputs).toHaveLength(2);
+  expect(new Set(inputs.map((entry: FixturePrediction) => entry.fixture.fixture.id)).size).toBe(2);
+  expect(inputs[0].fixture).not.toHaveProperty('teams');
+  expect(inputs[0].probabilities.baseScorelines.length).toBeGreaterThan(0);
+
+  await act(async () => { releaseSuggestions(); });
+  await waitFor(() => expect(shortlist.getAllByRole('listitem')).toHaveLength(2));
+  failHighlights = false;
+  fireEvent.click(screen.getByRole('button', { name: 'Retry forecast highlights' }));
+  await waitFor(() => expect(screen.queryByText('Checking forecast highlights…')).not.toBeInTheDocument());
+  expect(screen.queryByText(/Forecast highlights could not be loaded/)).not.toBeInTheDocument();
+  expect(screen.getAllByText('99%')).toHaveLength(2);
+});
+
 it('waits for Firebase restoration and loads the saved account without logging out and back in', async () => {
   await runInitialBatch();
   cleanup();
@@ -807,7 +879,7 @@ it('waits for Firebase restoration and loads the saved account without logging o
   rendered.rerender(<MemoryRouter><BetAndFixturesScreen /></MemoryRouter>);
   await screen.findAllByText('2–5 total goals');
   expect(get.mock.calls.filter(([path]) => path === '/predictions/')).toHaveLength(0);
-  expect(post.mock.calls.some(([path]) => path === '/predictions/bet-list/')).toBe(true);
+  await waitFor(() => expect(post.mock.calls.some(([path]) => path === '/predictions/bet-list/')).toBe(true));
 });
 
 it('clears the desk without deleting database forecasts and allows those leagues to be loaded again', async () => {

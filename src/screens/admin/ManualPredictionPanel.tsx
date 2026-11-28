@@ -1,3 +1,4 @@
+import { marketDisplayLabel } from '../../services/predictions/market-label';
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -164,7 +165,7 @@ const ManualPredictionPanel: React.FC<{
           <ol className="mt-3 space-y-2">{preview.suggestions.map(pick => (
             <li key={pick.providerFixtureId} className="rounded-lg border border-slate-200 p-3 text-sm">
               <strong>{pick.homeTeam} v {pick.awayTeam}</strong>
-              <p>{pick.marketLabel} — {(pick.probability * 100).toFixed(1)}%</p>
+              <p>{marketDisplayLabel(pick.marketId, pick.marketLabel)} — {(pick.probability * 100).toFixed(1)}%</p>
               <p className="text-slate-500">
                 {pick.decimalOdds
                   ? pick.oddsSource === 'model-fair'

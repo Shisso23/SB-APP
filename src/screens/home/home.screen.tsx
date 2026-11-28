@@ -1,3 +1,4 @@
+import { marketDisplayLabel } from '../../services/predictions/market-label';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -73,7 +74,7 @@ const HomeScreen: React.FC = () => {
                   <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/20 pt-4">
                     <div>
                       <p className="text-xs text-slate-300">Model probability</p>
-                      <p className="mt-1 text-sm font-semibold">{featured.marketLabel || featured.marketId}</p>
+                      <p className="mt-1 text-sm font-semibold">{marketDisplayLabel(featured.marketId, featured.marketLabel)}</p>
                     </div>
                     <p className="text-2xl font-bold tabular-nums text-emerald-300">{formatProbability(featured.probability)}</p>
                   </div>

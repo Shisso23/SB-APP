@@ -149,11 +149,11 @@ export const betOptions: betOptionModel[] = [
   //   }) => predictMultiGoals0_2(params),
   // },
   {
-    name: "Multi Goals (0->3 ) Goals",
+    name: "Under 3.5 goals",
     id: betOptionsEnum.TOTAL_0_3_GOALS,
     level: 2,
-    shortName: "0->3 G",
-    description: "Total goals range: minimum 0 and maximum 3.",
+    shortName: "Under 3.5",
+    description: "Fewer than four total match goals.",
     predict: (params: {
       currentFixtures: FixtureDataModel[];
       allFixtures: FixtureDataModel[];

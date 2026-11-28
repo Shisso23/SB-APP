@@ -347,6 +347,20 @@ describe('public history screen', () => {
     expect(screen.getByText('Incorrect', { selector: 'span' })).toHaveTextContent('✕Incorrect');
   });
 
+  it('gives archived total bands their customer-facing label with the original outcome and probability', async () => {
+    const original = publishedList();
+    mockAll({ today: publishedList({ legs: [{
+      ...original.legs[0], marketId: 'total_0_3', marketLabel: '0–3 total goals', marketLine: '0-3 total',
+      probability: '0.87', status: 'won',
+    }] }) });
+    renderScreen();
+    const match = (await screen.findByText('Under 3.5 goals', { selector: 'p' })).closest('article');
+    if (!match) throw new Error('Missing published match card.');
+    expect(within(match).getByText('87.0%')).toBeInTheDocument();
+    expect(within(match).getByText('Correct')).toBeInTheDocument();
+    expect(within(match).queryByText('0-3 total')).not.toBeInTheDocument();
+  });
+
   it('reports metrics with their denominators and never coerces a null rate to zero', async () => {
     mockAll({
       summary: summaryOf({

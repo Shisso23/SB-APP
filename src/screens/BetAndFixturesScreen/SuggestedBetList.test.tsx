@@ -126,13 +126,13 @@ test('empty, legacy, loading and changed forecasts do not manufacture entries', 
   expect(await screen.findAllByRole('listitem')).toHaveLength(1);
   rerender(<SuggestedBetList {...props} predictions={[]} />);
   expect(screen.queryByRole('listitem')).not.toBeInTheDocument();
-  expect(screen.getByText(/No upcoming matches meet your suggestion thresholds/)).toBeInTheDocument();
+  expect(screen.getByText(/Load match forecasts to see suggested selections/)).toBeInTheDocument();
   rerender(<SuggestedBetList {...props} predictions={[prediction]} statistical={false} />);
   expect(screen.getByText(/Legacy rules do not supply forecast probabilities/)).toBeInTheDocument();
   expect(screen.queryByRole('listitem')).not.toBeInTheDocument();
   rerender(<SuggestedBetList {...props} predictions={[prediction]} loading />);
   expect(screen.getByRole('button', { name: 'Copy list' })).toBeDisabled();
-  expect(screen.getByText(/Updating the suggested list/)).toBeInTheDocument();
+  expect(screen.getByText(/Preparing the suggested list/)).toBeInTheDocument();
 });
 
 test('retries the suggested list with the same available forecasts', async () => {
@@ -182,4 +182,22 @@ test('requesting ten matches keeps ten qualifying entries even when their bet op
   await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(10));
   expect(screen.getAllByText('Home win · 80.00%')).toHaveLength(10);
   expect(screen.getByText('10 of up to 10 matches')).toBeInTheDocument();
+});
+
+test('keeps a successful list after a failed consolidated update and clears it on a successful empty retry', async () => {
+  const first = makeForecastBetPrediction({ now });
+  const second = makeForecastBetPrediction({ now, id: 2 });
+  const firstBatch = [first];
+  const secondBatch = [first, second];
+  mockBetList(firstBatch);
+  const { rerender } = render(<SuggestedBetList {...props} predictions={firstBatch} />);
+  await screen.findByRole('listitem');
+  mockGetSuggestedBetList.mockRejectedValueOnce(new Error('Temporary network error.'));
+  rerender(<SuggestedBetList {...props} predictions={secondBatch} />);
+  expect(await screen.findByRole('alert')).toHaveTextContent('Your previous selections are shown below.');
+  expect(screen.getAllByRole('listitem')).toHaveLength(1);
+  mockGetSuggestedBetList.mockResolvedValueOnce({ data: { response: [], results: 0, errors: [] } });
+  fireEvent.click(screen.getByRole('button', { name: 'Retry suggested list' }));
+  expect(await screen.findByText('No upcoming matches meet your suggestion thresholds.')).toBeInTheDocument();
+  expect(screen.queryByRole('listitem')).not.toBeInTheDocument();
 });

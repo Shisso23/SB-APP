@@ -37,7 +37,6 @@ import { getH2HFixtures, getLastFiveTeamFixtures } from '../../prediction-functi
 import { fuzzyScore } from '../../helpers/fuzzy-search';
 import {
   FixturePrediction,
-  MARKET_LABELS,
   MarketId,
   buildPaperSelections,
   readPaperRecord,
@@ -53,7 +52,8 @@ import { getMe, isAccessActive, predictionHorizonOf } from '../../services/acces
 import type { MeResponse } from '../../services/access/types';
 import { getPredictionsByLeagueSeason, getPredictionsByFixture, getHighlightLevels, getPredictionWorkspace, savePredictionWorkspace, clearPredictionWorkspace, SavedPredictionLeague, MarketHighlight, PredictionEnvelopeRow } from '../../services/predictions';
 import { usePremiumRedirect } from '../../hooks/usePremiumRedirect';
-import { FORECAST_HIGHLIGHTS, ForecastId, LEGACY_FORECAST_IDS, visibleForecastPrediction } from '../../config/forecast-highlights';
+import { marketDisplayLabel } from '../../services/predictions/market-label';
+import { FORECAST_HIGHLIGHTS, ForecastId, LEGACY_FORECAST_IDS, forecastProbability, visibleForecastPrediction } from '../../config/forecast-highlights';
 import { ProbabilityTrack } from './ProbabilityTrack';
 import { ForecastHighlight } from './ForecastHighlight';
 import { PredictionLoader } from './PredictionLoader';
@@ -383,36 +383,39 @@ const pct = (value: number, decimals = 0) =>
 
 export const EnginePredictionPanel: React.FC<{
   prediction: FixturePrediction;
-  /** Per-market suggested/strong/none level, probability and display preference,
-   * computed server-side (see services/predictions.getHighlightLevels) via the
-   * SAME canonical thresholds the Suggested Bet List and Official Daily List
-   * both use. Undefined (not yet fetched, or the batch failed) renders every
-   * market as "Probability unavailable" - the same honest fallback already used
-   * when a market genuinely has no computed probability - rather than falling
-   * back to a local, independently-drifting computation. */
   highlights?: Record<string, MarketHighlight>;
+  highlightsLoading?: boolean;
   oddsMessage?: string;
   onCaptureOdds: (prediction: FixturePrediction) => Promise<string>;
-}> = ({ prediction: sourcePrediction, highlights, oddsMessage, onCaptureOdds }) => {
+}> = ({ prediction: sourcePrediction, highlights, highlightsLoading, oddsMessage, onCaptureOdds }) => {
   const prediction = visibleForecastPrediction(sourcePrediction);
   const [capturingOdds, setCapturingOdds] = useState(false);
   const [captureMessage, setCaptureMessage] = useState('');
   const { probabilities, dataQuality } = prediction;
 
-  const firstMarkets: ForecastId[] = ['home_win', 'draw', 'away_win', 'btts_yes', 'over_2_5', 'home_over_0_5', 'away_over_0_5'];
+  const firstMarkets: ForecastId[] = [
+    'home_win', 'draw', 'away_win', 'home_or_draw', 'away_or_draw',
+    'btts_yes', 'over_1_5', 'over_2_5', 'under_3_5',
+    'home_over_0_5', 'away_over_0_5', 'home_over_1_5', 'away_over_1_5',
+  ];
   const forecastIds = [...firstMarkets, ...(Object.keys(FORECAST_HIGHLIGHTS) as ForecastId[]).filter(id => !firstMarkets.includes(id))];
   const hasSuggestions = forecastIds.some(id => highlights?.[id] && highlights[id].level !== 'none');
 
   const renderMarket = (marketId: ForecastId) => {
     const marketHighlight = highlights?.[marketId];
     const preference = marketHighlight?.preference;
-    const probability = marketHighlight?.probability ?? undefined;
+    // The saved forecast contains the probabilities. The server annotates them
+    // with qualification levels independently of this initial rendering.
+    const probability = marketHighlight ? marketHighlight.probability ?? undefined : forecastProbability(prediction, marketId);
+    const label = marketDisplayLabel(marketId, preference?.label ?? FORECAST_HIGHLIGHTS[marketId].label);
+    const isRange = preference?.isRange ?? Boolean('range' in FORECAST_HIGHLIGHTS[marketId]);
+    const meaning = preference?.meaning ?? FORECAST_HIGHLIGHTS[marketId].meaning;
     const validated = dataQuality.validatedMarkets.includes(marketId as MarketId);
     const weak = dataQuality.weakMarkets.includes(marketId as MarketId);
     return (
-      <div key={marketId} className="min-w-0 rounded-lg border border-slate-700 bg-[#0d1626] p-3" title={preference?.meaning}>
+      <div key={marketId} className="min-w-0 rounded-lg border border-slate-700 bg-[#0d1626] p-3" title={meaning}>
         <div className="flex items-center justify-between gap-1">
-          <span className="break-words text-sm font-semibold text-slate-200">{preference?.label ?? MARKET_LABELS[marketId as MarketId] ?? marketId}</span>
+          <span className="break-words text-sm font-semibold text-slate-200">{marketId === 'total_0_3' ? 'Base scoreline model' : label}</span>
           {validated && (
             <span title="Positive skill in the earlier evaluation only; later EPL goal-market results were weaker. Profitability unproven." className="shrink-0 rounded bg-emerald-500/20 px-1 text-[8px] font-semibold text-emerald-200">✓</span>
           )}
@@ -420,12 +423,16 @@ export const EnginePredictionPanel: React.FC<{
             <span title="Weak or unvalidated edge over a simple baseline" className="shrink-0 rounded bg-amber-500/20 px-1 text-[8px] font-semibold text-amber-200">~</span>
           )}
         </div>
-        <div className="mt-1 text-sm font-bold tabular-nums text-emerald-200">{probability === undefined ? 'Probability unavailable' : pct(probability)}</div>
+        <div className="mt-1 text-sm font-bold tabular-nums text-emerald-200">{probability === undefined ? (highlightsLoading ? 'Loading probability…' : 'Probability unavailable') : pct(probability)}</div>
         <ProbabilityTrack value={probability} />
-        {preference && <ForecastHighlight probability={probability} preference={preference} progressive={marketId === 'btts_yes'} level={marketHighlight?.level}
+        {preference && <ForecastHighlight probability={probability} preference={{ ...preference, label }} progressive={marketId === 'btts_yes'} level={marketHighlight?.level}
           note={marketHighlight?.impliedBy ? 'qualifies via combined markets, not its own threshold.' : undefined} />}
-        <div className="mt-1 text-xs text-slate-400" title={preference?.meaning}>{preference?.isRange ? preference.meaning : null}</div>
-        {preference?.isRange && <div className="mt-1 text-xs text-slate-400">Base scoreline model: sum of matching outcomes in the complete normalized grid; separate from prior-blended totals.</div>}
+        {isRange && marketId !== 'total_0_3' && <p className="mt-1 text-xs text-slate-400">{meaning}</p>}
+        {isRange && <div className="mt-1 text-xs text-slate-400">Base scoreline model: sum of matching outcomes in the complete normalized grid; separate from prior-blended totals.</div>}
+        {marketId === 'under_3_5' && <details className="mt-2 border-t border-slate-700">
+          <summary className="min-h-[44px] cursor-pointer py-3 text-xs font-semibold text-slate-300">Base scoreline estimate</summary>
+          {renderMarket('total_0_3')}
+        </details>}
       </div>
     );
   };
@@ -436,16 +443,16 @@ export const EnginePredictionPanel: React.FC<{
         <h4 className="text-sm font-bold text-white">Model probabilities</h4>
         <p className="mt-1 text-xs leading-relaxed text-slate-300">Each percentage estimates the chance of that match outcome. Results can differ from the model’s forecast.</p>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+      <div role="group" aria-label="Primary model probabilities" className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {firstMarkets.map(renderMarket)}
       </div>
       <details className="rounded-lg border border-slate-700">
         <summary className="cursor-pointer px-3 py-3 text-sm font-bold text-emerald-200">More prediction options</summary>
         <div className="grid gap-2 px-3 pb-3 sm:grid-cols-2 xl:grid-cols-3">
-          {forecastIds.slice(firstMarkets.length).map(renderMarket)}
+          {forecastIds.slice(firstMarkets.length).filter(id => id !== 'total_0_3').map(renderMarket)}
         </div>
       </details>
-      {!hasSuggestions && <p role="status" className="text-xs text-slate-300">No forecasts meet the configured suggestion thresholds.</p>}
+      {highlights && !hasSuggestions && <p role="status" className="text-xs text-slate-300">No forecasts meet the configured suggestion thresholds.</p>}
       <details className="rounded-lg border border-slate-700">
         <summary className="cursor-pointer px-3 py-3 text-sm font-bold text-slate-200">Model and data notes</summary>
         <div className="space-y-2 px-3 pb-3 text-xs leading-relaxed text-slate-300">
@@ -567,7 +574,12 @@ const BetAndFixturesScreen: React.FC = () => {
   const [predictedFixtures, setPredictedFixtures] = useState<{ fixtures: FixtureDataModel[]; option: betOptionModel; }[]>([]);
   const [groupedData, setGroupedData] = useState<Record<number, betOptionModel[]>>({});
   const [enginePredictions, setEnginePredictions] = useState<Record<number, FixturePrediction>>({});
-  const [highlightsByFixtureId, setHighlightsByFixtureId] = useState<Record<number, Record<string, MarketHighlight>>>({});
+  const [highlightResult, setHighlightResult] = useState<{
+    predictions: FixturePrediction[];
+    matches: Record<number, Record<string, MarketHighlight>>;
+    error?: string;
+  }>();
+  const [highlightAttempt, setHighlightAttempt] = useState(0);
   const [oddsLoadMessages, setOddsLoadMessages] = useState<Record<number, string>>({});
   const [paperSelections, setPaperSelections] = useState<PaperSelection[]>(() => readPaperRecord().selections);
   const [selectedStatisticalPickKeys, setSelectedStatisticalPickKeys] = useState<string[]>(readStatisticalPickKeys);
@@ -1330,9 +1342,8 @@ const BetAndFixturesScreen: React.FC = () => {
       leaguesStandingsLocal: standingsForPrediction
     });
 
-    // Statistical mode reads forecasts the server has already generated and
-    // published for each selected league's current season. The browser never
-    // recomputes a forecast; it only maps the stored output onto fixtures.
+    // A league read returns the stored forecasts, after any synchronous
+    // on-demand generation the server needed to build them.
     const publishedPredictions = new Map<number, FixturePrediction>();
     const oddsMessages: Record<number, string> = {};
     if (predictionMode === 'statistical') {
@@ -1381,8 +1392,8 @@ const BetAndFixturesScreen: React.FC = () => {
       return { ...updated, ...runFailures };
     });
 
-    await new Promise<void>(resolve => window.setTimeout(resolve, 0));
     let engineResultsForCache: FixturePrediction[] = [];
+    let finalEngineMap = { ...enginePredictions };
     // Statistical engine: calibrated probabilities + explanations for every fixture.
     // Guarded so an unexpected error in the engine cannot break the existing bet flow.
     try {
@@ -1390,18 +1401,16 @@ const BetAndFixturesScreen: React.FC = () => {
         .map((fixture) => publishedPredictions.get(fixture.fixture.id))
         .filter((prediction): prediction is FixturePrediction => Boolean(prediction));
       engineResultsForCache = engineResults;
-      const engineMap: Record<number, FixturePrediction> = { ...enginePredictions };
       if (predictionMode === 'statistical') {
-        Object.values(engineMap).forEach(prediction => {
+        Object.values(finalEngineMap).forEach(prediction => {
           if (runIds.has(prediction.fixture.league.id) && !runFailures[prediction.fixture.league.id]) {
-            delete engineMap[prediction.fixture.fixture.id];
+            delete finalEngineMap[prediction.fixture.fixture.id];
           }
         });
       }
       engineResults.forEach((prediction) => {
-        engineMap[Number(prediction.fixture.fixture.id)] = prediction;
+        finalEngineMap[prediction.fixture.fixture.id] = prediction;
       });
-      setEnginePredictions(engineMap);
 
       // Save every priced market (including rejected ones) once per fixture/market.
       const existingRecord = readPaperRecord();
@@ -1457,7 +1466,7 @@ const BetAndFixturesScreen: React.FC = () => {
           if (accountRef.current !== runOwner) return;
           const consolidated = response.data.response.map(predictionRowToFixturePrediction)
             .filter((prediction): prediction is FixturePrediction => prediction !== null);
-          setEnginePredictions(Object.fromEntries(consolidated.map(prediction => [prediction.fixture.fixture.id, prediction])));
+          finalEngineMap = Object.fromEntries(consolidated.map(prediction => [prediction.fixture.fixture.id, prediction]));
           setSavedLeagues(response.data.leagues);
           batchForecasts = consolidated.filter(prediction => runIds.has(prediction.fixture.league.id));
           consolidated.forEach(prediction => mergedAll.push(prediction.fixture));
@@ -1512,6 +1521,8 @@ const BetAndFixturesScreen: React.FC = () => {
       }
     }
 
+    if (accountRef.current !== runOwner) return;
+    setEnginePredictions(finalEngineMap);
     const finalFixtures = dedupeFixtures(mergedAll);
     const finalFuture = filterFutureFixtures(finalFixtures);
     setAllFixtures(finalFixtures);
@@ -1632,41 +1643,41 @@ const BetAndFixturesScreen: React.FC = () => {
     ? Object.keys(groupedData).filter(id => currentFixtures.some(fixture => fixture.fixture.id === Number(id)))
     : initialising || hasPredictionAccess !== true || workspaceOwnerRef.current !== user?.uid
       ? [] : Object.keys(enginePredictions).filter(id => currentFixtures.some(fixture => fixture.fixture.id === Number(id)));
-  const visibleEnginePredictions = useMemo(
-    () => initialising || hasPredictionAccess !== true || workspaceOwnerRef.current !== user?.uid ? [] : Object.values(enginePredictions).filter((prediction) =>
-      currentFixtures.some((fixture) => fixture.fixture.id === prediction.fixture.fixture.id)
-    ).map(visibleForecastPrediction),
-    [enginePredictions, currentFixtures, initialising, hasPredictionAccess, user?.uid]
-  );
+  // The saved snapshot is the input for both analyses. Derive it directly
+  // from forecasts so updates to the parallel fixture and standings views do
+  // not restart requests with the same forecast data.
+  const visibleEnginePredictions = useMemo(() => {
+    if (initialising || hasPredictionAccess !== true || workspaceOwnerRef.current !== user?.uid) return [];
+    const withinWindow = new Set(filterBetweenDates(
+      filterFutureFixtures(Object.values(enginePredictions).map(prediction => prediction.fixture)), fromDate, toDate,
+    ).map(fixture => fixture.fixture.id));
+    return Object.values(enginePredictions)
+      .filter(prediction => withinWindow.has(prediction.fixture.fixture.id))
+      .map(visibleForecastPrediction);
+  }, [enginePredictions, fromDate, toDate, predictionDeadline, initialising, hasPredictionAccess, user?.uid]);
 
-  // Per-market suggested/strong/none badge levels for every currently-displayed
-  // fixture, fetched ONCE for the whole batch (never per fixture card) so
-  // expanding many cards at once can't cause an N+1 request storm. Uses the
-  // SAME canonical thresholds the Suggested Bet List / Official Daily List
-  // already rely on, via the server, instead of a local copy.
+  const analysisReady = workspaceReady && predictionMode === 'statistical' && visibleEnginePredictions.length > 0;
+  const currentHighlights = highlightResult?.predictions === visibleEnginePredictions ? highlightResult : undefined;
+  const highlightsLoading = analysisReady && !currentHighlights;
+
   useEffect(() => {
+    if (!analysisReady || loadingBatch) return;
     const requestId = ++highlightsRequestIdRef.current;
-    if (!workspaceReady || predictionMode !== 'statistical' || !visibleEnginePredictions.length) {
-      setHighlightsByFixtureId({});
-      return;
-    }
     getHighlightLevels({ predictions: visibleEnginePredictions })
       .then((response) => {
         if (highlightsRequestIdRef.current !== requestId) return;
-        const byFixtureId: Record<number, Record<string, MarketHighlight>> = {};
-        response.data.response.forEach((row) => { byFixtureId[row.providerFixtureId] = row.markets; });
-        setHighlightsByFixtureId(byFixtureId);
+        const matches = Object.fromEntries(response.data.response.map(row => [row.providerFixtureId, row.markets]));
+        if (response.data.errors?.length || visibleEnginePredictions.some(prediction => !matches[prediction.fixture.fixture.id])) {
+          throw new Error('The server returned incomplete forecast highlights.');
+        }
+        setHighlightResult({ predictions: visibleEnginePredictions, matches });
       })
       .catch((error) => {
         if (highlightsRequestIdRef.current !== requestId) return;
-        // Badge-only, non-blocking: a failed fetch just leaves fixtures showing
-        // "Probability unavailable" until the next successful batch, the same
-        // honest fallback already used when a market has no computed probability.
-        setHighlightsByFixtureId({});
-        setWorkspaceError(`Forecast highlights could not be loaded: ${describePredictionsFailure(error)}`);
+        setHighlightResult({ predictions: visibleEnginePredictions, matches: {}, error: describePredictionsFailure(error) });
       });
     return () => { highlightsRequestIdRef.current += 1; };
-  }, [visibleEnginePredictions, predictionMode, workspaceReady]);
+  }, [visibleEnginePredictions, analysisReady, loadingBatch, highlightAttempt]);
 
   const dateRangeValid = Boolean(fromDate && toDate && fromDate <= toDate);
   const canGenerate = canBet && !loadingBatch && !initialising && signedIn && hasPredictionAccess === true && dateRangeValid;
@@ -1913,7 +1924,18 @@ const BetAndFixturesScreen: React.FC = () => {
           </div>}
           <LeagueLoadErrors failures={Object.values(failedLeagueLoads)} warnings={fixtureLoadWarnings}
             loading={loadingBatch} retryingIds={retryingLeagueIds} onRetry={failures => handleBet(true, failures)} />
+          {highlightsLoading && !loadingBatch && <p role="status" className="text-sm text-slate-300">
+            <span aria-hidden="true" className="mr-2 inline-block h-3 w-3 animate-spin rounded-full border-2 border-slate-500 border-t-emerald-300 motion-reduce:animate-none" />
+            Checking forecast highlights…
+          </p>}
+          {currentHighlights?.error && analysisReady && !loadingBatch && <div className="rounded-xl border border-amber-300/40 p-3 text-sm text-amber-100">
+            <p role="alert">Forecast highlights could not be loaded. {currentHighlights.error}</p>
+            <button type="button" onClick={() => { setHighlightResult(undefined); setHighlightAttempt(value => value + 1); }} className="min-h-[44px] font-semibold underline">
+              Retry forecast highlights
+            </button>
+          </div>}
           <SuggestedBetList
+            key={user?.uid ?? 'guest'}
             predictions={visibleEnginePredictions}
             loading={loadingBatch}
             statistical={predictionMode === 'statistical'}
@@ -2007,7 +2029,8 @@ const BetAndFixturesScreen: React.FC = () => {
                         {predictionMode === 'statistical' && enginePrediction && (
                           <EnginePredictionPanel
                             prediction={enginePrediction}
-                            highlights={highlightsByFixtureId[currentFixture.fixture.id]}
+                            highlights={currentHighlights?.matches[currentFixture.fixture.id]}
+                            highlightsLoading={highlightsLoading}
                             oddsMessage={oddsLoadMessages[currentFixture.fixture.id]}
                             onCaptureOdds={capturePaperOdds}
                           />

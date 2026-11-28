@@ -6,7 +6,8 @@
  * upgrade path instead of an empty forecast list.
  *
  * Forecasts are generated server-side by the private prediction engine ahead of
- * kickoff (within a bounded pre-match window) and stored in Postgres. The browser
+ * kickoff (within a bounded pre-match window) and stored in Postgres. When no
+ * fresh forecast exists, a league read can generate and persist it inline. The browser
  * never computes a forecast itself; it only reads what the server has already
  * published for a fixture.
  */
@@ -127,13 +128,35 @@ interface BetListResponse {
   response: BetListSuggestion[];
 }
 
+// Both runner operations consume this subset of an already-published forecast.
+// Keeping the complete scoreline grid preserves range probabilities; omitting
+// match analysis and other snapshots keeps consolidated requests within bounds.
+const selectionInputs = (predictions: FixturePrediction[]) => predictions.map((prediction) => {
+  const { id, timestamp, status } = prediction.fixture.fixture;
+  const { homeSampleSize, awaySampleSize } = prediction.dataQuality;
+  return {
+    fixture: { fixture: { id, timestamp, status: { short: status.short } } },
+    dataQuality: { homeSampleSize, awaySampleSize },
+    homeTeam: { overallSampleSize: prediction.homeTeam.overallSampleSize },
+    awayTeam: { overallSampleSize: prediction.awayTeam.overallSampleSize },
+    probabilities: { baseScorelines: prediction.probabilities.baseScorelines },
+    markets: prediction.markets.map(({
+      marketId, modelProbability, decimalOdds, oddsStale, oddsTimestamp, qualifies,
+      passedEdgeThreshold, passedProbabilityThreshold, expectedValue, bookmaker,
+    }) => ({
+      marketId, modelProbability, decimalOdds, oddsStale, oddsTimestamp, qualifies,
+      passedEdgeThreshold, passedProbabilityThreshold, expectedValue, bookmaker,
+    })),
+  };
+});
+
 /**
  * Server-computed "Suggested bet list": the SAME ranked selection the public
  * Official Daily List uses. Pass the caller's own already-fetched predictions
  * directly; nothing is re-fetched or recomputed from a database lookup.
  */
 export const getSuggestedBetList = async ({ predictions, limit }: { predictions: FixturePrediction[]; limit?: number }) => {
-  return apiClient.post<BetListResponse>(`${endpoint}bet-list/`, { predictions, limit });
+  return apiClient.post<BetListResponse>(`${endpoint}bet-list/`, { predictions: selectionInputs(predictions), limit });
 };
 
 /** Per-market suggested/strong/none display level for one fixture. */
@@ -161,5 +184,5 @@ interface HighlightLevelsResponse {
  * List and Suggested Bet List both use.
  */
 export const getHighlightLevels = async ({ predictions }: { predictions: FixturePrediction[] }) => {
-  return apiClient.post<HighlightLevelsResponse>(`${endpoint}highlights/`, { predictions });
+  return apiClient.post<HighlightLevelsResponse>(`${endpoint}highlights/`, { predictions: selectionInputs(predictions) });
 };

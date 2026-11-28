@@ -1,3 +1,4 @@
+import { marketDisplayLabel } from '../../services/predictions/market-label';
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { formatBusinessDate, formatRate } from '../../services/official/presentation';
@@ -87,7 +88,7 @@ export const PredictionArchive: React.FC<{ history: OfficialHistoryResponse }> =
   const [outcome, setOutcome] = useState('');
   const legs = history.results.flatMap(entry => entry.legs ?? []);
   const leagues = Array.from(new Set(legs.map(leg => leg.leagueName || `League ${leg.leagueId}`))).sort();
-  const markets = Array.from(new Map(legs.map(leg => [leg.marketId, leg.marketLabel || leg.marketId]))).sort((a, b) => a[1].localeCompare(b[1]));
+  const markets = Array.from(new Map(legs.map(leg => [leg.marketId, marketDisplayLabel(leg.marketId, leg.marketLabel)]))).sort((a, b) => a[1].localeCompare(b[1]));
   const query = team.trim().toLowerCase();
   const matches = (leg: OfficialListLeg) =>
     (!league || (leg.leagueName || `League ${leg.leagueId}`) === league) &&

@@ -1,3 +1,4 @@
+import { marketDisplayLabel } from '../../services/predictions/market-label';
 import React from 'react';
 import type { OfficialPreviewResponse } from '../../services/official/types';
 import { formatProbability, formatTimestamp } from '../../services/official/presentation';
@@ -25,7 +26,7 @@ export const FeaturedMatch: React.FC<{ preview: OfficialPreviewResponse }> = ({ 
             </div>
             <div className="text-right">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-300">
-                {preview.featured.marketLabel || preview.featured.marketId}
+                {marketDisplayLabel(preview.featured.marketId, preview.featured.marketLabel)}
               </div>
               <div className="text-lg font-bold tabular-nums text-white">
                 {formatProbability(preview.featured.probability)}
