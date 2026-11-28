@@ -30,3 +30,16 @@ export const PredictionLoader: React.FC<{
     </section>
   );
 };
+
+export const WorkspaceRestoreLoader: React.FC<{ checkingAccess: boolean }> = ({ checkingAccess }) => (
+  <div role="status" aria-label="Prediction workspace loading"
+    className="flex items-start gap-3 rounded-2xl border border-emerald-300/30 bg-[#152136] px-4 py-4 sm:px-5">
+    <span aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 rounded-full border-2 border-emerald-300/25 border-t-emerald-300 motion-safe:animate-spin" />
+    <div>
+      <p className="font-bold text-white">Restoring saved forecasts…</p>
+      <p className="mt-1 text-sm text-slate-300">{checkingAccess
+        ? 'Checking your session and prediction access.'
+        : 'Loading the saved leagues, dates and match forecasts from your account.'}</p>
+    </div>
+  </div>
+);

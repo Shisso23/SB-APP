@@ -78,6 +78,10 @@ export interface PredictionWorkspacePayload extends PredictionsPayload {
 export const getPredictionWorkspace = (range?: { from: string; to: string }) =>
   readPredictionPages<PredictionWorkspacePayload>(`${endpoint}workspace/`, { ...range, include_saved: 'true' });
 
+/** Latest eligible versions, independently of the snapshots pinned for review. */
+export const getCurrentPredictionWorkspace = (range: { from: string; to: string }) =>
+  readPredictionPages<PredictionWorkspacePayload>(`${endpoint}workspace/`, range);
+
 export const savePredictionWorkspace = async (workspace: {
   leagues: { leagueId: number; season: number }[]; from: string; to: string;
 }) => readPredictionPages<PredictionWorkspacePayload>(

@@ -19,3 +19,16 @@ Reviewed frontend master at `0f88a48` and backend main at `7f65113`. Both worktr
 | Visitor analytics | `GET /admin/visitors/` for paginated visits, recorded-day count and distinct visitor keys. | Read traffic. | Add a paginated Traffic screen with aggregate metrics and recent device/browser entries. Omit network and visitor identifiers from the table. |
 
 Regression priorities include manual request sequencing and server-reported outcomes, immutable publish confirmation, separate public results denominators, recently fixed workspace snapshot restoration, exact grant retry IDs, PayFast, backend email/phone visibility, session switching and admin authorisation. Credentials, payout data and unrestricted operational logs are outside the existing UI contracts.
+
+## Implemented workspace
+
+The existing `/admin` route opens the overview. The `view` query parameter opens the other sections, and `date` retains a shared SAST workflow date. Direct prediction and manual-operation panels stay mounted when navigating between admin sections so an in-flight request and its feedback survive internal navigation. Refresh uses the server’s audit record for current status.
+
+The implementation is concentrated in `src/screens/admin/`, with shared shell, panel, status, feedback, pagination and stale-response handling. `src/navigation/root.router.tsx` hosts the dedicated admin shell. `src/services/admin/{index,types}.ts` types and calls the existing schedule and traffic contracts. The customer Desk follow-up updates `src/screens/BetAndFixturesScreen/` and `src/services/predictions/index.ts` to read current eligible versions for suggestions when necessary and retain saved versions for review and highlighting.
+
+## Validation and rollout
+
+- 386 frontend tests and 437 backend tests passed. Backend checks used disposable PostgreSQL and the compiled private runner.
+- Type checking, targeted lint, migration drift checking, and the production build passed. The build reported existing lint and Browserslist warnings.
+- Local Chrome with mocked Firebase, payments, jobs and API data covered all 13 admin views, direct requests, navigation, deep links, and 320, 768 and 1440 px layouts. The Prediction Desk browser check covered reload, current suggestions versus saved probabilities, both highlight groups, and access expiry.
+- Rollout uses the existing frontend deployment. The Desk expects the existing backend workspace API and migration `0017_prediction_workspace_snapshot`. This change set has no new backend migration. Live admin operation, real payments and customer changes were outside local validation.

@@ -50,13 +50,13 @@ import { describeFailure } from '../../services/api/failures';
 import { useAuth } from '../../services/auth/AuthProvider';
 import { getMe, isAccessActive, predictionHorizonOf } from '../../services/access';
 import type { MeResponse } from '../../services/access/types';
-import { getPredictionsByLeagueSeason, getPredictionsByFixture, getHighlightLevels, getPredictionWorkspace, savePredictionWorkspace, clearPredictionWorkspace, SavedPredictionLeague, MarketHighlight, PredictionEnvelopeRow } from '../../services/predictions';
+import { getPredictionsByLeagueSeason, getPredictionsByFixture, getHighlightLevels, getPredictionWorkspace, getCurrentPredictionWorkspace, savePredictionWorkspace, clearPredictionWorkspace, SavedPredictionLeague, MarketHighlight, PredictionEnvelopeRow } from '../../services/predictions';
 import { usePremiumRedirect } from '../../hooks/usePremiumRedirect';
 import { marketDisplayLabel } from '../../services/predictions/market-label';
 import { FORECAST_HIGHLIGHTS, ForecastId, LEGACY_FORECAST_IDS, forecastProbability, visibleForecastPrediction } from '../../config/forecast-highlights';
 import { ProbabilityTrack } from './ProbabilityTrack';
 import { ForecastHighlight } from './ForecastHighlight';
-import { PredictionLoader } from './PredictionLoader';
+import { PredictionLoader, WorkspaceRestoreLoader } from './PredictionLoader';
 import { SuggestedBetList } from './SuggestedBetList';
 import { CountryIndicator, LeagueOption } from './LeagueOption';
 import { LeagueLoadErrors, LeagueLoadFailure } from './LeagueLoadErrors';
@@ -70,6 +70,9 @@ Modal.setAppElement('#root');
 // only reads `Prediction.output`, which has the same shape as `FixturePrediction`
 // because both come from the same engine source.
 type DeskForecast = FixturePrediction & { isActionable?: boolean };
+
+const hasUpcomingKickoff = ({ fixture }: DeskForecast) => fixture.fixture.timestamp * 1000 > Date.now()
+  && ['NS', 'TBD'].includes(fixture.fixture.status.short);
 
 const predictionRowToFixturePrediction = (row?: PredictionEnvelopeRow): DeskForecast | null => {
   const output = row?.output as unknown as FixturePrediction | undefined;
@@ -432,7 +435,8 @@ export const EnginePredictionPanel: React.FC<{
     const validated = dataQuality.validatedMarkets.includes(marketId as MarketId);
     const weak = dataQuality.weakMarkets.includes(marketId as MarketId);
     return (
-      <div key={marketId} className="min-w-0 rounded-lg border border-slate-700 bg-[#0d1626] p-3" title={meaning}>
+      <div key={marketId} role="group" aria-label={marketId === 'total_0_3' ? 'Base scoreline model' : label} className={`min-w-0 rounded-lg border bg-[#0d1626] p-3 ${marketHighlight?.level === 'strong'
+        ? 'border-emerald-300/60' : marketHighlight?.level === 'suggested' ? 'border-cyan-400/45' : 'border-slate-700'}`} title={meaning}>
         <div className="flex items-center justify-between gap-1">
           <span className="break-words text-sm font-semibold text-slate-200">{marketId === 'total_0_3' ? 'Base scoreline model' : label}</span>
           {validated && (
@@ -445,7 +449,8 @@ export const EnginePredictionPanel: React.FC<{
         <div className="mt-1 text-sm font-bold tabular-nums text-emerald-200">{probability === undefined ? (highlightsLoading ? 'Loading probability…' : 'Probability unavailable') : pct(probability)}</div>
         <ProbabilityTrack value={probability} />
         {preference && <ForecastHighlight probability={probability} preference={{ ...preference, label }} progressive={marketId === 'btts_yes'} level={marketHighlight?.level}
-          note={marketHighlight?.impliedBy ? 'qualifies via combined markets, not its own threshold.' : undefined} />}
+          note={marketHighlight?.impliedBy?.length ? `Qualified using ${marketHighlight.impliedBy
+            .map(id => marketDisplayLabel(id, FORECAST_HIGHLIGHTS[id as ForecastId]?.label)).join(' and ')}.` : undefined} />}
         {isRange && marketId !== 'total_0_3' && <p className="mt-1 text-xs text-slate-400">{meaning}</p>}
         {isRange && <div className="mt-1 text-xs text-slate-400">Base scoreline model: sum of matching outcomes in the complete normalized grid; separate from prior-blended totals.</div>}
         {marketId === 'under_3_5' && <details className="mt-2 border-t border-slate-700">
@@ -466,7 +471,10 @@ export const EnginePredictionPanel: React.FC<{
         {firstMarkets.map(renderMarket)}
       </div>
       <details className="rounded-lg border border-slate-700">
-        <summary className="cursor-pointer px-3 py-3 text-sm font-bold text-emerald-200">More prediction options</summary>
+        <summary className="cursor-pointer px-3 py-3 text-sm font-bold text-emerald-200">More prediction options
+          {forecastIds.some(id => !firstMarkets.includes(id) && id !== 'total_0_3' && highlights?.[id] && highlights[id].level !== 'none') &&
+            <span className="ml-2 rounded-full border border-cyan-400/40 px-2 py-0.5 text-xs text-cyan-100">Highlights available</span>}
+        </summary>
         <div className="grid gap-2 px-3 pb-3 sm:grid-cols-2 xl:grid-cols-3">
           {forecastIds.slice(firstMarkets.length).filter(id => id !== 'total_0_3').map(renderMarket)}
         </div>
@@ -603,6 +611,10 @@ const BetAndFixturesScreen: React.FC = () => {
     error?: string;
   }>();
   const [highlightAttempt, setHighlightAttempt] = useState(0);
+  const [suggestionAttempt, setSuggestionAttempt] = useState(0);
+  const [currentSuggestions, setCurrentSuggestions] = useState<{
+    forecasts: DeskForecast[]; predictions: FixturePrediction[]; error?: string;
+  }>();
   const [oddsLoadMessages, setOddsLoadMessages] = useState<Record<number, string>>({});
   const [paperSelections, setPaperSelections] = useState<PaperSelection[]>(() => readPaperRecord().selections);
   const [selectedStatisticalPickKeys, setSelectedStatisticalPickKeys] = useState<string[]>(readStatisticalPickKeys);
@@ -1707,9 +1719,12 @@ const BetAndFixturesScreen: React.FC = () => {
       return day >= from && day <= to;
     });
   }, [enginePredictions, fromDate, toDate, predictionDeadline, initialising, hasPredictionAccess, user?.uid]);
-  const visibleEnginePredictions = useMemo(() => visibleForecasts
-    .filter(prediction => prediction.isActionable !== false)
-    .map(visibleForecastPrediction), [visibleForecasts]);
+  const highlightInputs = useMemo(() => visibleForecasts.map(visibleForecastPrediction), [visibleForecasts]);
+  const shortlistInput = useMemo(() => ({
+    predictions: visibleForecasts.filter(prediction => prediction.isActionable !== false && hasUpcomingKickoff(prediction))
+      .map(visibleForecastPrediction),
+    needsCurrentVersions: visibleForecasts.some(prediction => prediction.isActionable === false && hasUpcomingKickoff(prediction)),
+  }), [visibleForecasts]);
   const displayedFixtureIds = predictionMode === 'legacy'
     ? Object.keys(groupedData).filter(id => currentFixtures.some(fixture => fixture.fixture.id === Number(id)))
     : visibleForecasts.map(prediction => String(prediction.fixture.fixture.id));
@@ -1718,28 +1733,59 @@ const BetAndFixturesScreen: React.FC = () => {
     ?? visibleForecasts.find(prediction => prediction.fixture.league.id === leagueId)?.fixture.league.name
     ?? `League ${leagueId}`,
   )));
-  const analysisReady = workspaceReady && predictionMode === 'statistical' && visibleEnginePredictions.length > 0;
-  const currentHighlights = highlightResult?.predictions === visibleEnginePredictions ? highlightResult : undefined;
+  const statisticalReady = workspaceReady && predictionMode === 'statistical' && hasPredictionAccess === true;
+  const analysisReady = statisticalReady && highlightInputs.length > 0;
+  const currentHighlights = highlightResult?.predictions === highlightInputs ? highlightResult : undefined;
   const highlightsLoading = analysisReady && !currentHighlights;
+
+  // Saved versions are kept for review. When one supersedes or expires before
+  // kickoff, ask for the current workspace so the single ranked list can still
+  // include any eligible replacements across every saved league.
+  const refreshedSuggestions = currentSuggestions?.forecasts === visibleForecasts ? currentSuggestions : undefined;
+  const loadingSuggestionVersions = statisticalReady && shortlistInput.needsCurrentVersions && !refreshedSuggestions;
+  const suggestionPredictions = refreshedSuggestions?.predictions ?? shortlistInput.predictions;
+
+  useEffect(() => {
+    if (!statisticalReady || loadingBatch || !shortlistInput.needsCurrentVersions) return;
+    let active = true;
+    getCurrentPredictionWorkspace({ from: moment(fromDate).format('YYYY-MM-DD'), to: moment(toDate).format('YYYY-MM-DD') })
+      .then(response => {
+        if (!active) return;
+        const predictions = response.data.response.map(predictionRowToFixturePrediction)
+          .filter((prediction): prediction is DeskForecast => !!prediction && prediction.isActionable !== false && hasUpcomingKickoff(prediction))
+          .map(visibleForecastPrediction);
+        setCurrentSuggestions({ forecasts: visibleForecasts, predictions });
+      })
+      .catch(error => {
+        if (active) setCurrentSuggestions({
+          forecasts: visibleForecasts, predictions: shortlistInput.predictions, error: describePredictionsFailure(error),
+        });
+      });
+    return () => { active = false; };
+  }, [statisticalReady, loadingBatch, shortlistInput, visibleForecasts, fromDate, toDate, suggestionAttempt]);
 
   useEffect(() => {
     if (!analysisReady || loadingBatch) return;
     const requestId = ++highlightsRequestIdRef.current;
-    getHighlightLevels({ predictions: visibleEnginePredictions })
+    getHighlightLevels({ predictions: highlightInputs })
       .then((response) => {
         if (highlightsRequestIdRef.current !== requestId) return;
         const matches = Object.fromEntries(response.data.response.map(row => [row.providerFixtureId, row.markets]));
-        if (response.data.errors?.length || visibleEnginePredictions.some(prediction => !matches[prediction.fixture.fixture.id])) {
+        if (response.data.errors?.length || highlightInputs.some(prediction => !matches[prediction.fixture.fixture.id])) {
           throw new Error('The server returned incomplete forecast highlights.');
         }
-        setHighlightResult({ predictions: visibleEnginePredictions, matches });
+        setHighlightResult({ predictions: highlightInputs, matches });
       })
       .catch((error) => {
         if (highlightsRequestIdRef.current !== requestId) return;
-        setHighlightResult({ predictions: visibleEnginePredictions, matches: {}, error: describePredictionsFailure(error) });
+        setHighlightResult({ predictions: highlightInputs, matches: {}, error: describePredictionsFailure(error) });
       });
     return () => { highlightsRequestIdRef.current += 1; };
-  }, [visibleEnginePredictions, analysisReady, loadingBatch, highlightAttempt]);
+  }, [highlightInputs, analysisReady, loadingBatch, highlightAttempt]);
+
+  const workspaceRestoring = predictionMode === 'statistical' && (initialising || (
+    signedIn && !workspaceError && (hasPredictionAccess === null || (hasPredictionAccess === true && (!cacheReady || !workspaceReady)))
+  ));
 
   const dateRangeValid = Boolean(fromDate && toDate && fromDate <= toDate);
   const canGenerate = canBet && !loadingBatch && !initialising && signedIn && hasPredictionAccess === true && dateRangeValid;
@@ -1984,10 +2030,10 @@ const BetAndFixturesScreen: React.FC = () => {
               ) : 'This request found no predictions for the selected leagues and dates. Try a different league or date range.'}
             </p>
           )}
-          {hasPredictionAccess === true && (!cacheReady || predictionMode === 'statistical' && !workspaceReady) && <div role="status" className="rounded-xl border border-slate-600 bg-slate-900 p-3 text-sm text-slate-200">Restoring saved forecasts…</div>}
+          {workspaceRestoring && <WorkspaceRestoreLoader checkingAccess={initialising || hasPredictionAccess === null} />}
           {workspaceError && <div role="alert" className="rounded-xl border border-amber-400/40 p-3 text-sm text-amber-100">
             {workspaceError}
-            <button type="button" onClick={() => setRestoreAttempt(value => value + 1)} className="ml-3 underline">Retry access and saved predictions</button>
+            <button type="button" onClick={() => { setWorkspaceError(''); setRestoreAttempt(value => value + 1); }} className="ml-3 underline">Retry access and saved predictions</button>
           </div>}
           {loadingBatch && <div ref={predictionLoaderRef} className="scroll-mt-4">
             <PredictionLoader leagueCount={requestLeagueCount} statistical={predictionMode === 'statistical'} hasPreviousForecasts={displayedFixtureIds.length > 0} />
@@ -2004,20 +2050,28 @@ const BetAndFixturesScreen: React.FC = () => {
               Retry forecast highlights
             </button>
           </div>}
-          <SuggestedBetList
+          {refreshedSuggestions?.error && statisticalReady && !loadingBatch && <div className="rounded-xl border border-amber-300/40 p-3 text-sm text-amber-100">
+            <p role="alert">Current forecasts for the suggested list could not be loaded. {refreshedSuggestions.error}</p>
+            <button type="button" className="min-h-[44px] font-semibold underline" onClick={() => {
+              setCurrentSuggestions(undefined);
+              setSuggestionAttempt(value => value + 1);
+            }}>Retry current forecasts</button>
+          </div>}
+          {!workspaceRestoring && <SuggestedBetList
             key={user?.uid ?? 'guest'}
-            predictions={visibleEnginePredictions}
+            predictions={suggestionPredictions}
             hasSavedForecasts={visibleForecasts.length > 0}
-            loading={loadingBatch}
+            usesLatestVersions={shortlistInput.needsCurrentVersions && !!refreshedSuggestions && !refreshedSuggestions.error}
+            loading={loadingBatch || loadingSuggestionVersions}
             statistical={predictionMode === 'statistical'}
             ready={!initialising && workspaceReady && hasPredictionAccess === true}
             selectedPickKeys={selectedStatisticalPickKeys}
             onReview={prediction => onFixtureClick(prediction.fixture)()}
             onTogglePick={toggleStatisticalPick}
-          />
-          <details open aria-busy={loadingBatch} className="rounded-2xl border border-slate-700 bg-[#152136] p-4">
+          />}
+          <details open aria-busy={loadingBatch || workspaceRestoring} className="rounded-2xl border border-slate-700 bg-[#152136] p-4">
             <summary className="cursor-pointer py-2 text-base font-bold text-white">
-              {predictionMode === 'statistical' ? 'All forecasts and market details' : 'Legacy fixture results'} · {displayedFixtureIds.length} fixtures
+              {predictionMode === 'statistical' ? 'All forecasts and market details' : 'Legacy fixture results'} · {workspaceRestoring && displayedFixtureIds.length === 0 ? 'Loading…' : `${displayedFixtureIds.length} fixtures`}
             </summary>
             <div className="mb-3 flex justify-end">
               <button type="button" onClick={clearPredictions} disabled={loadingBatch || clearingPredictions || !cacheReady || predictionMode === 'statistical' && !workspaceReady}
@@ -2031,7 +2085,7 @@ const BetAndFixturesScreen: React.FC = () => {
                   className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700">Collapse all</button>
               </div>
             )}
-            {displayedFixtureIds.length === 0 && loadingBatch ? (
+            {displayedFixtureIds.length === 0 && (loadingBatch || workspaceRestoring) ? (
               <div aria-hidden="true" className="space-y-3 py-3">
                 {[0, 1, 2].map(row => <div key={row} className="rounded-xl border border-slate-700/60 bg-slate-900 p-4 motion-safe:animate-pulse">
                   <div className="mb-3 h-3 w-2/5 rounded bg-slate-700" />
@@ -2103,7 +2157,7 @@ const BetAndFixturesScreen: React.FC = () => {
                           <EnginePredictionPanel
                             prediction={enginePrediction}
                             highlights={currentHighlights?.matches[currentFixture.fixture.id]}
-                            highlightsLoading={highlightsLoading && !savedOnly}
+                            highlightsLoading={highlightsLoading}
                             savedOnly={savedOnly}
                             oddsMessage={oddsLoadMessages[currentFixture.fixture.id]}
                             onCaptureOdds={capturePaperOdds}

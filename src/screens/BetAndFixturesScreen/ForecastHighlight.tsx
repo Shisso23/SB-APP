@@ -1,15 +1,10 @@
 import React from 'react';
 
-/** The only fields this component actually reads. Deliberately NOT imported
- * from config/forecast-highlights.ts: callers now source these numbers either
- * from the server (services/predictions' MarketPreference) or, in tests, from
- * the local FORECAST_HIGHLIGHTS table directly - either satisfies this shape
- * structurally, since both are supersets of it.
- */
+/** Accepts the thresholds from the server's market preference. */
 export interface HighlightPreference {
   label: string;
   suggest: number;
-  strong?: number;
+  strong?: number | null;
 }
 
 const isValidProbability = (p: unknown): p is number => typeof p === 'number' && Number.isFinite(p) && p >= 0 && p <= 1;
@@ -23,7 +18,7 @@ const isValidProbability = (p: unknown): p is number => typeof p === 'number' &&
  */
 const levelFor = (p: unknown, preference: HighlightPreference): 'strong' | 'suggested' | 'none' => {
   if (!isValidProbability(p)) return 'none';
-  if (preference.strong !== undefined && p >= preference.strong) return 'strong';
+  if (typeof preference.strong === 'number' && p >= preference.strong) return 'strong';
   return p >= preference.suggest ? 'suggested' : 'none';
 };
 
@@ -39,13 +34,16 @@ export const ForecastHighlight: React.FC<{
   const level = levelOverride ?? levelFor(probability, preference);
   if (!isValidProbability(probability) || level === 'none') return null;
   const strong = level === 'strong';
-  const threshold = strong && preference.strong !== undefined ? preference.strong : preference.suggest;
+  const threshold = strong && typeof preference.strong === 'number' ? preference.strong : preference.suggest;
   // BTTS prominence rises continuously above the requested 72%, without inventing
   // another user cutoff. Text retains the exact unrounded threshold comparison.
   const prominence = progressive ? Math.max(0, Math.min(1, (probability - preference.suggest) / (1 - preference.suggest))) : 0;
-  return <div data-highlight={level} className={`mt-1 rounded border px-1.5 py-1 text-[10px] ${strong ? 'border-emerald-300 bg-emerald-500/25 font-bold text-emerald-100' : 'border-cyan-400/50 bg-cyan-500/10 text-cyan-100'}`}
-    style={progressive ? { backgroundColor: `rgba(6,182,212,${.10 + prominence * .25})`, fontWeight: 500 + Math.round(prominence * 400) } : undefined}>
-    {preference.label}: {(probability * 100).toFixed(2)}% — {note ?? `meets the ${(threshold * 100).toFixed(0)}% ${strong ? 'stronger-highlight' : 'suggestion'} threshold.`}
+  return <div data-highlight={level} className={`mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-md border px-2 py-1.5 text-xs leading-relaxed ${strong ? 'border-emerald-300/60 bg-emerald-500/15 text-emerald-100' : 'border-cyan-400/40 bg-cyan-500/10 text-cyan-100'}`}
+    style={progressive ? { backgroundColor: `rgba(6,182,212,${.10 + prominence * .17})`, fontWeight: 500 + Math.round(prominence * 400) } : undefined}>
+    <strong className="inline-flex items-center gap-1.5"><span aria-hidden="true">{strong ? '✦' : '✓'}</span>
+      {note ? 'Supported by related markets' : strong ? 'Strong highlight' : 'Highlighted'}
+    </strong>
+    <span>{note ?? `Meets the ${(threshold * 100).toFixed(0)}% ${strong ? 'stronger-highlight' : 'suggestion'} threshold.`}</span>
   </div>;
 };
 

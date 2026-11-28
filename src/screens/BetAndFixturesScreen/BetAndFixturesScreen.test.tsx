@@ -565,8 +565,72 @@ it('restores saved completed forecasts, their original probabilities and the las
   expect(screen.getByText('73%')).toBeVisible();
   expect(screen.queryByText('Probability unavailable')).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Capture pre-match odds' })).not.toBeInTheDocument();
-  expect(post).not.toHaveBeenCalled();
+  await waitFor(() => expect(post.mock.calls.some(([path]) => path === '/predictions/highlights/')).toBe(true));
+  expect(post.mock.calls.some(([path]) => path === '/predictions/bet-list/')).toBe(false);
   expect(get.mock.calls.filter(([path]) => path === '/predictions/workspace/')).toHaveLength(1);
+});
+
+it('restores the shortlist from the latest eligible version without replacing the saved card or its highlights', async () => {
+  const kickoff = Date.now() + 3_600_000;
+  const fixture = makeApiFixture(1_234, kickoff, currentYear, false);
+  const output = predictFixture({ fixture, allFixtures: [], leaguesStandings: [] });
+  const withProbabilities = (homeWin: number): FixturePrediction => ({
+    ...output, markets: output.markets.map(market => {
+      if (market.marketId === 'home_win') return { ...market, modelProbability: homeWin };
+      if (market.marketId === 'home_or_draw') return { ...market, modelProbability: .92 };
+      if (market.marketId === 'under_1_5') return { ...market, modelProbability: .81 };
+      return market;
+    }),
+  });
+  const saved: TestPredictionRow = {
+    id: 12, engine_version: 'test', config_hash: 'test', generated_at: new Date().toISOString(),
+    as_of: new Date().toISOString(), valid_until: new Date(kickoff).toISOString(),
+    is_actionable: false, output: withProbabilities(.74),
+  };
+  const latest: TestPredictionRow = { ...saved, id: 13, is_actionable: true, output: withProbabilities(.99) };
+  const day = businessDate.format(kickoff);
+  serverPredictions.set(saved.id, saved);
+  serverWorkspaces.set('test-user', {
+    from: day, to: day, leagues: [{ leagueId: 39, season: currentYear, predictions: 1 }],
+    lastBatch: [{ leagueId: 39, season: currentYear }],
+  });
+  const originalGet = get.getMockImplementation();
+  if (!originalGet) throw new Error('Missing API mock.');
+  let releaseWorkspace!: () => void;
+  let releaseLatest!: () => void;
+  const pendingWorkspace = new Promise<void>(resolve => { releaseWorkspace = resolve; });
+  const pendingLatest = new Promise<void>(resolve => { releaseLatest = resolve; });
+  get.mockImplementation(async (path, options) => {
+    if (path !== '/predictions/workspace/') return originalGet(path, options);
+    const response = workspaceResponse(options.params);
+    if (options.params.include_saved === 'true') {
+      await pendingWorkspace;
+      return response;
+    }
+    await pendingLatest;
+    return { data: { ...response.data, response: [latest] } };
+  });
+
+  render(<MemoryRouter><BetAndFixturesScreen /></MemoryRouter>);
+  expect(await screen.findByRole('status', { name: 'Prediction workspace loading' })).toBeVisible();
+  expect(screen.queryByText(/select leagues and generate predictions to see match forecasts here/i)).not.toBeInTheDocument();
+  await act(async () => { releaseWorkspace(); });
+  const panel = within(await screen.findByRole('region', { name: 'Suggested bet list' }));
+  expect(panel.getByText('Preparing the suggested list…')).toBeInTheDocument();
+  expect(post.mock.calls.some(([path]) => path === '/predictions/bet-list/')).toBe(false);
+  fireEvent.click(await screen.findByRole('button', { name: /Expand forecast for/ }));
+  const primary = within(screen.getByRole('group', { name: 'Primary model probabilities' }));
+  expect(within(primary.getByRole('group', { name: 'Home win' })).getByText('74%')).toBeVisible();
+  expect(await primary.findByText(/meets the 90% stronger-highlight threshold/i)).toBeVisible();
+  fireEvent.click(screen.getByText('More prediction options'));
+  expect(screen.getByText(/meets the 80% stronger-highlight threshold/i)).toBeVisible();
+
+  await act(async () => { releaseLatest(); });
+  expect(await panel.findByText(/Home win · 99.00%/i)).toBeVisible();
+  expect(within(primary.getByRole('group', { name: 'Home win' })).getByText('74%')).toBeVisible();
+  expect(get.mock.calls.filter(([path]) => path === '/predictions/workspace/')).toHaveLength(2);
+  expect(get.mock.calls.some(([path]) => path === '/predictions/')).toBe(false);
+  expect(post.mock.calls.filter(([path]) => path === '/predictions/bet-list/')).toHaveLength(1);
 });
 
 it('restores valid backend forecasts even when the browser snapshot has expired', async () => {
@@ -911,7 +975,8 @@ it('waits for Firebase restoration and loads the saved account without logging o
   await act(async () => { await Promise.resolve(); });
   expect(get).not.toHaveBeenCalled();
   expect(post).not.toHaveBeenCalled();
-  expect(screen.getByText(/All forecasts and market details/)).toHaveTextContent('0 fixtures');
+  expect(screen.getByRole('status', { name: 'Prediction workspace loading' })).toHaveTextContent('Checking your session');
+  expect(screen.getByText(/All forecasts and market details/)).toHaveTextContent('Loading…');
   mockAuth.user = { uid: 'test-user', email: 'test@example.com' };
   mockAuth.initialising = false;
   rendered.rerender(<MemoryRouter><BetAndFixturesScreen /></MemoryRouter>);

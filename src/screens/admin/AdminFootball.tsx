@@ -1,8 +1,8 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { FixtureDataModel } from '../../models/fixtures';
 import type { FixturePrediction } from '../../prediction-engine/types';
-import { apiGet, ApiRequestError } from '../../services/api/client';
+import { apiGet } from '../../services/api/client';
 import type { PredictionEnvelopeRow } from '../../services/predictions';
 import { marketDisplayLabel } from '../../services/predictions/market-label';
 import { formatLeagueLabel } from '../../config/league-labels';
@@ -52,6 +52,7 @@ export default function AdminFootball({ mode, date, configured, revision }: {
 }) {
   const [filter, setFilter] = useState({ date, league: '', page: 1 });
   const { league, page } = filter.date === date ? filter : { league: '', page: 1 };
+  const forecastPages = useRef<{ key: string; byDate: Map<string, number> }>();
   const load = useCallback(async () => {
     const params = { page, page_size: 20, ...(league ? { league } : {}) };
     const previous = previousUtcDate(date);
@@ -60,20 +61,21 @@ export default function AdminFootball({ mode, date, configured, revision }: {
       return { data: { fixtures: response.data.response.filter(row => sastDate(new Date(row.fixture.date)) === date),
         versions: [], pages: response.data.paging?.total ?? 1 } };
     }
-    const days = await Promise.all([previous, date].map(day => apiGet<Page<PredictionEnvelopeRow>>('/predictions/', {
-      params: { ...params, history: 'true', date: day },
-    }).catch((error: unknown) => {
-      // A shorter UTC date can exhaust its pages before the other date.
-      if (page > 1 && error instanceof ApiRequestError && error.status === 404) {
-        return { data: { response: [], paging: { total: 1 } } };
-      }
-      throw error;
-    })));
+    const key = `${date}:${league}:${revision}`;
+    if (forecastPages.current?.key !== key) forecastPages.current = { key, byDate: new Map() };
+    const known = forecastPages.current.byDate;
+    const days = await Promise.all([previous, date].map(async day => {
+      const pages = known.get(day);
+      if (pages !== undefined && page > pages) return { data: { response: [], paging: { total: pages } } };
+      const response = await apiGet<Page<PredictionEnvelopeRow>>('/predictions/', { params: { ...params, history: 'true', date: day } });
+      known.set(day, response.data.paging?.total ?? 1);
+      return response;
+    }));
     return { data: { fixtures: [], versions: days.flatMap(response => response.data.response).filter(row => {
       const kickoff = row.fixture?.fixture.date ?? (row.output as unknown as Partial<FixturePrediction>).fixture?.fixture.date;
       return kickoff && Number.isFinite(Date.parse(kickoff)) && sastDate(new Date(kickoff)) === date;
     }), pages: Math.max(1, ...days.map(response => response.data.paging?.total ?? 1)) } };
-  }, [mode, page, league, date]);
+  }, [mode, page, league, date, revision]);
   const record = useAdminResource(`${mode}:${date}:${league}:${page}:${revision}`, load);
   return <Panel title={mode === 'fixtures' ? 'Stored fixtures' : 'Saved forecast versions'} subtitle={`${date} SAST · match data stored by PredictXI`}
     action={mode === 'fixtures' ? <Link className="ax-button" to={adminLink('operations', date)}>Refresh football data</Link> : undefined}>

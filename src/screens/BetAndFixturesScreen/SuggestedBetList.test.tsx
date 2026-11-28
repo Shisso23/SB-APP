@@ -155,7 +155,7 @@ test('a qualifying forecast remains listed with limited history and no model sel
   render(<SuggestedBetList {...props} predictions={[prediction]} />);
   expect(await screen.findAllByRole('listitem')).toHaveLength(1);
   expect(screen.getByText(/Limited team history/)).toBeInTheDocument();
-  expect(screen.getByText(/meets the 60% suggestion threshold/)).toBeInTheDocument();
+  expect(screen.getByText(/meets the 60% suggestion threshold/i)).toBeInTheDocument();
 });
 
 test('always uses the strongest qualifying forecast per match and can return fewer matches', async () => {

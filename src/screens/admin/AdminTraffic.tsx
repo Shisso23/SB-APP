@@ -14,7 +14,7 @@ export default function AdminTraffic({ revision }: { revision: number }) {
       <dl className="ax-metrics">
         <div className="ax-metric"><dt>Recorded visits</dt><dd>{traffic.data.total}</dd><small>Lifetime</small></div>
         <div className="ax-metric"><dt>Distinct visitor keys</dt><dd>{traffic.data.uniqueVisitors}</dd><small>Lifetime</small></div>
-        <div className="ax-metric"><dt>Visits today</dt><dd>{traffic.data.visitsToday}</dd><small>Server reporting day</small></div>
+        <div className="ax-metric"><dt>Visits today</dt><dd>{traffic.data.visitsToday}</dd><small>Server reporting day · UTC</small></div>
       </dl>
       <Panel title="Recent page views">
         {traffic.data.visitors.length ? <div className="ax-table-wrap" tabIndex={0} role="region" aria-label="Recent page views"><table className="ax-table"><thead><tr>

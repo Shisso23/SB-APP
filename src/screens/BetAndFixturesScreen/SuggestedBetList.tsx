@@ -49,13 +49,14 @@ const formatSuggestionsForClipboard = (
 export const SuggestedBetList: React.FC<{
   predictions: FixturePrediction[];
   hasSavedForecasts?: boolean;
+  usesLatestVersions?: boolean;
   loading: boolean;
   statistical: boolean;
   ready?: boolean;
   selectedPickKeys: string[];
   onReview: (prediction: FixturePrediction) => void;
   onTogglePick: (fixtureId: number, market: MarketValue) => void;
-}> = ({ predictions, hasSavedForecasts, loading, statistical, ready = true, selectedPickKeys, onReview, onTogglePick }) => {
+}> = ({ predictions, hasSavedForecasts, usesLatestVersions, loading, statistical, ready = true, selectedPickKeys, onReview, onTogglePick }) => {
   const [limit, setLimit] = useState(DEFAULT_BET_LIST_SIZE);
   const [copyMessage, setCopyMessage] = useState('');
   const [result, setResult] = useState<{
@@ -131,6 +132,7 @@ export const SuggestedBetList: React.FC<{
         <button type="button" disabled={isLoading || !suggestions.length} onClick={copyList} className="rounded-lg border border-cyan-400/40 px-3 py-1.5 text-xs font-semibold text-cyan-100 hover:bg-cyan-500/10 disabled:cursor-not-allowed disabled:opacity-50">Copy list</button>
       </div>
     </div>
+    {usesLatestVersions && <p className="mt-2 text-xs text-slate-300">Suggestions use the latest eligible forecasts. Saved cards retain the version you generated.</p>}
     <p className="mt-2 text-xs text-slate-400">Suggestions use the configured market thresholds. Open the analysis to see why a market was selected.</p>
     <p className="mt-2 text-xs text-amber-200">Percentages estimate the likelihood of specific match outcomes. They are separate from historical performance.</p>
     {copyMessage && <p role="status" className="mt-2 text-xs text-slate-200">{copyMessage}</p>}
@@ -178,7 +180,7 @@ export const SuggestedBetList: React.FC<{
                   {impliedBy && <p className="mt-2 text-xs text-cyan-200">Qualifies via combined markets that already passed their own thresholds.</p>}
                   {diversityAlternative && <p className="mt-2 text-xs text-cyan-200">Chosen for variety. Strongest qualifying option for this match: {selectionAlternativeLabel(diversityAlternative.label)} ({(diversityAlternative.probability * 100).toFixed(2)}%).</p>}
                   <ForecastHighlight probability={probability} preference={{ ...preference, label }} progressive={marketId === 'btts_yes'} level={suggestion.level}
-                    note={impliedBy ? `qualifies via combined markets, not its own threshold.` : undefined} />
+                    note={impliedBy ? 'Qualified using related markets that passed their thresholds.' : undefined} />
                   <p className="mt-2 text-xs text-slate-300">{suggestion.explanation}</p>
                   {preference.isRange && <p className="mt-1 text-xs text-slate-400">Base scoreline model; separate from prior-blended totals. This range model is unvalidated.</p>}
                   {!preference.isRange && market && prediction.dataQuality.weakMarkets.includes(market.marketId) && <p className="mt-1 text-xs text-amber-200">Weak or unvalidated market model.</p>}
