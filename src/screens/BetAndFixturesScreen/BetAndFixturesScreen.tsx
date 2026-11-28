@@ -1725,9 +1725,6 @@ const BetAndFixturesScreen: React.FC = () => {
       .map(visibleForecastPrediction),
     needsCurrentVersions: visibleForecasts.some(prediction => prediction.isActionable === false && hasUpcomingKickoff(prediction)),
   }), [visibleForecasts]);
-  const displayedFixtureIds = predictionMode === 'legacy'
-    ? Object.keys(groupedData).filter(id => currentFixtures.some(fixture => fixture.fixture.id === Number(id)))
-    : visibleForecasts.map(prediction => String(prediction.fixture.fixture.id));
   const savedLeagueNames = Array.from(new Set(savedLeagues.map(({ leagueId }) =>
     allLeagues?.find(league => league.league.id === leagueId)?.league.name
     ?? visibleForecasts.find(prediction => prediction.fixture.league.id === leagueId)?.fixture.league.name
@@ -1737,6 +1734,22 @@ const BetAndFixturesScreen: React.FC = () => {
   const analysisReady = statisticalReady && highlightInputs.length > 0;
   const currentHighlights = highlightResult?.predictions === highlightInputs ? highlightResult : undefined;
   const highlightsLoading = analysisReady && !currentHighlights;
+
+  const orderedForecastIds = useMemo(() => {
+    const highlighted: string[] = [];
+    const remaining: string[] = [];
+    for (const prediction of visibleForecasts) {
+      const fixtureId = prediction.fixture.fixture.id;
+      const markets = currentHighlights?.matches[fixtureId];
+      const hasHighlight = markets && Object.values(markets).some(({ level }) => level === 'suggested' || level === 'strong');
+      (hasHighlight ? highlighted : remaining).push(String(fixtureId));
+    }
+    return [...highlighted, ...remaining];
+  }, [visibleForecasts, currentHighlights]);
+  const displayedFixtureIds = predictionMode === 'legacy'
+    ? Object.keys(groupedData).filter(id => currentFixtures.some(fixture => fixture.fixture.id === Number(id)))
+    : orderedForecastIds;
+
 
   // Saved versions are kept for review. When one supersedes or expires before
   // kickoff, ask for the current workspace so the single ranked list can still

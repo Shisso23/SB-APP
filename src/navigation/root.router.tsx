@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navbar from '../components/navBar';
@@ -12,12 +12,18 @@ import PayFastResultScreen from '../screens/access/PayFastResultScreen';
 import OfficialHistoryScreen from '../screens/official/OfficialHistoryScreen';
 import AdminScreen from '../screens/admin/AdminScreen';
 import { recordVisitorPageView } from '../services/analytics';
+import { useAuth } from '../services/auth/AuthProvider';
 
 const RoutedContent: React.FC = () => {
   const location = useLocation();
+  const { user, initialising } = useAuth();
+  const lastTrackedPath = useRef<string>();
+  const page = `${location.pathname}${location.search}`;
   useEffect(() => {
-    recordVisitorPageView(`${location.pathname}${location.search}`);
-  }, [location.pathname, location.search]);
+    if (initialising || lastTrackedPath.current === page) return;
+    lastTrackedPath.current = page;
+    void recordVisitorPageView(page, user);
+  }, [page, user, initialising]);
   return (
     <>
       {!/^\/admin\/?$/i.test(location.pathname) && <Navbar />}

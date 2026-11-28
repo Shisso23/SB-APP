@@ -1,3 +1,4 @@
+import type { User } from 'firebase/auth';
 import { publicClient } from '../api/client';
 
 const SESSION_KEY = 'predictxi_visitor_session_key';
@@ -16,13 +17,18 @@ const getVisitorKey = (): string => {
   }
 };
 
-export const recordVisitorPageView = (path: string) => {
-  const visitorKey = getVisitorKey();
-  publicClient.post('/analytics/visitor/', {
-    visitorKey,
-    pagePath: path,
-    referrer: typeof document === 'undefined' ? '' : document.referrer,
-  }).catch(() => {
+export const recordVisitorPageView = async (path: string, user?: Pick<User, 'getIdToken'> | null) => {
+  if (/^\/admin(?:[/?#]|$)/i.test(path)) return;
+  try {
+    // Admin status is server-owned. Send the token only to this public
+    // endpoint so it can omit authenticated staff without changing auth UI.
+    const token = user ? await user.getIdToken() : null;
+    await publicClient.post('/analytics/visitor/', {
+      visitorKey: getVisitorKey(),
+      pagePath: path,
+      referrer: typeof document === 'undefined' ? '' : document.referrer,
+    }, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
+  } catch {
     // Analytics must never block or change the browsing experience.
-  });
+  }
 };

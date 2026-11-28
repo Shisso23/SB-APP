@@ -633,6 +633,49 @@ it('restores the shortlist from the latest eligible version without replacing th
   expect(post.mock.calls.filter(([path]) => path === '/predictions/bet-list/')).toHaveLength(1);
 });
 
+it('orders matches with any server highlight first and retains every match in its original group order', async () => {
+  const kickoff = Date.now() + 3_600_000;
+  const day = businessDate.format(kickoff);
+  const fixtures = [1001, 1002, 1003, 1004];
+  for (const id of fixtures) {
+    const fixture = makeApiFixture(id, kickoff, currentYear, false);
+    fixture.teams.home.name = `Home ${id}`;
+    serverPredictions.set(id, {
+      id, engine_version: 'test', config_hash: 'test', generated_at: new Date().toISOString(),
+      as_of: new Date().toISOString(), valid_until: new Date(kickoff).toISOString(), is_actionable: true,
+      output: predictFixture({ fixture, allFixtures: [], leaguesStandings: [] }),
+    });
+  }
+  serverWorkspaces.set('test-user', {
+    from: day, to: day, leagues: [{ leagueId: 39, season: currentYear, predictions: fixtures.length }],
+  });
+  const originalPost = post.getMockImplementation();
+  if (!originalPost) throw new Error('Missing API mock.');
+  let releaseHighlights!: () => void;
+  const pendingHighlights = new Promise<void>(resolve => { releaseHighlights = resolve; });
+  post.mockImplementation(async (path, body) => {
+    if (path !== '/predictions/highlights/') return originalPost(path, body);
+    await pendingHighlights;
+    return { data: { errors: [], results: fixtures.length, response: fixtures.map(providerFixtureId => ({
+      providerFixtureId,
+      markets: {
+        under_1_5: { level: providerFixtureId === 1004 ? 'strong' : 'none', probability: .81, preference: preferenceWire('under_1_5') },
+        over_1_5: { level: providerFixtureId === 1002 ? 'suggested' : 'none', probability: .85, preference: preferenceWire('over_1_5') },
+      },
+    })) } };
+  });
+  await renderPredictionDesk();
+  const summary = await screen.findByText(/All forecasts and market details · 4 fixtures/);
+  const forecasts = summary.closest('details');
+  if (!forecasts) throw new Error('Missing saved forecasts panel.');
+  const homeTeamsInOrder = () => within(forecasts).getAllByRole('heading', { level: 3 })
+    .map(heading => heading.textContent?.match(/Home \d+/)?.[0]);
+  expect(homeTeamsInOrder()).toEqual(['Home 1001', 'Home 1002', 'Home 1003', 'Home 1004']);
+
+  await act(async () => { releaseHighlights(); });
+  await waitFor(() => expect(homeTeamsInOrder()).toEqual(['Home 1002', 'Home 1004', 'Home 1001', 'Home 1003']));
+});
+
 it('restores valid backend forecasts even when the browser snapshot has expired', async () => {
   await runInitialBatch();
   const cache = await readPredictionsCache();

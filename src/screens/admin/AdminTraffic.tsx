@@ -16,7 +16,7 @@ export default function AdminTraffic({ revision }: { revision: number }) {
         <div className="ax-metric"><dt>Distinct visitor keys</dt><dd>{traffic.data.uniqueVisitors}</dd><small>Lifetime</small></div>
         <div className="ax-metric"><dt>Visits today</dt><dd>{traffic.data.visitsToday}</dd><small>Server reporting day · UTC</small></div>
       </dl>
-      <Panel title="Recent page views">
+      <Panel title="Recent page views" subtitle="Excludes the admin workspace and visits identified as staff activity.">
         {traffic.data.visitors.length ? <div className="ax-table-wrap" tabIndex={0} role="region" aria-label="Recent page views"><table className="ax-table"><thead><tr>
           {['Visited (SAST)', 'Page', 'Device', 'Browser', 'System'].map(name => <th key={name} scope="col">{name}</th>)}</tr></thead>
           <tbody>{traffic.data.visitors.map(event => <tr key={event.id}><td>{sastTime(event.visitedAt)}</td><td className="break-all">{event.pagePath.split(/[?#]/)[0]}</td><td>{event.deviceType || '—'}</td><td>{event.browser || '—'}</td><td>{event.operatingSystem || '—'}</td></tr>)}</tbody>

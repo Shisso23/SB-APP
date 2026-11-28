@@ -103,7 +103,7 @@ export const apiGet = <T = EnvelopeResponse<unknown>>(path: string, config?: Axi
  * data, but it would make public pages unusable to a signed-out visitor — so
  * public reads use this client, which:
  *
- *  - never attaches an Authorization header,
+ *  - does not automatically attach an Authorization header,
  *  - never triggers the sign-in or session-expired flows,
  *  - still reuses the same base URL, timeout and error classification.
  *
