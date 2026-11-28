@@ -11,6 +11,8 @@ import PayFastRedirectScreen from '../screens/access/PayFastRedirectScreen';
 import PayFastResultScreen from '../screens/access/PayFastResultScreen';
 import OfficialHistoryScreen from '../screens/official/OfficialHistoryScreen';
 import AdminScreen from '../screens/admin/AdminScreen';
+import ReferralLanding from '../screens/referrals/ReferralLanding';
+import ReferralScreen from '../screens/referrals/ReferralScreen';
 import { recordVisitorPageView } from '../services/analytics';
 import { useAuth } from '../services/auth/AuthProvider';
 
@@ -38,6 +40,8 @@ const RoutedContent: React.FC = () => {
           <Route path='/access/result' element={<PayFastResultScreen />} />
           {/*            Public history. Needs no sign-in: it serves only published records            and a fixed daily preview, all decided server-side.          */}
           <Route path='/history' element={<OfficialHistoryScreen />} />
+          <Route path='/referrals' element={<ReferralScreen />} />
+          <Route path='/ref/:code' element={<ReferralLanding />} />
           {/*            Admin workflow. The server refuses every endpoint behind this route            to a non-staff user; hiding the link is only courtesy.          */}
           <Route path='/admin' element={<AdminScreen />} />
       </Routes>

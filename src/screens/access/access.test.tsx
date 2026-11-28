@@ -280,26 +280,42 @@ describe('PayFastResultScreen - a redirect is never proof of payment', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Confirming your payment');
     mockAuth.initialising = false;
     rerender(<MemoryRouter><PayFastResultScreen /></MemoryRouter>);
-    expect(await screen.findByText('Payment confirmed')).toBeInTheDocument();
+    expect(await screen.findByText('Premium access is active')).toBeInTheDocument();
     expect(meMock).toHaveBeenCalledTimes(1);
   });
 
-  it('shows active access only when /me reports an active entitlement', async () => {
+  it('confirms the tracked payment once the backend reports its grant', async () => {
     const future = new Date(Date.now() + 30 * 86_400_000).toISOString();
     meMock.mockResolvedValue({
       data: { ...noAccess, has_prediction_access: true, prediction_access_ends_at: future },
     });
+    rememberCheckoutAttempt(7);
+    statusMock.mockResolvedValue({ data: { id: 7, status: 'granted', product_code: 'pxi-30d' } });
     renderAt('/access/result?status=success', <PayFastResultScreen />);
     expect(await screen.findByText('Payment confirmed')).toBeInTheDocument();
+    expect(readCheckoutAttempt()).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Generate Predictions' }));
     expect(screen.getByRole('heading', { name: 'Prediction Desk' })).toBeInTheDocument();
+  });
+
+  it('keeps a pending attempt pending when referral access is already active', async () => {
+    rememberCheckoutAttempt(8);
+    meMock.mockResolvedValue({
+      data: { ...noAccess, has_prediction_access: true, prediction_access_ends_at: new Date(Date.now() + 86_400_000).toISOString() },
+    });
+    statusMock.mockResolvedValue({ data: { id: 8, status: 'pending', product_code: 'pxi-1d' } });
+    renderAt('/access/result?status=success', <PayFastResultScreen />);
+    expect(await screen.findByText('Still confirming your payment…')).toBeInTheDocument();
+    expect(screen.queryByText('Payment confirmed')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Use your current premium access' })).toBeVisible();
+    expect(readCheckoutAttempt()).toBe(8);
   });
 
   it('renders a cancellation state without claiming payment failed', async () => {
     meMock.mockResolvedValue({ data: noAccess });
     renderAt('/access/result?status=cancelled', <PayFastResultScreen />);
     expect(await screen.findByText('Checkout cancelled')).toBeInTheDocument();
-    expect(screen.getByText(/No payment was taken/)).toBeInTheDocument();
+    expect(screen.getByText(/You can start checkout again/)).toBeInTheDocument();
   });
 
   it('treats a network error as unconfirmed, not as failure', async () => {

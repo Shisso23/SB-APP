@@ -6,6 +6,7 @@ import { BRAND_NAME, BRAND_TAGLINE } from '../../assets/brand';
 import { getOfficialPreview } from '../../services/official';
 import { formatBusinessDate, formatProbability } from '../../services/official/presentation';
 import type { OfficialPreviewResponse } from '../../services/official/types';
+import { HomeReferralCard } from '../referrals/ReferralPrompt';
 import './home.css';
 
 const steps = [
@@ -147,6 +148,7 @@ const HomeScreen: React.FC = () => {
           </details>
         </div>
       </section>
+      <HomeReferralCard />
       <footer className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-5 py-6 text-sm text-slate-300 sm:px-8">
         <p>© {new Date().getFullYear()} {BRAND_NAME}</p>
         <p>For adults 18+. Football forecasts describe likelihood. Results can vary.</p>

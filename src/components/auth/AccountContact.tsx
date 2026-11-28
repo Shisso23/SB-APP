@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import { getAccountProfile, normalizePhone, PHONE_ERROR, updateAccountPhone } from '../../services/auth/profile';
 import PhoneField from './PhoneField';
@@ -87,6 +88,10 @@ const AccountContact: React.FC<Props> = ({ uid, email, registrationPhone, regist
       )}
       {error && <p role="alert" className="text-sm text-rose-200">{error}</p>}
       {message && <p role="status" className="text-sm text-emerald-200">{message}</p>}
+      <div className="grid gap-2 border-t border-slate-600 pt-3 text-sm">
+        <Link to="/access" className="flex min-h-[40px] items-center font-semibold text-slate-200 underline underline-offset-4">Purchased access and passes</Link>
+        <Link to="/referrals" className="flex min-h-[40px] items-center font-semibold text-emerald-200 underline underline-offset-4">Refer &amp; Earn · referral rewards and history</Link>
+      </div>
       <button type="button" disabled={saving || registrationInProgress} onClick={() => void onSignOut()}
         className="min-h-[44px] rounded-lg border border-slate-500 px-3 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-60">
         Sign out

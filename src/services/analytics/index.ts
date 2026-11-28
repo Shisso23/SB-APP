@@ -1,4 +1,5 @@
 import type { User } from 'firebase/auth';
+import { getReferralTicket } from '../referrals/attribution';
 import { publicClient } from '../api/client';
 
 const SESSION_KEY = 'predictxi_visitor_session_key';
@@ -23,11 +24,15 @@ export const recordVisitorPageView = async (path: string, user?: Pick<User, 'get
     // Admin status is server-owned. Send the token only to this public
     // endpoint so it can omit authenticated staff without changing auth UI.
     const token = user ? await user.getIdToken() : null;
+    const referral = token ? getReferralTicket() : undefined;
     await publicClient.post('/analytics/visitor/', {
       visitorKey: getVisitorKey(),
       pagePath: path,
       referrer: typeof document === 'undefined' ? '' : document.referrer,
-    }, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
+    }, token ? { headers: {
+      Authorization: `Bearer ${token}`,
+      ...(referral ? { 'X-Referral-Ticket': referral } : {}),
+    } } : undefined);
   } catch {
     // Analytics must never block or change the browsing experience.
   }

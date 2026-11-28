@@ -14,6 +14,7 @@ import AdminPublished from './AdminPublished';
 import AdminSchedules from './AdminSchedules';
 import AdminExecutions from './AdminExecutions';
 import AdminTraffic from './AdminTraffic';
+import AdminReferrals from './AdminReferrals';
 import AdminShell, { resolveView } from './AdminShell';
 import AdminUsersPanel from './AdminUsersPanel';
 import ManualPredictionPanel from './ManualPredictionPanel';
@@ -35,6 +36,7 @@ const subtitles = {
   passes: 'Manage products offered at checkout.',
   payments: 'Review the latest purchase attempt per account alongside current access.',
   traffic: 'Review recorded visits and device information.',
+  referrals: 'Review qualifying purchases, rewards, and referral access grants.',
 };
 
 const AccessMessage = ({ children }: { children: React.ReactNode }) =>
@@ -119,7 +121,7 @@ function Workspace({ status, email }: { status: AdminStatusResponse; email?: str
       else next.delete('date');
       setParams(next, { replace: true });
     }} /></label>}
-    {(overview || dated || view === 'picks' || view === 'history' || view === 'traffic') && <button type="button" className="ax-button" onClick={refresh} disabled={busy}><Icon name="refresh" /> Refresh</button>}</>;
+    {(overview || dated || view === 'picks' || view === 'history' || view === 'traffic' || view === 'referrals') && <button type="button" className="ax-button" onClick={refresh} disabled={busy}><Icon name="refresh" /> Refresh</button>}</>;
   return <AdminShell view={view} date={date} email={email} busy={busy} subtitle={overview ? `${today} SAST · ${subtitles.overview}` : subtitles[view as keyof typeof subtitles]} actions={actions}>
     {overview && <AdminOverview date={today} workflowDate={date} configured={status.configuredLeagues.length} coverage={coverage.data} jobs={jobs.data}
       manual={manual.data} list={todaysList.data} customers={customerTotal.data?.total}
@@ -147,6 +149,7 @@ function Workspace({ status, email }: { status: AdminStatusResponse; email?: str
     {view === 'payments' && <AdminUsersPanel key="payments" mode="payments" />}
     {(visited.passes || view === 'passes') && <div hidden={view !== 'passes'}><AccessProductsPanel /></div>}
     {view === 'traffic' && <AdminTraffic revision={revision} />}
+    {view === 'referrals' && <AdminReferrals revision={revision} />}
     {view === 'coverage' && <Link className="ax-button" to={adminLink('operations', askedDate ?? undefined)}>Use selected scope in manual operations <Icon name="arrow" /></Link>}
   </AdminShell>;
 }

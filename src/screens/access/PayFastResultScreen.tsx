@@ -12,6 +12,7 @@ import {
 } from '../../services/access';
 import { useAuth } from '../../services/auth/AuthProvider';
 import type { MeResponse, PurchaseStatus, PurchaseStatusResponse } from '../../services/access/types';
+import { ReferralPrompt } from '../referrals/ReferralPrompt';
 
 /**
  * Payment result screen.
@@ -26,7 +27,7 @@ import type { MeResponse, PurchaseStatus, PurchaseStatusResponse } from '../../s
  *   1. `GET /me/`              - is premium access actually active right now?
  *   2. `GET /access/purchases/{id}/` - what state is the attempt in?
  *
- * Until `/me/` reports active access, this screen never claims success.
+ * The authenticated attempt confirms payment, independently of current access.
  *
  * Pending is handled by *bounded* polling: a few attempts with a delay between
  * them. It never polls forever, and a network error is shown as "still
@@ -68,16 +69,19 @@ const PayFastResultScreen: React.FC = () => {
   const cancelledRef = useRef(false);
 
   const refresh = useCallback(async () => {
-    // Entitlement is the authority and is always read.
-    const meResponse = await getMe();
-    setMe(meResponse.data);
     let latestPurchase: PurchaseStatusResponse | null = null;
-    if (typeof attemptId === 'number') {
-      const purchaseResponse = await getPurchaseStatus(attemptId);
-      latestPurchase = purchaseResponse.data;
-      setPurchase(purchaseResponse.data);
+    try {
+      if (typeof attemptId === 'number') {
+        const purchaseResponse = await getPurchaseStatus(attemptId);
+        latestPurchase = purchaseResponse.data;
+      }
+    } finally {
+      // Read access after the purchase so a grant confirmed during this check is reflected.
+      const meResponse = await getMe();
+      setMe(meResponse.data);
+      if (latestPurchase) setPurchase(latestPurchase);
     }
-    return { me: meResponse.data, purchase: latestPurchase };
+    return latestPurchase;
   }, [attemptId]);
 
   useEffect(() => {
@@ -90,15 +94,7 @@ const PayFastResultScreen: React.FC = () => {
         if (cancelledRef.current) return;
         setNetworkTrouble(false);
 
-        if (accessStateOf(first.me) === 'active') {
-          setChecking(false);
-          return;
-        }
-
-        // Not active yet. If the server already says the attempt is
-        // definitively bad, stop immediately - do not poll for a payment that
-        // will not arrive.
-        if (first.purchase && isTerminalBad(first.purchase.status)) {
+        if (first && (first.status === 'granted' || isTerminalBad(first.status))) {
           setChecking(false);
           return;
         }
@@ -125,8 +121,7 @@ const PayFastResultScreen: React.FC = () => {
             const polled = await refresh();
             if (cancelledRef.current) return;
             setNetworkTrouble(false);
-            if (accessStateOf(polled.me) === 'active') break;
-            if (polled.purchase && isTerminalBad(polled.purchase.status)) break;
+            if (polled && (polled.status === 'granted' || isTerminalBad(polled.status))) break;
           } catch {
             // A transient error is NOT a failed payment. Keep the last known
             // state and let the customer retry manually.
@@ -149,7 +144,8 @@ const PayFastResultScreen: React.FC = () => {
   }, [refresh, hint, initialising]);
 
   const accessState = accessStateOf(me);
-  const finished = accessState === 'active' || hint === 'cancelled' || (purchase ? isTerminalBad(purchase.status) : false);
+  const confirmed = purchase?.status === 'granted';
+  const finished = confirmed || hint === 'cancelled' || (purchase ? isTerminalBad(purchase.status) : false);
   useEffect(() => {
     if (finished) clearCheckoutAttempt();
   }, [finished]);
@@ -179,15 +175,20 @@ const PayFastResultScreen: React.FC = () => {
     );
   }
 
-  // Access is active: the ONLY condition under which we say so.
-  if (accessState === 'active') {
+  const canGenerate = accessState === 'active';
+  const noAttemptWithAccess = canGenerate && attemptId === undefined && hint === 'success';
+  if (confirmed || noAttemptWithAccess) {
     return (
       <Shell>
-        <h1 className="text-xl font-bold text-teal-300 mb-2">Payment confirmed</h1>
-        <p className="text-gray-200">Your premium access is now active.</p>
+        <h1 className="text-xl font-bold text-teal-300 mb-2">{confirmed ? 'Payment confirmed' : 'Premium access is active'}</h1>
+        <p className="text-gray-200">{noAttemptWithAccess ? 'We couldn’t verify a payment for this visit.'
+          : canGenerate ? 'Your premium access is active.' : 'Your premium access is currently inactive.'}</p>
         {remaining && <p className="mt-1 text-sm text-teal-100">{remaining}</p>}
         {expiry && <p className="text-sm text-teal-100">Access ends on {expiry}.</p>}
-        <PrimaryButton onClick={() => navigate('/BetAndFixturesScreen')}>Generate Predictions</PrimaryButton>
+        <PrimaryButton onClick={() => navigate(canGenerate ? '/BetAndFixturesScreen' : '/access')}>
+          {canGenerate ? 'Generate Predictions' : 'View access passes'}
+        </PrimaryButton>
+        {confirmed && <ReferralPrompt />}
       </Shell>
     );
   }
@@ -203,6 +204,7 @@ const PayFastResultScreen: React.FC = () => {
           You can safely leave this page - access activates as soon as the payment is verified.
         </p>
         <PrimaryButton onClick={() => void retry()}>Refresh status</PrimaryButton>
+        {canGenerate && <CurrentAccessButton onClick={() => navigate('/BetAndFixturesScreen')} />}
         <button
           type="button"
           onClick={() => navigate('/history')}
@@ -228,8 +230,8 @@ const PayFastResultScreen: React.FC = () => {
       <h1 className="text-xl font-bold mb-2">{heading}</h1>
       <p className="text-gray-300">
         {hint === 'cancelled'
-          ? 'No payment was taken. You can start again whenever you are ready.'
-          : 'Your access is not active. If money left your account, it will be reconciled and access granted automatically.'}
+          ? 'You can start checkout again whenever you are ready.'
+          : 'If you were charged for this purchase, check its status again before starting another checkout.'}
       </p>
       {networkTrouble && (
         <p role="alert" className="mt-3 text-sm text-yellow-200">
@@ -238,6 +240,7 @@ const PayFastResultScreen: React.FC = () => {
         </p>
       )}
       <PrimaryButton onClick={() => navigate('/access')}>Back to access passes</PrimaryButton>
+      {canGenerate && <CurrentAccessButton onClick={() => navigate('/BetAndFixturesScreen')} />}
       <button
         type="button"
         onClick={() => void retry()}
@@ -255,6 +258,12 @@ const PayFastResultScreen: React.FC = () => {
     </Shell>
   );
 };
+
+const CurrentAccessButton = ({ onClick }: { onClick: () => void }) => (
+  <button type="button" onClick={onClick} className="mt-3 block w-full text-sm underline text-teal-300">
+    Use your current premium access
+  </button>
+);
 
 const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <main className="flex min-h-screen items-start justify-center bg-[#0d1626] px-4 py-12 text-white sm:py-20">

@@ -4,11 +4,19 @@ import { Provider } from 'react-redux';
 import store from './redux/store';
 import { registerWithEmail, signInWithEmail, signOut } from './services/auth/firebase';
 import { getAccountProfile, updateAccountPhone } from './services/auth/profile';
+import { captureReferral, getMyReferrals } from './services/referrals';
+import { getReferralTicket } from './services/referrals/attribution';
 
 jest.mock('./services/auth/profile', () => ({
   ...jest.requireActual('./services/auth/profile'),
   getAccountProfile: jest.fn(),
   updateAccountPhone: jest.fn(),
+}));
+
+jest.mock('./services/referrals', () => ({
+  ...jest.requireActual('./services/referrals'),
+  captureReferral: jest.fn(),
+  getMyReferrals: jest.fn(),
 }));
 
 let mockUser = null;
@@ -25,6 +33,9 @@ jest.mock('./services/auth/firebase', () => ({
 }));
 beforeEach(() => {
   mockUser = null;
+  getMyReferrals.mockResolvedValue({ data: {
+    link: 'https://predictxi.co.za/ref/test', summary: { daysEarned: 0 },
+  } });
   getAccountProfile.mockResolvedValue({ data: { email: 'fan@example.com', phone_number: null } });
 });
 
@@ -193,4 +204,15 @@ test('loads an existing customer phone and lets them update or remove it', async
   fireEvent.click(screen.getByRole('button', { name: 'Save phone number' }));
   expect(await screen.findByText('Phone number removed.')).toBeInTheDocument();
   expect(updateAccountPhone).toHaveBeenNthCalledWith(2, 'existing', null);
+});
+
+
+test('a referral deep link opens existing registration with server-validated attribution saved', async () => {
+  captureReferral.mockResolvedValueOnce({ data: { valid: true, ticket: 'backend-signed-referral-ticket', expiresIn: 86_400 } });
+  await renderApp('/ref/PXI0123456789ABCDEFFEDCBA9876543210');
+  expect(await screen.findByText(/Invitation saved/)).toBeVisible();
+  fireEvent.click(screen.getByRole('link', { name: 'Create an account' }));
+  expect(await screen.findByRole('heading', { name: 'Create your account' })).toBeVisible();
+  expect(getReferralTicket()).toBe('backend-signed-referral-ticket');
+  expect(window.location.hash).toBe('#account');
 });

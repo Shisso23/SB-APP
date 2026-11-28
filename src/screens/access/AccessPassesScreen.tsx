@@ -1,3 +1,4 @@
+import { ReferralPrompt } from '../referrals/ReferralPrompt';
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -179,6 +180,7 @@ const AccessPassesScreen: React.FC = () => {
             ))}
           </dl>
           <p className="mt-5 border-t border-slate-700 pt-4 text-sm font-semibold text-emerald-300"><span aria-hidden="true">✓ </span> Secure checkout with PayFast</p>
+          <ReferralPrompt />
         </aside>
       </div>
     </main>

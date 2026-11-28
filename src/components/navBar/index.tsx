@@ -60,7 +60,11 @@ export default function Navbar() {
   }, [location]);
 
   const closeSignIn = () => {
-    if (hash === "#account") navigate({ pathname, search }, { replace: true, state });
+    if (hash === "#account") {
+      const params = new URLSearchParams(search);
+      params.delete("join");
+      navigate({ pathname, search: params.toString() }, { replace: true, state });
+    }
   };
 
   React.useEffect(() => {
@@ -74,6 +78,7 @@ export default function Navbar() {
     { to: "/history", label: "Results & Daily Picks" },
     { to: "/BetAndFixturesScreen", label: "Generate Predictions" },
     { to: "/access", label: "Premium Access" },
+    { to: "/referrals", label: "Refer & Earn" },
     ...(isAdmin ? [{ to: "/admin", label: "Admin" }] : []),
   ];
 
@@ -122,7 +127,7 @@ export default function Navbar() {
                   <span aria-hidden="true">⌄</span>
                 </summary>
                 <div className="mt-2 rounded-xl border border-slate-600 bg-[#152136] p-4 shadow-lg lg:absolute lg:right-0 lg:w-80">
-                  <SignInScreen onSignedIn={closeSignIn} />
+                  <SignInScreen onSignedIn={closeSignIn} initialMode={hash === "#account" && new URLSearchParams(search).get("join") === "1" ? "register" : "sign-in"} />
                 </div>
               </details>
             </li>

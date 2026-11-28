@@ -12,6 +12,7 @@
 import axios, { AxiosError, AxiosRequestConfig } from 'axios';
 
 import { apiConfig } from '../../config/api';
+import { getReferralTicket } from '../referrals/attribution';
 import { EnvelopeResponse } from './types';
 import { forceRefreshIdToken, notifySessionExpired, requireIdToken, SessionExpiredError, SignInRequiredError } from './session';
 
@@ -55,6 +56,8 @@ apiClient.interceptors.request.use(async (request) => {
   const token = await requireIdToken();
   request.headers = request.headers ?? {};
   request.headers.Authorization = `Bearer ${token}`;
+  const referral = getReferralTicket();
+  if (referral) request.headers['X-Referral-Ticket'] = referral;
   return request;
 });
 

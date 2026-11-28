@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { registerWithEmail, signInWithEmail, signOut } from '../../services/auth/firebase';
 import { useAuth } from '../../services/auth/AuthProvider';
@@ -32,13 +32,16 @@ const describeAuthError = (error: unknown, registering: boolean): string => {
   }
 };
 
-const SignInScreen: React.FC<{ onSignedIn: () => void }> = ({ onSignedIn }) => {
+type AccountMode = 'sign-in' | 'register';
+
+const SignInScreen: React.FC<{ onSignedIn: () => void; initialMode?: AccountMode }> = ({ onSignedIn, initialMode = 'sign-in' }) => {
   const { user, initialising, markSignedOut } = useAuth();
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [registration, setRegistration] = useState<{ uid: string; phone: string }>();
   const [password, setPassword] = useState('');
-  const [mode, setMode] = useState<'sign-in' | 'register'>('sign-in');
+  const [mode, setMode] = useState<AccountMode>(initialMode);
+  useEffect(() => setMode(initialMode), [initialMode]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 

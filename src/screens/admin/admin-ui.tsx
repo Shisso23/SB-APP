@@ -42,6 +42,7 @@ const paths = {
   executions: 'M3 12h4l3-7 4 14 3-7h4',
   customers: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m16-6a4 4 0 0 1 4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm8-8a4 4 0 0 1 0 8',
   passes: 'M3 6h18v4a2 2 0 0 0 0 4v4H3v-4a2 2 0 0 0 0-4zm10 2v2m0 4v2',
+  referrals: 'M6 14a4 4 0 1 1 3.2-6.4M18 6a4 4 0 1 1-3.2 6.4M9 10l6-2m-6 8 6 2M6 22a4 4 0 1 1 0-8m12 0a4 4 0 1 1 0 8',
   payments: 'M3 5h18v14H3zM3 9h18M7 15h4',
   traffic: 'M4 20h16M6 16v-4m6 4V4m6 12V8',
   menu: 'M4 6h16M4 12h16M4 18h16',

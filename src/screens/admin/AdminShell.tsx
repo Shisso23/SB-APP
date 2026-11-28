@@ -20,6 +20,7 @@ const groups = [
   ] },
   { label: 'Business', links: [
     { key: 'customers', label: 'Customers', title: 'Customer directory' },
+    { key: 'referrals', label: 'Referrals', title: 'Customer referrals' },
     { key: 'passes', label: 'Access passes', title: 'Access pass catalogue' },
     { key: 'payments', label: 'Payments', title: 'Payment attempts' },
     { key: 'traffic', label: 'Traffic', title: 'Visitor analytics' },
