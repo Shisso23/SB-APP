@@ -8,6 +8,10 @@ import { isStale } from './odds';
 // when the core market qualifies via combined thresholds (see DERIVED_SUPPORT /
 // MARKET_IMPLICATIONS) rather than its own percentage.
 const CORE_FORECAST_IDS = new Set<ForecastId>(['home_win', 'draw', 'away_win', 'btts_yes', 'over_2_5']);
+// Draw-no-bet is a valid forecast market but is never offered as a betlist pick.
+// When DNB would otherwise be the strongest option for a match, another qualifying
+// market is used instead.
+const EXCLUDED_FROM_BET_LIST = new Set<ForecastId>(['home_dnb', 'away_dnb']);
 const priorityTier = (id: ForecastId) => CORE_FORECAST_IDS.has(id) ? 0 : 1;
 
 export const DEFAULT_BET_LIST_SIZE = 5;
@@ -60,6 +64,7 @@ export const buildForecastBetList = (
       const probability = forecastProbability(prediction, forecastId);
       const { level, impliedBy } = impliedHighlightResult(prediction, forecastId);
       if (level === 'none' || probability === undefined) return;
+      if (EXCLUDED_FROM_BET_LIST.has(forecastId)) return;
       const market = prediction.markets.find(entry => entry.marketId === forecastId);
       const hasQuote = market?.decimalOdds !== undefined && Number.isFinite(market.decimalOdds) && market.decimalOdds > 1;
       const fresh = hasQuote && !market?.oddsStale && !isStale(market?.oddsTimestamp, now, DEFAULT_PREDICTION_CONFIG.odds.staleAfterMinutes);
