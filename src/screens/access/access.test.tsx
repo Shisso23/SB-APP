@@ -37,6 +37,9 @@ import AccessPassesScreen from './AccessPassesScreen';
 import PayFastRedirectScreen from './PayFastRedirectScreen';
 import PayFastResultScreen from './PayFastResultScreen';
 
+const mockAuth: { user: { uid: string } | null; initialising: boolean } = { user: { uid: 'uid' }, initialising: false };
+jest.mock('../../services/auth/AuthProvider', () => ({ useAuth: () => mockAuth }));
+
 const productsMock = getAccessProducts as jest.Mock;
 const meMock = getMe as jest.Mock;
 const checkoutMock = startCheckout as jest.Mock;
@@ -61,6 +64,8 @@ const noAccess = {
 beforeEach(() => {
   jest.clearAllMocks();
   clearCheckoutAttempt();
+  mockAuth.user = { uid: 'uid' };
+  mockAuth.initialising = false;
 });
 
 const renderAt = (path: string, ui: React.ReactElement, state?: unknown) =>
@@ -70,7 +75,7 @@ const renderAt = (path: string, ui: React.ReactElement, state?: unknown) =>
         <Route path="/access" element={ui} />
         <Route path="/access/checkout" element={ui} />
         <Route path="/access/result" element={ui} />
-        <Route path="/predictions" element={<div>predictions</div>} />
+        <Route path="/BetAndFixturesScreen" element={<h1>Prediction Desk</h1>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -85,7 +90,33 @@ describe('AccessPassesScreen', () => {
     // Price comes straight from the server payload.
     expect(screen.getByText('R99.00')).toBeInTheDocument();
     expect(screen.getByText('30 days of access')).toBeInTheDocument();
-    expect(screen.getByText('Full access for 30 days')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Choose 30-Day Predictions Pass' })).toBeEnabled();
+  });
+
+  it('keeps the public results available and offers sign-in before a guest can buy a pass', () => {
+    mockAuth.user = null;
+    renderAt('/access', <AccessPassesScreen />);
+    expect(screen.getByRole('link', { name: 'Explore free daily picks and results' })).toHaveAttribute('href', '/history');
+    expect(screen.getByRole('link', { name: 'Sign in to view passes' })).toHaveAttribute('href', '/access#account');
+    expect(productsMock).not.toHaveBeenCalled();
+    expect(checkoutMock).not.toHaveBeenCalled();
+  });
+
+  it('renders every configured pass using the catalogue values', async () => {
+    const catalogue = [
+      { ...product, code: 'day', name: 'Day Pass', duration_days: 1, price_amount: '23.45' },
+      { ...product, code: 'week', name: '7-Day Pass', duration_days: 7, price_amount: '64.10' },
+      { ...product, code: 'monthly', name: 'Monthly Pass', duration_days: 30, price_amount: '123.45' },
+      { ...product, code: 'quarter', name: '3-Month Pass', duration_days: 91, price_amount: '401.25' },
+    ];
+    productsMock.mockResolvedValue({ data: { products: catalogue } });
+    meMock.mockResolvedValue({ data: noAccess });
+    renderAt('/access', <AccessPassesScreen />);
+    for (const pass of catalogue) {
+      const row = (await screen.findByRole('heading', { name: pass.name })).closest('li');
+      expect(row).toHaveTextContent(`R${pass.price_amount}`);
+      expect(row).toHaveTextContent(`${pass.duration_days} ${pass.duration_days === 1 ? 'day' : 'days'} of access`);
+    }
   });
 
   it('shows an empty state when the server sells no passes', async () => {
@@ -126,6 +157,8 @@ describe('AccessPassesScreen', () => {
     renderAt('/access', <AccessPassesScreen />);
     expect(await screen.findByText('Your premium access is active.')).toBeInTheDocument();
     expect(screen.getByText(/days remaining/)).toBeInTheDocument();
+    expect(screen.getByText(/SAST/)).toHaveAttribute('datetime', future);
+    expect(screen.getByRole('link', { name: 'Generate Predictions' })).toHaveAttribute('href', '/BetAndFixturesScreen');
   });
 
   it('sends only the product code and an idempotency key to checkout', async () => {
@@ -136,7 +169,7 @@ describe('AccessPassesScreen', () => {
     });
     renderAt('/access', <AccessPassesScreen />);
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Get this pass' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Choose 30-Day Predictions Pass' }));
 
     await waitFor(() => expect(checkoutMock).toHaveBeenCalledTimes(1));
     expect(checkoutMock.mock.calls[0][0]).toBe('pxi-30d');
@@ -152,7 +185,7 @@ describe('AccessPassesScreen', () => {
     checkoutMock.mockRejectedValue(new Error('network down'));
     renderAt('/access', <AccessPassesScreen />);
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Get this pass' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Choose 30-Day Predictions Pass' }));
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('We could not start checkout. Please try again.');
@@ -236,6 +269,21 @@ describe('PayFastResultScreen - a redirect is never proof of payment', () => {
     expect(screen.queryByText(/access is now active/i)).not.toBeInTheDocument();
   });
 
+  it('waits for Firebase restoration after returning from PayFast', async () => {
+    mockAuth.initialising = true;
+    meMock.mockResolvedValue({
+      data: { ...noAccess, has_prediction_access: true, prediction_access_ends_at: new Date(Date.now() + 86_400_000).toISOString() },
+    });
+    const result = <MemoryRouter initialEntries={['/access/result?status=success']}><PayFastResultScreen /></MemoryRouter>;
+    const { rerender } = render(result);
+    expect(meMock).not.toHaveBeenCalled();
+    expect(screen.getByRole('status')).toHaveTextContent('Confirming your payment');
+    mockAuth.initialising = false;
+    rerender(<MemoryRouter><PayFastResultScreen /></MemoryRouter>);
+    expect(await screen.findByText('Payment confirmed')).toBeInTheDocument();
+    expect(meMock).toHaveBeenCalledTimes(1);
+  });
+
   it('shows active access only when /me reports an active entitlement', async () => {
     const future = new Date(Date.now() + 30 * 86_400_000).toISOString();
     meMock.mockResolvedValue({
@@ -243,6 +291,8 @@ describe('PayFastResultScreen - a redirect is never proof of payment', () => {
     });
     renderAt('/access/result?status=success', <PayFastResultScreen />);
     expect(await screen.findByText('Payment confirmed')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Generate Predictions' }));
+    expect(screen.getByRole('heading', { name: 'Prediction Desk' })).toBeInTheDocument();
   });
 
   it('renders a cancellation state without claiming payment failed', async () => {

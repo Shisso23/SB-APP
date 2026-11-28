@@ -241,14 +241,14 @@ const awaitHighlightsSettled = async () => {
 const runInitialBatch = async () => {
   await renderPredictionDesk();
   fireEvent.click((await screen.findAllByRole('button', { name: /Premier League/ }))[0]);
-  const run = screen.getByRole('button', { name: 'Bet (run predictions)' });
+  const run = screen.getByRole('button', { name: 'Generate Predictions' });
   await waitFor(() => expect(run).not.toBeDisabled());
   fireEvent.click(run);
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Bet (run predictions)' })).not.toBeDisabled());
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Generate Predictions' })).not.toBeDisabled());
   expect(activeSeasonRequests).toBe(1);
   expect(readPaperRecord().selections[0].settled).toBeUndefined();
   await awaitHighlightsSettled();
-  return screen.getByRole('button', { name: 'Bet (run predictions)' });
+  return screen.getByRole('button', { name: 'Generate Predictions' });
 };
 
 it('refreshes the active season through both caches and settles the latest result', async () => {
@@ -271,7 +271,7 @@ it('reports a failed explicit refresh without inventing a settled result', async
   failRefresh = true;
   fireEvent.click(run);
   await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Fixture refresh unavailable'));
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Bet (run predictions)' })).not.toBeDisabled());
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Generate Predictions' })).not.toBeDisabled());
   expect(readPaperRecord().selections[0].settled).toBeUndefined();
 });
 
@@ -279,7 +279,7 @@ it('does not run predictions when signed out', async () => {
   mockAuth.user = null;
   await renderPredictionDesk();
   fireEvent.click((await screen.findAllByRole('button', { name: /Premier League/ }))[0]);
-  const run = screen.getByRole('button', { name: 'Bet (run predictions)' });
+  const run = screen.getByRole('button', { name: 'Generate Predictions' });
   await waitFor(() => expect(run).toBeDisabled());
   // No fixtures request should be issued while signed out.
   expect(get.mock.calls.filter(([endpoint]) => endpoint === '/fixtures/')).toHaveLength(0);
@@ -298,16 +298,14 @@ it('shows a paywall CTA and blocks the predictions fetch when no active pass exi
   };
   render(<MemoryRouter><BetAndFixturesScreen /><Location /></MemoryRouter>);
   await waitFor(() => expect(screen.getByText(/An active prediction pass is required/)).toBeInTheDocument());
-  expect(screen.getByRole('link', { name: 'Get a pass' })).toHaveAttribute('href', '/access');
+  expect(screen.getByRole('link', { name: 'View access passes' })).toHaveAttribute('href', '/access');
   fireEvent.click((await screen.findAllByRole('button', { name: /Premier League/ }))[0]);
-  const run = screen.getByRole('button', { name: 'Bet (run predictions)' });
-  await waitFor(() => expect(run).not.toBeDisabled());
+  const run = screen.getByRole('button', { name: 'Generate Predictions' });
+  expect(run).toBeDisabled();
   fireEvent.click(run);
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Bet (run predictions)' })).not.toBeDisabled());
   expect(get.mock.calls.filter(([endpoint]) => endpoint === '/me/')).not.toHaveLength(0);
-  expect(get.mock.calls.filter(([endpoint]) => endpoint === '/fixtures/' || endpoint === '/standings/')).toHaveLength(0);
-  expect(get.mock.calls.filter(([endpoint]) => endpoint === '/predictions/')).toHaveLength(0);
-  expect(screen.getByRole('alert')).toHaveTextContent('An active prediction pass is required');
+  expect(get.mock.calls.filter(([endpoint]) => ['/fixtures/', '/standings/', '/predictions/'].includes(endpoint))).toHaveLength(0);
+  fireEvent.click(screen.getByRole('link', { name: 'View access passes' }));
   expect(screen.getByTestId('location')).toHaveTextContent('/access:{"reason":"premium-required"}');
 });
 
@@ -322,9 +320,9 @@ it('does not fetch fixtures in legacy mode without an active pass', async () => 
   await waitFor(() => expect(screen.getByText(/An active prediction pass is required/)).toBeInTheDocument());
   fireEvent.click(screen.getByRole('button', { name: 'Legacy rules', exact: true }));
   fireEvent.click((await screen.findAllByRole('button', { name: /Premier League/ }))[0]);
-  fireEvent.click(screen.getByRole('button', { name: 'Bet (run predictions)' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Generate Predictions' }));
   expect(get.mock.calls.filter(([endpoint]) => endpoint === '/fixtures/' || endpoint === '/standings/')).toHaveLength(0);
-  expect(screen.getByRole('alert')).toHaveTextContent('An active prediction pass is required');
+  expect(screen.getByRole('button', { name: 'Generate Predictions' })).toBeDisabled();
 });
 
 it('does not fetch fixtures while access is still being checked in legacy mode', async () => {
@@ -337,11 +335,11 @@ it('does not fetch fixtures while access is still being checked in legacy mode',
   render(<MemoryRouter><BetAndFixturesScreen /></MemoryRouter>);
   fireEvent.click(screen.getByRole('button', { name: 'Legacy rules', exact: true }));
   fireEvent.click((await screen.findAllByRole('button', { name: /Premier League/ }))[0]);
-  const run = screen.getByRole('button', { name: 'Bet (run predictions)' });
-  await waitFor(() => expect(run).not.toBeDisabled());
+  const run = screen.getByRole('button', { name: 'Generate Predictions' });
+  expect(run).toBeDisabled();
   fireEvent.click(run);
   expect(get.mock.calls.filter(([endpoint]) => endpoint === '/fixtures/' || endpoint === '/standings/')).toHaveLength(0);
-  expect(screen.getByRole('alert')).toHaveTextContent('Checking prediction access');
+  expect(run).toHaveAccessibleDescription('Checking prediction access…');
 });
 it('keeps the suggested bet list first for easy discovery, removes model-pick sections, and updates the threshold bet list on model and filter changes', async () => {
   await runInitialBatch();
@@ -374,7 +372,7 @@ it('keeps the suggested bet list first for easy discovery, removes model-pick se
     fireEvent.blur(dates[0]);
   });
   await waitFor(() => expect(screen.getByText(/All forecasts and market details/).closest('details')!.querySelector('[data-highlight]')).toBeNull());
-  await screen.findByRole('button', { name: 'Bet (run predictions)' });
+  await screen.findByRole('button', { name: 'Generate Predictions' });
   expect(within(betList).queryByRole('listitem')).not.toBeInTheDocument();
 });
 
@@ -460,9 +458,9 @@ it('locks calendar days beyond a one-day pass expiry', async () => {
     : originalGet(endpoint, options));
   const { container } = await renderPredictionDesk();
   await screen.findByText(/Eligible kickoffs must be before/);
-  const dates = screen.getAllByRole('textbox').filter(input =>
-    (input as HTMLInputElement).value.match(/^\d{2}\/\d{2}\/\d{4}$/));
-  fireEvent.click(dates[0]);
+  const from = screen.getByLabelText('From');
+  await waitFor(() => expect(from).toBeEnabled());
+  fireEvent.click(from);
   const blockedDay = new Date(expiry);
   blockedDay.setDate(blockedDay.getDate() + 1);
   if (blockedDay.getMonth() !== new Date().getMonth()) {
@@ -491,12 +489,12 @@ it('blocks a new prediction run when the pass expires while the desk stays open'
     now = expiry;
     await screen.findByText(/An active prediction pass is required/);
     get.mockClear();
-    const run = screen.getByRole('button', { name: 'Bet (run predictions)' });
-    await waitFor(() => expect(run).not.toBeDisabled());
+    const run = screen.getByRole('button', { name: 'Generate Predictions' });
+    expect(run).toBeDisabled();
     fireEvent.click(run);
     expect(get.mock.calls.filter(([endpoint]) =>
       ['/fixtures/', '/standings/', '/predictions/'].includes(endpoint))).toHaveLength(0);
-    expect(screen.getByRole('alert')).toHaveTextContent('An active prediction pass is required');
+    expect(screen.getByRole('link', { name: 'View access passes' })).toBeInTheDocument();
   } finally {
     cleanup();
     clock.mockRestore();
@@ -610,16 +608,34 @@ it('shows progress while a request is pending and removes the loader when predic
   });
   await renderPredictionDesk();
   fireEvent.click((await screen.findAllByRole('button', { name: /Premier League/ }))[0]);
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Bet (run predictions)' })).toBeEnabled());
-  fireEvent.click(screen.getByRole('button', { name: 'Bet (run predictions)' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Generate Predictions' })).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', { name: 'Generate Predictions' }));
   expect(screen.getByRole('region', { name: 'Prediction loading' })).toBeInTheDocument();
-  expect(screen.getByRole('status', { name: 'Prediction progress' })).toHaveTextContent('Gathering fixtures');
+  expect(screen.getByRole('status', { name: 'Prediction progress' })).toHaveTextContent('Loading match data and published probabilities');
   expect(screen.getByRole('button', { name: 'Preparing forecasts…' })).toBeDisabled();
-  expect(screen.queryByText('No predictions yet. Select leagues, choose options, and press Bet.')).not.toBeInTheDocument();
+  expect(screen.queryByText('Predictions ready.')).not.toBeInTheDocument();
   await act(async () => { release(); });
-  await screen.findByRole('button', { name: 'Bet (run predictions)' });
+  await screen.findByRole('button', { name: 'Generate Predictions' });
   expect(screen.queryByRole('region', { name: 'Prediction loading' })).not.toBeInTheDocument();
+  expect(screen.getByText('Predictions ready.')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Add More Leagues' })).toBeEnabled();
   expect((await screen.findAllByText('2–5 total goals')).length).toBeGreaterThan(0);
+});
+
+it('reports an empty completed request without treating it as a service failure', async () => {
+  const originalGet = get.getMockImplementation();
+  if (!originalGet) throw new Error('Missing API fixture mock');
+  get.mockImplementation((endpoint, options) => endpoint === '/predictions/'
+    ? Promise.resolve({ data: { response: [], errors: [], results: 0 } })
+    : originalGet(endpoint, options));
+  await renderPredictionDesk();
+  fireEvent.click(screen.getByRole('button', { name: /Premier League/ }));
+  const run = screen.getByRole('button', { name: 'Generate Predictions' });
+  await waitFor(() => expect(run).toBeEnabled());
+  fireEvent.click(run);
+  expect(await screen.findByText(/This request found no predictions/)).toBeInTheDocument();
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Add More Leagues' })).toBeEnabled();
 });
 
 it('keeps existing forecasts visible while refreshing and clears the loader after a failed data request', async () => {
@@ -628,7 +644,7 @@ it('keeps existing forecasts visible while refreshing and clears the loader afte
   fireEvent.click(run);
   expect(screen.getByRole('region', { name: 'Prediction loading' })).toHaveTextContent('Your previous forecasts remain below');
   expect(screen.getAllByText('2–5 total goals').length).toBeGreaterThan(0);
-  await screen.findByRole('button', { name: 'Bet (run predictions)' });
+  await screen.findByRole('button', { name: 'Generate Predictions' });
   expect(screen.queryByRole('region', { name: 'Prediction loading' })).not.toBeInTheDocument();
   expect(screen.getByRole('alert')).toHaveTextContent('Fixture refresh unavailable');
 });
@@ -701,11 +717,37 @@ afterEach(() => { mockLeaguesState.leagues.response = mockLeaguesState.leagues.r
 const runRetryBatch = async () => {
   await renderPredictionDesk();
   for (const id of [39, 78, 140]) fireEvent.click((await screen.findAllByRole('button', { name: new RegExp(retryLeagueNames[id]) }))[0]);
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Bet (run predictions)' })).toBeEnabled());
-  fireEvent.click(screen.getByRole('button', { name: 'Bet (run predictions)' }));
-  await screen.findByRole('button', { name: 'Bet (run predictions)' });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Generate Predictions' })).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', { name: 'Generate Predictions' }));
+  await screen.findByRole('button', { name: 'Generate Predictions' });
   await awaitHighlightsSettled();
 };
+
+it('enforces the four-league request cap and preserves the cooldown for a subsequent request', async () => {
+  setupLeagueRetryApi();
+  retryLeagueNames[61] = 'Ligue 1';
+  const base = mockLeaguesState.leagues.response[0];
+  mockLeaguesState.leagues.response.push(...[135, 61].map(id => ({
+    ...base, league: { ...base.league, id, name: retryLeagueNames[id] },
+    country: { ...base.country, name: id === 135 ? 'Italy' : 'France' },
+  })));
+  localStorage.setItem('popularLeagueIds_v1', JSON.stringify([39, 78, 135, 140, 61]));
+  await renderPredictionDesk();
+  for (const id of [39, 78, 135, 140]) fireEvent.click(screen.getByRole('button', { name: new RegExp(retryLeagueNames[id]) }));
+  expect(screen.getByText('4 of 4 leagues selected')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Ligue 1/ })).toBeDisabled();
+  const run = screen.getByRole('button', { name: 'Generate Predictions' });
+  await waitFor(() => expect(run).toBeEnabled());
+  fireEvent.click(run);
+  expect(await screen.findByText('Predictions ready.')).toBeInTheDocument();
+  expect(screen.getByText(/All forecasts and market details/)).toHaveTextContent('4 fixtures');
+  const request = post.mock.calls.find(([endpoint]) => endpoint === '/predictions/workspace/');
+  expect(request?.[1].leagues.map(({ leagueId }: { leagueId: number }) => leagueId)).toEqual([39, 78, 135, 140]);
+  fireEvent.click(screen.getByRole('button', { name: 'Add More Leagues' }));
+  fireEvent.click(screen.getByRole('button', { name: /Ligue 1/ }));
+  expect(screen.getByRole('button', { name: 'Generate Predictions' })).toBeDisabled();
+  expect(screen.getByText(/Next request in/)).toBeInTheDocument();
+});
 
 it('consolidates separate league batches and restores the complete fixture and bet-list inputs without browser storage', async () => {
   setupLeagueRetryApi();
@@ -718,15 +760,18 @@ it('consolidates separate league batches and restores the complete fixture and b
   await renderPredictionDesk();
   const runBatch = async (ids: number[]) => {
     for (const id of ids) fireEvent.click(screen.getAllByRole('button', { name: new RegExp(retryLeagueNames[id]) })[0]);
-    const run = screen.getByRole('button', { name: 'Bet (run predictions)' });
+    const run = screen.getByRole('button', { name: 'Generate Predictions' });
     await waitFor(() => expect(run).toBeEnabled());
     fireEvent.click(run);
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Bet (run predictions)' })).toBeEnabled());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Generate Predictions' })).toBeEnabled());
   };
   await runBatch([39, 78]);
   expect(screen.getByText(/All forecasts and market details/)).toHaveTextContent('2 fixtures');
   expect(screen.getAllByRole('button', { name: /Premier League/ })[0]).toHaveTextContent('Already predicted');
-  fireEvent.click(screen.getByRole('button', { name: 'Clear selected leagues' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Add More Leagues' }));
+  expect(screen.getByText('0 of 4 leagues selected')).toBeInTheDocument();
+  expect(screen.getByLabelText('Find a league')).toHaveFocus();
+  expect(screen.getByText(/All forecasts and market details/)).toHaveTextContent('2 fixtures');
   await runBatch([135, 140]);
   expect(screen.getByText(/All forecasts and market details/)).toHaveTextContent('4 fixtures');
   const predictionIds = () => {
@@ -801,7 +846,7 @@ it('retries only a failed league and season, preserves successful forecasts, and
   api.fixtureFailures.delete(`78:${currentYear}`);
   let before = get.mock.calls.length;
   fireEvent.click(screen.getByRole('button', { name: 'Retry Bundesliga', exact: true }));
-  await screen.findByRole('button', { name: 'Bet (run predictions)' });
+  await screen.findByRole('button', { name: 'Generate Predictions' });
   await awaitHighlightsSettled();
   let fixtureRequests = get.mock.calls.slice(before).filter(([endpoint]) => endpoint === '/fixtures/');
   expect(fixtureRequests).toHaveLength(1);
@@ -813,7 +858,7 @@ it('retries only a failed league and season, preserves successful forecasts, and
   api.fixtureFailures.delete(`140:${currentYear - 1}`);
   before = get.mock.calls.length;
   fireEvent.click(screen.getByRole('button', { name: 'Retry La Liga', exact: true }));
-  await screen.findByRole('button', { name: 'Bet (run predictions)' });
+  await screen.findByRole('button', { name: 'Generate Predictions' });
   await awaitHighlightsSettled();
   fixtureRequests = get.mock.calls.slice(before).filter(([endpoint]) => endpoint === '/fixtures/');
   expect(fixtureRequests).toHaveLength(1);
@@ -837,7 +882,7 @@ it('retries all failed leagues, disables duplicate retries, and keeps a failure 
   fireEvent.click(screen.getByRole('button', { name: 'Retry all failed leagues' }));
   expect(get.mock.calls.length).toBe(pendingCalls);
   await act(async () => { release(); });
-  await screen.findByRole('button', { name: 'Bet (run predictions)' });
+  await screen.findByRole('button', { name: 'Generate Predictions' });
   const fixtureRequests = get.mock.calls.slice(before).filter(([endpoint]) => endpoint === '/fixtures/');
   expect(new Set(fixtureRequests.map(([, options]) => options.params.league))).toEqual(new Set([78, 140]));
   expect(fixtureRequests.every(([, options]) => options.params.season === currentYear)).toBe(true);
@@ -859,7 +904,7 @@ it('handles a standings provider error per league and retries standings without 
   api.standingsFailures.delete(78);
   const before = get.mock.calls.length;
   fireEvent.click(screen.getByRole('button', { name: 'Retry Bundesliga', exact: true }));
-  await screen.findByRole('button', { name: 'Bet (run predictions)' });
+  await screen.findByRole('button', { name: 'Generate Predictions' });
   const requests = get.mock.calls.slice(before);
   expect(requests.filter(([endpoint]) => endpoint === '/fixtures/')).toHaveLength(0);
   const standings = requests.filter(([endpoint]) => endpoint === '/standings/');
@@ -885,7 +930,7 @@ it('offers retries for an entirely failed fixture batch even after clearing the 
   fireEvent.click(screen.getByRole('button', { name: 'Clear selected leagues' }));
   api.payloadFailures.delete(`78:${currentYear}`);
   fireEvent.click(screen.getByRole('button', { name: 'Retry Bundesliga', exact: true }));
-  await screen.findByRole('button', { name: 'Bet (run predictions)' });
+  await screen.findByRole('button', { name: 'Generate Predictions' });
   expect(document.getElementById('forecast-content-78099999')).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Retry Bundesliga', exact: true })).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Retry Premier League', exact: true })).toBeEnabled();

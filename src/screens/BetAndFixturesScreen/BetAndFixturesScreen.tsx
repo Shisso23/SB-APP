@@ -54,9 +54,11 @@ import type { MeResponse } from '../../services/access/types';
 import { getPredictionsByLeagueSeason, getPredictionsByFixture, getHighlightLevels, getPredictionWorkspace, savePredictionWorkspace, clearPredictionWorkspace, SavedPredictionLeague, MarketHighlight, PredictionEnvelopeRow } from '../../services/predictions';
 import { usePremiumRedirect } from '../../hooks/usePremiumRedirect';
 import { FORECAST_HIGHLIGHTS, ForecastId, LEGACY_FORECAST_IDS, visibleForecastPrediction } from '../../config/forecast-highlights';
+import { ProbabilityTrack } from './ProbabilityTrack';
 import { ForecastHighlight } from './ForecastHighlight';
-import { PredictionLoader, PredictionLoadingStage } from './PredictionLoader';
+import { PredictionLoader } from './PredictionLoader';
 import { SuggestedBetList } from './SuggestedBetList';
+import { CountryIndicator, LeagueOption } from './LeagueOption';
 import { LeagueLoadErrors, LeagueLoadFailure } from './LeagueLoadErrors';
 import { readPredictionsCache, writePredictionsCache, clearPredictionsCache, PREDICTION_CACHE_TTL, PredictionsCacheItem } from '../../services/prediction-cache';
 
@@ -263,8 +265,9 @@ type CountrySectionProps = {
   country: string;
   leagues: LeagueDataModel[];
   isOpenDefault?: boolean;
+  selectionLocked: boolean;
+  atLimit: boolean;
   isSelected: (id: number) => boolean;
-  disabledReason: (id: number) => string | null;
   savedStatus: (id: number) => string | null;
   onToggle: (league: LeagueDataModel, checked?: boolean) => void;
   onSelectAll: () => void;
@@ -276,7 +279,8 @@ const CountrySection: React.FC<CountrySectionProps> = ({
   leagues,
   isOpenDefault = false,
   isSelected,
-  disabledReason,
+  selectionLocked,
+  atLimit,
   savedStatus,
   onToggle,
   onSelectAll,
@@ -284,74 +288,28 @@ const CountrySection: React.FC<CountrySectionProps> = ({
 }) => {
   const [open, setOpen] = useState(isOpenDefault);
   const selectedCount = leagues.filter((l) => isSelected(l.league.id)).length;
-  const someSelected = selectedCount > 0 && selectedCount !== leagues.length;
-
   return (
-    <div className="border-b border-slate-700/40 last:border-none">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-slate-800/30"
-      >
-        <div className="flex items-center gap-3">
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-600 bg-slate-800 text-[10px] font-semibold text-slate-100">
-            {country.slice(0,2).toUpperCase()}
-          </span>
-          <div>
-            <div className="text-sm font-semibold text-slate-100">{country}</div>
-            <div className="text-xs text-slate-400">{leagues.length} league{leagues.length>1?'s':''}</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {someSelected && (
-            <span className="rounded-full border border-slate-600 bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-200">
-              {selectedCount} selected
-            </span>
-          )}
-          <svg className={`h-5 w-5 text-slate-300 transition ${open ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.06l3.71-3.83a.75.75 0 111.08 1.04l-4.25 4.38a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-          </svg>
-        </div>
+    <div className="border-b border-slate-700 last:border-0">
+      <button type="button" aria-expanded={open} onClick={() => setOpen(value => !value)}
+        className="flex min-h-[48px] w-full items-center gap-3 px-3 py-2 text-left hover:bg-slate-800">
+        <CountryIndicator country={leagues[0].country} />
+        <span className="flex-1 text-sm font-bold">{country}</span>
+        <span className="text-xs text-slate-300">{selectedCount ? `${selectedCount} selected` : `${leagues.length} leagues`}</span>
+        <span aria-hidden="true" className={open ? 'rotate-180' : ''}>⌄</span>
       </button>
-
       {open && (
-        <div className="px-4 pb-4">
-          <div className="mb-3 flex items-center gap-2 text-xs">
-            <button onClick={onSelectAll} className="rounded-lg border border-slate-600 bg-slate-800 px-2 py-1 text-slate-200 hover:bg-slate-700">Select all</button>
-            <button onClick={onClearAll} className="rounded-lg border border-slate-600 bg-slate-800 px-2 py-1 text-slate-200 hover:bg-slate-700">Clear</button>
+        <div className="space-y-2 px-3 pb-3">
+          <div className="flex flex-wrap gap-2">
+            <button type="button" disabled={selectionLocked || atLimit || selectedCount === leagues.length} onClick={onSelectAll}
+              className="min-h-[44px] rounded-lg border border-slate-600 px-3 text-xs font-semibold disabled:opacity-50">Select all up to limit</button>
+            <button type="button" disabled={selectionLocked || !selectedCount} onClick={onClearAll}
+              className="min-h-[44px] rounded-lg border border-slate-600 px-3 text-xs font-semibold disabled:opacity-50">Clear country selection</button>
           </div>
-
-          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {leagues.map((league) => {
-              const checked = isSelected(league.league.id);
-              const reason = disabledReason(league.league.id);
-              return (
-                <li
-                  key={league.league.id}
-                  className={`flex items-center justify-between rounded-xl border border-slate-700/60 p-3 transition ${
-                    reason ? 'opacity-60' : 'bg-slate-900/90 hover:border-slate-500'
-                  }`}
-                >
-                  <label className="flex flex-1 cursor-pointer items-center gap-3">
-                    <img src={league.league.logo} alt={league.league.name} className="h-6 w-6 rounded" />
-                    <div>
-                      <div className="text-sm font-medium text-slate-100">{league.league.name}</div>
-                      <div className="text-xs text-slate-400">{league.country.name}</div>
-                      {savedStatus(league.league.id) && <div className="text-xs text-emerald-300">{savedStatus(league.league.id)}</div>}
-                    </div>
-                  </label>
-                  <input
-                    type="checkbox"
-                    aria-label={league.league.name}
-                    checked={checked}
-                    disabled={!!reason && !checked}
-                    title={reason || ''}
-                    onChange={(e) => onToggle(league, e.target.checked)}
-                    className="h-5 w-5 rounded border-slate-600 bg-slate-800 accent-cyan-500"
-                  />
-                </li>
-              );
-            })}
-          </ul>
+          {leagues.map(league => (
+            <LeagueOption key={league.league.id} league={league} selected={isSelected(league.league.id)}
+              disabled={selectionLocked || (atLimit && !isSelected(league.league.id))}
+              savedStatus={savedStatus(league.league.id)} onToggle={() => onToggle(league)} />
+          ))}
         </div>
       )}
     </div>
@@ -445,58 +403,59 @@ export const EnginePredictionPanel: React.FC<{
   const forecastIds = [...firstMarkets, ...(Object.keys(FORECAST_HIGHLIGHTS) as ForecastId[]).filter(id => !firstMarkets.includes(id))];
   const hasSuggestions = forecastIds.some(id => highlights?.[id] && highlights[id].level !== 'none');
 
-  return (
-    <div className="mb-3 rounded-lg border border-indigo-400/30 bg-indigo-500/5 p-2">
-      <div className="mb-1 flex flex-wrap items-center gap-2">
-        <span className="rounded-full border border-indigo-400/40 bg-indigo-500/10 px-2 py-0.5 text-[10px] font-semibold text-indigo-100">
-          Statistical model
-        </span>
-        <span className="text-[10px] text-slate-300">
-          Base xG H–A {probabilities.expectedGoals.home.toFixed(2)}–{probabilities.expectedGoals.away.toFixed(2)}
-        </span>
-        <span className="text-[10px] text-slate-400">
-          samples H{dataQuality.homeSampleSize}/A{dataQuality.awaySampleSize}
-        </span>
-      </div>
-
-      <div className="grid grid-cols-3 gap-1 text-[10px] text-slate-200 sm:grid-cols-4">
-        {forecastIds.map((marketId) => {
-          const marketHighlight = highlights?.[marketId];
-          const preference = marketHighlight?.preference;
-          const probability = marketHighlight?.probability ?? undefined;
-          const validated = dataQuality.validatedMarkets.includes(marketId as MarketId);
-          const weak = dataQuality.weakMarkets.includes(marketId as MarketId);
-          return (
-            <div key={marketId} title={preference?.meaning} className="rounded border border-slate-700 bg-slate-900/70 px-1.5 py-1">
-              <div className="flex items-center justify-between gap-1">
-                <span className="truncate text-slate-400">{preference?.label ?? MARKET_LABELS[marketId as MarketId] ?? marketId}</span>
-                {validated && (
-                  <span title="Positive skill in the earlier evaluation only; later EPL goal-market results were weaker. Profitability unproven." className="shrink-0 rounded bg-emerald-500/20 px-1 text-[8px] font-semibold text-emerald-200">✓</span>
-                )}
-                {!validated && weak && (
-                  <span title="Weak or unvalidated edge over a simple baseline" className="shrink-0 rounded bg-amber-500/20 px-1 text-[8px] font-semibold text-amber-200">~</span>
-                )}
-              </div>
-              <div className="font-semibold text-slate-100">{probability === undefined ? 'Probability unavailable' : pct(probability)}</div>
-              {preference && <ForecastHighlight probability={probability} preference={preference} progressive={marketId === 'btts_yes'} level={marketHighlight?.level}
-                note={marketHighlight?.impliedBy ? 'qualifies via combined markets, not its own threshold.' : undefined} />}
-              <div className="mt-1 text-[9px] text-slate-400" title={preference?.meaning}>{preference?.isRange ? preference.meaning : null}</div>
-              {preference?.isRange && <div className="mt-1 text-[9px] text-slate-400">Base scoreline model: sum of matching outcomes in the complete normalized grid; separate from prior-blended totals.</div>}
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="mt-2 text-[10px] text-slate-400">Threshold-based suggestions compare forecasts with your configured market percentages. They do not establish accuracy or betting value.</div>
-      {!hasSuggestions && <div role="status" className="mt-1 text-[10px] text-slate-300">No forecasts meet the configured suggestion thresholds.</div>}
-      <div className="mt-1 text-[9px] text-slate-400">
-        ✓ earlier baseline study only · ~ weak/unvalidated · goal model: {dataQuality.goalModel}
-      </div>
-      {dataQuality.goalModel === 'prior-blended' && (
-        <div className="mt-1 text-[9px] text-slate-400">
-          BTTS and standard over/under percentages use the separate prior-blended goal model; base xG above is used for 1X2 and team-to-score.
+  const renderMarket = (marketId: ForecastId) => {
+    const marketHighlight = highlights?.[marketId];
+    const preference = marketHighlight?.preference;
+    const probability = marketHighlight?.probability ?? undefined;
+    const validated = dataQuality.validatedMarkets.includes(marketId as MarketId);
+    const weak = dataQuality.weakMarkets.includes(marketId as MarketId);
+    return (
+      <div key={marketId} className="min-w-0 rounded-lg border border-slate-700 bg-[#0d1626] p-3" title={preference?.meaning}>
+        <div className="flex items-center justify-between gap-1">
+          <span className="break-words text-sm font-semibold text-slate-200">{preference?.label ?? MARKET_LABELS[marketId as MarketId] ?? marketId}</span>
+          {validated && (
+            <span title="Positive skill in the earlier evaluation only; later EPL goal-market results were weaker. Profitability unproven." className="shrink-0 rounded bg-emerald-500/20 px-1 text-[8px] font-semibold text-emerald-200">✓</span>
+          )}
+          {!validated && weak && (
+            <span title="Weak or unvalidated edge over a simple baseline" className="shrink-0 rounded bg-amber-500/20 px-1 text-[8px] font-semibold text-amber-200">~</span>
+          )}
         </div>
-      )}
+        <div className="mt-1 text-sm font-bold tabular-nums text-emerald-200">{probability === undefined ? 'Probability unavailable' : pct(probability)}</div>
+        <ProbabilityTrack value={probability} />
+        {preference && <ForecastHighlight probability={probability} preference={preference} progressive={marketId === 'btts_yes'} level={marketHighlight?.level}
+          note={marketHighlight?.impliedBy ? 'qualifies via combined markets, not its own threshold.' : undefined} />}
+        <div className="mt-1 text-xs text-slate-400" title={preference?.meaning}>{preference?.isRange ? preference.meaning : null}</div>
+        {preference?.isRange && <div className="mt-1 text-xs text-slate-400">Base scoreline model: sum of matching outcomes in the complete normalized grid; separate from prior-blended totals.</div>}
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-3 rounded-xl border border-slate-700 bg-[#111c2e] p-3 sm:p-4">
+      <div>
+        <h4 className="text-sm font-bold text-white">Model probabilities</h4>
+        <p className="mt-1 text-xs leading-relaxed text-slate-300">Each percentage estimates the chance of that match outcome. Results can differ from the model’s forecast.</p>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        {firstMarkets.map(renderMarket)}
+      </div>
+      <details className="rounded-lg border border-slate-700">
+        <summary className="cursor-pointer px-3 py-3 text-sm font-bold text-emerald-200">More prediction options</summary>
+        <div className="grid gap-2 px-3 pb-3 sm:grid-cols-2 xl:grid-cols-3">
+          {forecastIds.slice(firstMarkets.length).map(renderMarket)}
+        </div>
+      </details>
+      {!hasSuggestions && <p role="status" className="text-xs text-slate-300">No forecasts meet the configured suggestion thresholds.</p>}
+      <details className="rounded-lg border border-slate-700">
+        <summary className="cursor-pointer px-3 py-3 text-sm font-bold text-slate-200">Model and data notes</summary>
+        <div className="space-y-2 px-3 pb-3 text-xs leading-relaxed text-slate-300">
+          <p>Base expected goals: home {probabilities.expectedGoals.home.toFixed(2)}, away {probabilities.expectedGoals.away.toFixed(2)}.</p>
+          <p>Match samples: home {dataQuality.homeSampleSize}, away {dataQuality.awaySampleSize}.</p>
+          <p>Suggestion thresholds govern which options are highlighted. The percentages describe individual match outcomes.</p>
+          <p>✓ Earlier baseline study only · ~ Weak or unvalidated · Goal model: {dataQuality.goalModel}</p>
+          {dataQuality.goalModel === 'prior-blended' && <p>Both teams to score and standard goal totals use the prior-blended goal model. Match result and team-to-score estimates use the base expected goals above.</p>}
+        </div>
+      </details>
 
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <button
@@ -575,6 +534,10 @@ const BetAndFixturesScreen: React.FC = () => {
   const [allLeagues, setAllLeagues] = useState<LeagueDataModel[] | null>(null);
 
   // Search (debounced)
+  const leagueSearchRef = useRef<HTMLInputElement>(null);
+  const [batchFeedback, setBatchFeedback] = useState<{
+    owner: string | undefined; mode: PredictionMode; window: string; fixtures: number; partial: boolean;
+  } | null>(null);
   const [rawSearch, setRawSearch] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const popularLeagueIds = useMemo(() => readPopularLeagueIds(), []);
@@ -612,7 +575,7 @@ const BetAndFixturesScreen: React.FC = () => {
   const [failedLeagueLoads, setFailedLeagueLoads] = useState<Record<number, LeagueLoadFailure>>({});
   const [retryingLeagueIds, setRetryingLeagueIds] = useState<number[]>([]);
   const [favoritePredictions, setFavoritePredictions] = useState<FavoritePredictionItem[]>(() => readFavoritesCache());
-  const [isLeaguesByCountryCollapsed, setIsLeaguesByCountryCollapsed] = useState(false);
+  const [isLeaguesByCountryCollapsed, setIsLeaguesByCountryCollapsed] = useState(true);
   const [isBetOptionsCollapsed, setIsBetOptionsCollapsed] = useState(true);
   const [expandedForecasts, setExpandedForecasts] = useState<Record<string, boolean>>({});
 
@@ -803,11 +766,6 @@ const BetAndFixturesScreen: React.FC = () => {
     const saved = savedLeagues.find(entry => entry.leagueId === id && entry.season === season);
     return saved ? saved.predictions > 0 ? 'Already predicted · saved' : 'Saved league · no current forecasts' : null;
   };
-  const disabledReason = (id: number): string | null => {
-    if (isSelected(id)) return null;
-    if (selectedBatch.length >= MAX_BATCH) return `You can select up to ${MAX_BATCH} leagues per bet.`;
-    return null;
-  };
   const toggleLeague = (league: LeagueDataModel, checked?: boolean) => {
     setSelectedBatch((prev) => {
       const exists = prev.some((l) => l.league.id === league.league.id);
@@ -832,9 +790,16 @@ const BetAndFixturesScreen: React.FC = () => {
     setSelectedBatch((prev) => prev.filter((l) => !leagues.some((x) => x.league.id === l.league.id)));
   };
   const resetSelection = () => setSelectedBatch([]);
+  const addMoreLeagues = () => {
+    resetSelection();
+    setRawSearch('');
+    setSearchQuery('');
+    leagueSearchRef.current?.focus();
+  };
 
   const clearPredictions = async () => {
     setClearingPredictions(true);
+    setBatchFeedback(null);
     try {
       if (signedIn && hasPredictionAccess === true) await clearPredictionWorkspace();
     } catch (error) {
@@ -1167,9 +1132,7 @@ const BetAndFixturesScreen: React.FC = () => {
   // ===== BET flow =====
   const [loadingBatch, setLoadingBatch] = useState(false);
   const predictionRunInFlight = useRef(false);
-  const [predictionLoading, setPredictionLoading] = useState<{ stage: PredictionLoadingStage; leagueCount: number; includeOdds: boolean }>({
-    stage: 'fixtures', leagueCount: 0, includeOdds: true,
-  });
+  const [requestLeagueCount, setRequestLeagueCount] = useState(0);
   const predictionLoaderRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!loadingBatch) return;
@@ -1268,8 +1231,9 @@ const BetAndFixturesScreen: React.FC = () => {
     const runIds = new Set(runLeagues.map(league => league.league.id));
     const runFailures: Record<number, LeagueLoadFailure> = {};
     setRetryingLeagueIds(retryFailures ? Array.from(runIds) : []);
-    setPredictionLoading({ stage: 'fixtures', leagueCount: runLeagues.length, includeOdds: predictionMode === 'statistical' });
+    setRequestLeagueCount(runLeagues.length);
     setLoadingBatch(true);
+    setBatchFeedback(null);
     setFixtureLoadWarnings([]);
 
     try {
@@ -1309,8 +1273,6 @@ const BetAndFixturesScreen: React.FC = () => {
       });
     }
 
-    // Stage changes follow actual work; there is no simulated percentage or timer-driven progress.
-    setPredictionLoading(previous => ({ ...previous, stage: 'standings' }));
     // ensure standings
     const standingsResult = await ensureStandingsFor(runLeagues, new Set(runLeagues.filter(league =>
       failedLeagueLoads[league.league.id]?.standings || retryFailures?.some(failure => failure.league.league.id === league.league.id && failure.standings)
@@ -1357,7 +1319,6 @@ const BetAndFixturesScreen: React.FC = () => {
       }
     }
 
-    setPredictionLoading(previous => ({ ...previous, stage: 'form' }));
     // Let the browser paint the status before synchronous prediction calculations.
     await new Promise<void>(resolve => window.setTimeout(resolve, 0));
     const freshPred = runPredict({
@@ -1372,7 +1333,6 @@ const BetAndFixturesScreen: React.FC = () => {
     const publishedPredictions = new Map<number, FixturePrediction>();
     const oddsMessages: Record<number, string> = {};
     if (predictionMode === 'statistical') {
-      setPredictionLoading(previous => ({ ...previous, stage: 'odds' }));
       leagueLoop: for (const league of runLeagues) {
         const season = league.seasons.find((entry) => entry.current)?.year ?? league.seasons[0]?.year;
         if (!season) continue;
@@ -1418,7 +1378,6 @@ const BetAndFixturesScreen: React.FC = () => {
       return { ...updated, ...runFailures };
     });
 
-    setPredictionLoading(previous => ({ ...previous, stage: 'forecasts' }));
     await new Promise<void>(resolve => window.setTimeout(resolve, 0));
     let engineResultsForCache: FixturePrediction[] = [];
     // Statistical engine: calibrated probabilities + explanations for every fixture.
@@ -1480,6 +1439,7 @@ const BetAndFixturesScreen: React.FC = () => {
       ...freshPred,
     ];
 
+    let batchForecasts = engineResultsForCache;
     if (predictionMode === 'statistical') {
       const successful = runLeagues.filter(league => !runFailures[league.league.id]
         && Array.from(publishedPredictions.values()).some(prediction => prediction.fixture.league.id === league.league.id));
@@ -1496,6 +1456,7 @@ const BetAndFixturesScreen: React.FC = () => {
             .filter((prediction): prediction is FixturePrediction => prediction !== null);
           setEnginePredictions(Object.fromEntries(consolidated.map(prediction => [prediction.fixture.fixture.id, prediction])));
           setSavedLeagues(response.data.leagues);
+          batchForecasts = consolidated.filter(prediction => runIds.has(prediction.fixture.league.id));
           consolidated.forEach(prediction => mergedAll.push(prediction.fixture));
           setWorkspaceError('');
         } catch (error) {
@@ -1558,6 +1519,15 @@ const BetAndFixturesScreen: React.FC = () => {
     // Start cooldown only after the full allowed batch has been fetched.
     if (fetchedLeagueCount >= MAX_BATCH) {
       setLastBetAt(Date.now());
+    }
+
+    const batchFixtureIds = predictionMode === 'statistical'
+      ? batchForecasts.map(prediction => prediction.fixture.fixture.id)
+      : freshPred.flatMap(entry => entry.fixtures.map(fixture => fixture.fixture.id));
+    const fixtures = new Set(batchFixtureIds).size;
+    const partial = Object.keys(runFailures).length > 0;
+    if (accountRef.current === runOwner && (fixtures > 0 || !partial)) {
+      setBatchFeedback({ owner: runOwner, mode: predictionMode, window: predictionRangeLabel, fixtures, partial });
     }
 
     } catch (error) {
@@ -1695,415 +1665,336 @@ const BetAndFixturesScreen: React.FC = () => {
     return () => { highlightsRequestIdRef.current += 1; };
   }, [visibleEnginePredictions, predictionMode, workspaceReady]);
 
-  // ===== Render =====
+  const dateRangeValid = Boolean(fromDate && toDate && fromDate <= toDate);
+  const canGenerate = canBet && !loadingBatch && !initialising && signedIn && hasPredictionAccess === true && dateRangeValid;
+  const atSelectionLimit = selectedBatch.length >= MAX_BATCH;
+  const displayedLeagues = searchQuery.trim() ? quickSearchLeagues : popularLeagues;
+  const feedback = hasPredictionAccess === true && batchFeedback?.owner === user?.uid &&
+    batchFeedback?.mode === predictionMode && batchFeedback?.window === predictionRangeLabel ? batchFeedback : null;
+  const generationHint = betDisabledReason
+    ?? (hasPredictionAccess === false ? 'Choose an access pass to generate predictions.'
+      : hasPredictionAccess === null ? (workspaceError ? 'Retry the access check to continue.' : 'Checking prediction access…')
+        : !cacheReady || (predictionMode === 'statistical' && !workspaceReady) ? 'Loading your saved predictions…'
+          : !dateRangeValid ? 'Choose an end date on or after the start date.'
+            : msLeft > 0 ? `Next request in ${Math.ceil(msLeft / 1000)}s. You can select more leagues now.`
+              : selectedBatch.length === 0 ? 'Select at least one league to start.'
+                : 'This usually takes about a minute.');
+
   return (
-    <div className="relative min-h-screen overflow-hidden bg-slate-900 text-white" style={{ fontFamily: '"Avenir Next", "Segoe UI", sans-serif' }}>
-      {showPredictionGuide && (
-        <aside aria-label="How to run predictions" className="border-b border-cyan-300/30 bg-gradient-to-r from-cyan-950 via-slate-900 to-sky-950">
-          <div className="mx-auto flex max-w-[1440px] items-start gap-3 px-4 py-3 sm:px-6">
-            <div className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full border border-cyan-300/40 bg-cyan-400/15 text-sm font-bold text-cyan-100">1</div>
-            <div className="min-w-0 flex-1 text-sm">
-              <div className="font-bold text-white">How to run predictions</div>
-              <p className="mt-0.5 text-slate-200">
-                Select up to <strong className="text-cyan-100">4 leagues</strong>, then scroll down and press <strong className="text-cyan-100">“Bet (run predictions)”</strong>. It usually takes about <strong className="text-cyan-100">1 minute</strong> to prepare.
+    <main className="min-h-screen bg-[#0d1626] text-white">
+      <header className="border-b border-slate-700">
+        <div className="mx-auto max-w-7xl px-4 py-7 sm:px-8 sm:py-10">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">PredictXI Prediction Desk</h1>
+            {hasPredictionAccess && <span className="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1 text-xs font-bold text-emerald-200">Premium active</span>}
+          </div>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-300 sm:text-base">
+            Choose up to {MAX_BATCH} leagues, generate predictions, then review the match probabilities. Add more leagues to build on the results you already have.
+          </p>
+          {!!displayedFixtureIds.length && <a href="#prediction-results" className="mt-2 inline-flex min-h-[44px] items-center text-sm font-semibold text-emerald-300 underline underline-offset-4">Jump to predictions</a>}
+
+          {showPredictionGuide && hasPredictionAccess === true && (
+            <aside aria-label="How to run predictions" className="mt-4 flex items-start justify-between gap-3 rounded-xl border border-slate-700 bg-[#152136] px-4 py-3">
+              <p className="max-w-2xl self-center text-sm text-slate-200">
+                Match dates determine which fixtures appear. A request usually takes about a minute.
               </p>
-            </div>
-            <button type="button" aria-label="Dismiss prediction guide"
-              onClick={() => {
-                setShowPredictionGuide(false);
-                try { sessionStorage.setItem('predictxi_prediction_guide_dismissed', 'true'); } catch { /* Keep in-memory dismissal if storage is unavailable. */ }
-              }}
-              className="-mr-1 shrink-0 rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white" title="Dismiss guide">
-              <span aria-hidden="true">×</span>
-            </button>
-          </div>
-        </aside>
-      )}
-      <div className="relative">
-        <div className="sticky top-0 z-30 border-b border-slate-700 bg-slate-900 backdrop-blur-xl">
-          <div className="mx-auto max-w-[1440px] px-4 py-4 sm:px-6">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+              <button type="button" aria-label="Dismiss prediction guide" className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-xl hover:bg-slate-700"
+                onClick={() => {
+                  setShowPredictionGuide(false);
+                  try { sessionStorage.setItem('predictxi_prediction_guide_dismissed', 'true'); } catch { /* Use in-memory dismissal. */ }
+                }}>×</button>
+            </aside>
+          )}
+          {!initialising && (!signedIn || hasPredictionAccess === false) && (
+            <section aria-label="Prediction access" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-300/30 bg-emerald-300/10 p-4">
               <div>
-                <h1 className="text-2xl font-bold tracking-tight text-white">PredictXI Prediction Desk</h1>
-                <p className="mt-1 text-sm text-slate-200">Search leagues fast, pick options, and view published forecasts for fixtures in your date window.</p>
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                  <span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-cyan-100">Selected leagues: {selectedBatch.length}/{MAX_BATCH} · maximum 4 leagues</span>
-                  {predictionMode === 'legacy' && (
-                    <span className="rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-sky-100">Active legacy options: {selectedOptions.length}</span>
-                  )}
-                  <span className="rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-slate-300">
-                    {predictionMode === 'statistical' ? 'Statistical model' : 'Legacy rules'} · {displayedFixtureIds.length} fixtures
-                  </span>
-                </div>
-                <div className="mt-3 inline-flex rounded-lg border border-slate-600 bg-slate-950 p-1" role="group" aria-label="Prediction model">
-                  <button
-                    type="button"
-                    aria-pressed={predictionMode === 'statistical'}
-                    onClick={() => changePredictionMode('statistical')}
-                    className={`rounded-md px-3 py-1.5 text-xs font-semibold ${predictionMode === 'statistical' ? 'bg-cyan-600 text-white' : 'text-slate-300 hover:bg-slate-800'}`}
-                  >
-                    Statistical
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={predictionMode === 'legacy'}
-                    onClick={() => changePredictionMode('legacy')}
-                    className={`rounded-md px-3 py-1.5 text-xs font-semibold ${predictionMode === 'legacy' ? 'bg-cyan-600 text-white' : 'text-slate-300 hover:bg-slate-800'}`}
-                  >
-                    Legacy rules
-                  </button>
-                </div>
-                <p className="mt-1 text-[10px] text-slate-400">
-                  {predictionMode === 'statistical'
-                    ? 'Probabilities, price comparison, eligible picks and rejection reasons.'
-                    : 'Original rule-based fixture matches; choose legacy markets below.'}
-                </p>
-                {predictionMode === 'statistical' && signedIn && hasPredictionAccess === false && (
-                  <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-                    <span>An active prediction pass is required to view statistical forecasts.</span>
-                    <Link to="/access" className="rounded-lg bg-amber-400 px-3 py-1.5 font-bold text-slate-900 hover:bg-amber-300">Get a pass</Link>
-                  </div>
-                )}
+                <p className="font-bold">{!signedIn ? 'Sign in to generate predictions' : me?.prediction_access_ends_at ? 'Your premium access has expired' : 'Unlock predictions for your leagues'}</p>
+                <p className="mt-1 text-sm text-slate-200">An active prediction pass is required to create a shortlist for your preferred leagues.</p>
               </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <Link to={signedIn ? '/access' : '#account'} state={signedIn ? { reason: 'premium-required' } : undefined}
+                  className="inline-flex min-h-[44px] items-center rounded-lg bg-emerald-300 px-4 text-sm font-bold text-slate-900 hover:bg-emerald-200">
+                  {signedIn ? 'View access passes' : 'Sign in'}
+                </Link>
+                <Link to="/history" className="inline-flex min-h-[44px] items-center text-sm font-semibold text-emerald-200 underline underline-offset-4">Explore free results</Link>
+              </div>
+            </section>
+          )}
+        </div>
+      </header>
 
-              <div className="rounded-2xl border border-slate-600 bg-slate-800 p-3">
-                <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-200">Prediction Date Range</div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <DatePicker
-                    className="w-[140px] rounded-lg border border-slate-500 bg-white px-2 py-1.5 text-xs text-slate-900"
-                    disabled={!cacheReady || predictionMode === 'statistical' && !workspaceReady}
-                    selected={fromDate}
-                    maxDate={maxPredictionDate}
-                    onChange={(d: Date) => setFromDate(d)}
-                  />
-                  <span className="text-xs text-slate-200">to</span>
-                  <DatePicker
-                    className="w-[140px] rounded-lg border border-slate-500 bg-white px-2 py-1.5 text-xs text-slate-900"
-                    disabled={!cacheReady || predictionMode === 'statistical' && !workspaceReady}
-                    selected={toDate}
-                    maxDate={maxPredictionDate}
-                    onChange={(d: Date) => setToDate(d)}
-                  />
-                </div>
-                <div className="mt-2 text-[11px] text-slate-200">Current window: {predictionRangeLabel}</div>
-                {me && predictionDeadline !== null && hasPredictionAccess && (
-                  <p className="mt-2 text-[11px] text-amber-200">
-                    Eligible kickoffs must be before {new Date(predictionDeadline).toLocaleString()}.
-                    Your pass expiry or the seven-day limit applies, whichever is sooner.
-                  </p>
-                )}
+      <div className="mx-auto grid max-w-7xl items-start gap-5 px-4 py-6 sm:px-8 lg:grid-cols-[minmax(0,23rem)_minmax(0,1fr)]">
+        <aside aria-label="Prediction request" className="min-w-0 space-y-4">
+          <section className="rounded-2xl border border-slate-700 bg-[#152136] p-4 sm:p-5" aria-labelledby="league-selection">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 id="league-selection" className="text-xl font-bold tracking-tight">Select your leagues</h2>
+              <p aria-live="polite" className="text-sm font-semibold text-emerald-200">{selectedBatch.length} of {MAX_BATCH} leagues selected</p>
+            </div>
+            <div aria-hidden="true" className="mt-3 grid grid-cols-4 gap-1.5">
+              {Array.from({ length: MAX_BATCH }, (_, index) => (
+                <span key={index} className={`h-1 rounded-full ${index < selectedBatch.length ? 'bg-emerald-300' : 'bg-slate-700'}`} />
+              ))}
+            </div>
+
+            <div className="mt-4">
+              <label htmlFor="league-search" className="text-sm font-semibold text-slate-100">Find a league</label>
+              <div className="mt-1.5 flex items-center gap-2">
+                <input id="league-search" ref={leagueSearchRef} value={rawSearch} onChange={event => setRawSearch(event.target.value)}
+                  placeholder="Search country or league…"
+                  className="min-h-[44px] min-w-0 flex-1 rounded-lg border border-slate-500 bg-[#0d1626] px-3 text-sm text-white placeholder:text-slate-400 focus:border-emerald-300" />
+                {rawSearch && <button type="button" aria-label="Clear league search" onClick={() => { setRawSearch(''); setSearchQuery(''); }}
+                  className="h-11 rounded-lg border border-slate-600 px-3 text-sm text-slate-200 hover:bg-slate-800">Clear</button>}
               </div>
             </div>
-          </div>
-        </div>
 
-        <div className="mx-auto grid max-w-[1440px] grid-cols-1 gap-5 px-4 py-5 sm:px-6 lg:grid-cols-12">
-          <div className="space-y-4 lg:col-span-5 xl:col-span-4 lg:sticky lg:top-28 lg:self-start">
-            <div className="rounded-2xl border border-slate-600 bg-slate-900 p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <div>
-                  <h2 className="text-base font-bold text-white">League Selection</h2>
-                  <p className="text-xs text-slate-200">Search by country or league and build your batch quickly.</p>
-                </div>
-                <button
-                  onClick={resetSelection}
-                  className="rounded-lg border border-slate-600 bg-slate-800 px-2.5 py-1.5 text-[11px] text-slate-300 hover:bg-slate-700"
-                >
-                  Clear selected leagues
-                </button>
-              </div>
+            <h3 className="mb-2 mt-4 text-sm font-semibold text-slate-300">{searchQuery.trim() ? 'Search results' : 'Popular leagues'}</h3>
+            {displayedLeagues.length ? (
+              <ul className="max-h-60 space-y-2 overflow-y-auto pr-1">
+                {displayedLeagues.map(league => (
+                  <li key={league.league.id}>
+                    <LeagueOption league={league} selected={isSelected(league.league.id)}
+                      disabled={loadingBatch || (atSelectionLimit && !isSelected(league.league.id))}
+                      savedStatus={savedStatus(league.league.id)} onToggle={() => toggleLeague(league)} />
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p role="status" className="text-sm text-slate-300">{isLoadingLeagues ? 'Loading leagues…' :
+                searchQuery.trim() ? 'No leagues match your search.' :
+                  signedIn ? 'Search or browse by country to find a league.' : 'Sign in to load the league catalogue.'}</p>
+            )}
 
-              <div className="mb-2 flex items-center gap-2">
-                <input
-                  value={rawSearch}
-                  onChange={(e) => setRawSearch(e.target.value)}
-                  placeholder="Search country or league..."
-                  className="flex-1 rounded-xl border border-slate-500 bg-white px-3 py-2.5 text-sm text-slate-900 caret-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
-                />
-                <button
-                  onClick={() => {
-                    setRawSearch('');
-                    setSearchQuery('');
-                  }}
-                  className="rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-slate-300 hover:bg-slate-700"
-                >
-                  Clear
-                </button>
-              </div>
-
-              {searchQuery.trim() && (
-                <div className="mb-3 rounded-xl border border-slate-700 bg-slate-950/70 p-2">
-                  <div className="mb-2 text-[11px] font-semibold text-slate-300">Quick Search Results</div>
-                  {quickSearchLeagues.length === 0 ? (
-                    <div className="text-[11px] text-slate-400">No direct league matches found.</div>
-                  ) : (
-                    <div className="flex max-h-32 flex-wrap gap-1.5 overflow-y-auto pr-1">
-                      {quickSearchLeagues.map((league) => {
-                        const selected = isSelected(league.league.id);
-                        return (
-                          <button
-                            key={`quick-${league.league.id}`}
-                            onClick={() => toggleLeague(league)}
-                            className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-semibold ${
-                              selected
-                                ? 'border-cyan-300/60 bg-cyan-500/20 text-cyan-100'
-                                : 'border-slate-600 bg-slate-800 text-slate-200 hover:border-slate-500'
-                            }`}
-                          >
-                            <img src={league.league.logo} alt={league.league.name} className="h-3 w-3 rounded-full" />
-                            <span className="max-w-[100px] truncate">{league.league.name}</span>
-                            {savedStatus(league.league.id) && <span className="text-emerald-300">{savedStatus(league.league.id)}</span>}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="mb-2 flex items-center justify-between">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Popular Leagues</div>
-              </div>
-
-              <div className="mb-3 flex flex-wrap gap-2">
-                {popularLeagues.map((league) => {
-                  const selected = isSelected(league.league.id);
-                  return (
-                    <button
-                      key={league.league.id}
-                      onClick={() => toggleLeague(league)}
-                      className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1.5 text-[11px] font-semibold transition ${
-                        selected
-                          ? 'border-cyan-300/60 bg-cyan-500/20 text-cyan-100'
-                          : 'border-slate-600 bg-slate-800 text-slate-200 hover:border-slate-500'
-                      }`}
-                    >
-                      <img src={league.league.logo} alt={league.league.name} className="h-3.5 w-3.5 rounded-full" />
-                      <span className="max-w-[120px] truncate">{league.league.name}</span>
-                      <span className="hidden text-[10px] text-slate-400 sm:inline">{league.country.name}</span>
-                      {savedStatus(league.league.id) && <span className="text-emerald-300">{savedStatus(league.league.id)}</span>}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Selected Leagues</div>
-              {selectedBatch.length === 0 ? (
-                <div className="mt-2 rounded-xl border border-dashed border-slate-700 bg-slate-900/60 p-2 text-xs text-slate-500">No leagues selected yet.</div>
-              ) : (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {selectedBatch.map((league) => (
-                    <button
-                      key={league.league.id}
-                      onClick={() => toggleLeague(league, false)}
-                      className="inline-flex max-w-full items-center gap-2 rounded-full border border-cyan-400/40 bg-cyan-500/10 px-2.5 py-1 text-[11px] text-cyan-100"
-                    >
-                      <span className="truncate">{league.league.name}</span>
-                      <span className="text-cyan-300">x</span>
-                    </button>
+            <div className="mt-4 overflow-hidden rounded-xl border border-slate-700 bg-[#111c2e]">
+              <button type="button" aria-expanded={!isLeaguesByCountryCollapsed}
+                onClick={() => setIsLeaguesByCountryCollapsed(value => !value)}
+                className="flex min-h-[44px] w-full items-center justify-between gap-2 px-3 text-left text-sm font-semibold hover:bg-slate-800">
+                Browse leagues by country <span aria-hidden="true">{isLeaguesByCountryCollapsed ? '+' : '−'}</span>
+              </button>
+              {!isLeaguesByCountryCollapsed && (
+                <div className="max-h-80 overflow-y-auto border-t border-slate-700">
+                  {isLoadingLeagues ? (
+                    <div className="grid place-items-center py-6"><CircularProgress size={24} aria-label="Loading leagues" /></div>
+                  ) : filteredGroups.length === 0 ? (
+                    <p className="p-4 text-sm text-slate-300">No leagues found.</p>
+                  ) : filteredGroups.map(([country, countryLeagues], index) => (
+                    <CountrySection key={country} country={country} leagues={countryLeagues} isOpenDefault={index < 4}
+                      isSelected={isSelected} selectionLocked={loadingBatch} atLimit={atSelectionLimit}
+                      savedStatus={savedStatus} onToggle={toggleLeague}
+                      onSelectAll={() => selectAllInCountry(countryLeagues)} onClearAll={() => clearAllInCountry(countryLeagues)} />
                   ))}
                 </div>
               )}
             </div>
 
-            {predictionMode === 'legacy' && <div className="rounded-2xl border border-slate-600 bg-slate-900 p-4">
-              <button
-                onClick={() => setIsBetOptionsCollapsed((value) => !value)}
-                className="mb-2 flex w-full items-center justify-between text-left"
-              >
-                <div className="text-sm font-bold text-white">Bet Options</div>
-                <span className="text-xs text-slate-300">{isBetOptionsCollapsed ? 'Show' : 'Hide'}</span>
-              </button>
-              {!isBetOptionsCollapsed && (
-                <div className="grid max-h-72 grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
-                  {betOptions.map((option) => {
-                    const active = selectedOptions.some((o) => o.id === option.id);
-                    return (
-                      <button
-                        key={option.id}
-                        onClick={() => addOrRemoveBetOptions(option.id)}
-                        className={`rounded-xl border px-3 py-2 text-left transition ${
-                          active
-                            ? 'border-cyan-400 bg-cyan-600/90 text-white'
-                            : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500'
-                        }`}
-                        title={option.description}
-                      >
-                        <div className="text-xs font-semibold">{option.name}</div>
-                        <div className={`mt-1 text-[11px] ${active ? 'text-cyan-100' : 'text-slate-400'}`}>
-                          {option.description || option.shortName}
-                        </div>
+            {selectedBatch.length > 0 && (
+              <div className="mt-4">
+                <ul aria-label="Selected leagues" className="flex flex-wrap gap-2">
+                  {selectedBatch.map(league => (
+                    <li key={league.league.id}>
+                      <button type="button" aria-label={`Remove ${league.league.name}`} disabled={loadingBatch} onClick={() => toggleLeague(league, false)}
+                        className="inline-flex min-h-[36px] items-center gap-2 rounded-full border border-emerald-300/40 px-3 text-xs font-semibold text-emerald-200 hover:bg-emerald-300/10">
+                        {league.league.name} <span aria-hidden="true">×</span>
                       </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>}
+                    </li>
+                  ))}
+                </ul>
+                <button type="button" onClick={resetSelection} disabled={loadingBatch}
+                  className="min-h-[44px] text-xs font-semibold text-slate-300 underline underline-offset-4 disabled:opacity-50">Clear selected leagues</button>
+              </div>
+            )}
 
-            <div className="rounded-2xl border border-slate-600 bg-slate-900">
-              <button
-                onClick={() => setIsLeaguesByCountryCollapsed((value) => !value)}
-                className="flex w-full items-center justify-between border-b border-slate-700/50 px-4 py-3 text-left"
-              >
-                <div className="text-sm font-bold text-white">Leagues by Country</div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-slate-400">{filteredGroups.reduce((acc, [, leagues]) => acc + leagues.length, 0)} results</span>
-                  <span className="text-xs text-slate-300">{isLeaguesByCountryCollapsed ? 'Show' : 'Hide'}</span>
+            <div className="mt-4 border-t border-slate-700 pt-4">
+              <h3 className="text-sm font-bold">Match dates</h3>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <div className="min-w-0">
+                  <label htmlFor="prediction-from" className="mb-1 block text-xs text-slate-300">From</label>
+                  <DatePicker id="prediction-from" wrapperClassName="w-full" className="min-h-[44px] w-full rounded-lg border border-slate-500 bg-white px-2 text-sm text-slate-900"
+                    disabled={loadingBatch || !cacheReady || predictionMode === 'statistical' && !workspaceReady}
+                    selected={fromDate} maxDate={maxPredictionDate} onChange={(date: Date | null) => { if (date) setFromDate(date); }} />
                 </div>
-              </button>
-              {!isLeaguesByCountryCollapsed && (
-                <div className="max-h-[48vh] overflow-y-auto">
-                  {isLoadingLeagues ? (
-                    <div className="grid place-items-center py-12"><CircularProgress /></div>
-                  ) : filteredGroups.length === 0 ? (
-                    <div className="p-6 text-sm text-slate-400">No matches for your current search.</div>
-                  ) : (
-                    filteredGroups.map(([country, leagues], idx) => (
-                      <CountrySection
-                        key={country}
-                        country={country}
-                        leagues={leagues}
-                        isOpenDefault={idx < 4}
-                        isSelected={isSelected}
-                        disabledReason={disabledReason}
-                        savedStatus={savedStatus}
-                        onToggle={toggleLeague}
-                        onSelectAll={() => selectAllInCountry(leagues)}
-                        onClearAll={() => clearAllInCountry(leagues)}
-                      />
-                    ))
-                  )}
+                <div className="min-w-0">
+                  <label htmlFor="prediction-to" className="mb-1 block text-xs text-slate-300">To</label>
+                  <DatePicker id="prediction-to" wrapperClassName="w-full" className="min-h-[44px] w-full rounded-lg border border-slate-500 bg-white px-2 text-sm text-slate-900"
+                    disabled={loadingBatch || !cacheReady || predictionMode === 'statistical' && !workspaceReady}
+                    selected={toDate} maxDate={maxPredictionDate} onChange={(date: Date | null) => { if (date) setToDate(date); }} />
                 </div>
+              </div>
+              {me && predictionDeadline !== null && hasPredictionAccess && (
+                <p className="mt-2 text-xs leading-relaxed text-slate-300">
+                  Eligible kickoffs must be before {new Date(predictionDeadline).toLocaleString()}. Your pass expiry or the seven-day limit applies, whichever is sooner.
+                </p>
               )}
             </div>
 
-            <div className="rounded-2xl border border-slate-600 bg-slate-900 p-4">
-              <div className="mb-2 text-xs text-slate-200">Published forecasts for fixtures between:</div>
-              <div className="mb-3 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm font-semibold text-slate-200">
-                {predictionRangeLabel}
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-xs text-slate-400">{msLeft > 0 ? `Cooldown: ${Math.ceil(msLeft / 1000)}s` : 'Ready'}</div>
-                <button
-                  onClick={() => handleBet(true)}
-                  disabled={!canBet || loadingBatch || !signedIn || initialising}
-                  className={`rounded-xl px-5 py-2.5 text-sm font-semibold transition ${
-                    !canBet || loadingBatch || !signedIn || initialising
-                      ? 'cursor-not-allowed bg-slate-800 text-slate-400'
-                      : 'bg-cyan-600 text-white shadow-lg hover:bg-cyan-500'
-                  }`}
-                >
-                  {loadingBatch ? 'Preparing forecasts…' : 'Bet (run predictions)'}
+            <button type="button" onClick={() => handleBet(true)} disabled={!canGenerate} aria-describedby="prediction-request-hint"
+              className="mt-5 flex min-h-[48px] w-full items-center justify-center rounded-lg bg-emerald-300 px-4 text-sm font-extrabold text-slate-900 enabled:hover:bg-emerald-200 disabled:bg-slate-700 disabled:text-slate-300">
+              {loadingBatch ? 'Preparing forecasts…' : 'Generate Predictions'}
+            </button>
+            <p id="prediction-request-hint" className="mt-2 text-center text-xs leading-relaxed text-slate-300">
+              {loadingBatch ? 'Your request is in progress.' : generationHint}
+            </p>
+          </section>
+
+          <section aria-label="Prediction settings" className="rounded-2xl border border-slate-700 bg-[#152136] p-4">
+            <h2 className="text-sm font-bold">Prediction model</h2>
+            <div className="mt-2 inline-flex flex-wrap gap-1 rounded-lg border border-slate-600 bg-[#0d1626] p-1" role="group" aria-label="Prediction model">
+              {(['statistical', 'legacy'] as const).map(mode => (
+                <button key={mode} type="button" disabled={loadingBatch} aria-pressed={predictionMode === mode}
+                  onClick={() => changePredictionMode(mode)}
+                  className={`min-h-[40px] rounded-md px-3 text-xs font-bold ${predictionMode === mode ? 'bg-emerald-300/20 text-emerald-200' : 'text-slate-200 hover:bg-slate-800'}`}>
+                  {mode === 'statistical' ? 'Statistical' : 'Legacy rules'}
                 </button>
-              </div>
+              ))}
             </div>
-          </div>
-
-          <div className="space-y-4 lg:col-span-7 xl:col-span-8">
-            {(!cacheReady || predictionMode === 'statistical' && !workspaceReady) && <div role="status" className="rounded-xl border border-slate-600 bg-slate-900 p-3 text-sm text-slate-200">Restoring saved forecasts…</div>}
-            {workspaceError && <div role="alert" className="rounded-xl border border-amber-400/40 p-3 text-sm text-amber-100">
-              {workspaceError}
-              <button type="button" onClick={() => setRestoreAttempt(value => value + 1)} className="ml-3 underline">Retry saved forecasts</button>
-            </div>}
-            {loadingBatch && <div ref={predictionLoaderRef} className="scroll-mt-48">
-              <PredictionLoader {...predictionLoading} hasPreviousForecasts={displayedFixtureIds.length > 0} />
-            </div>}
-            <LeagueLoadErrors failures={Object.values(failedLeagueLoads)} warnings={fixtureLoadWarnings}
-              loading={loadingBatch} retryingIds={retryingLeagueIds} onRetry={failures => handleBet(true, failures)} />
-            <SuggestedBetList
-              predictions={visibleEnginePredictions}
-              loading={loadingBatch}
-              statistical={predictionMode === 'statistical'}
-              ready={!initialising && workspaceReady && hasPredictionAccess === true}
-              selectedPickKeys={selectedStatisticalPickKeys}
-              onReview={prediction => onFixtureClick(prediction.fixture)()}
-              onTogglePick={toggleStatisticalPick}
-            />
-            <details open aria-busy={loadingBatch} className="border-t border-slate-700 p-2">
-              <summary className="cursor-pointer py-2 text-sm font-semibold text-slate-300">
-                {predictionMode === 'statistical' ? 'All forecasts and market details' : 'Legacy fixture results'} · {displayedFixtureIds.length} fixtures
-              </summary>
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <span className="text-xs text-slate-400">{predictionRangeLabel}</span>
-                <button type="button" onClick={clearPredictions} disabled={loadingBatch || clearingPredictions || !cacheReady || predictionMode === 'statistical' && !workspaceReady}
-                  className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-2 py-1 text-[11px] font-semibold text-rose-200 hover:bg-rose-500/20 disabled:opacity-50">Clear predictions</button>
+            <p className="mt-2 text-xs leading-relaxed text-slate-300">
+              {predictionMode === 'statistical' ? 'Review published model probabilities and suggested selections.' : 'Use the original rule-based filters to find matching fixtures.'}
+            </p>
+            {predictionMode === 'legacy' && (
+              <div className="mt-4 border-t border-slate-700 pt-2">
+                <button type="button" aria-expanded={!isBetOptionsCollapsed} onClick={() => setIsBetOptionsCollapsed(value => !value)}
+                  className="flex min-h-[44px] w-full items-center justify-between text-left text-sm font-bold">
+                  Prediction options <span className="text-xs font-normal text-slate-300">{selectedOptions.length} selected</span>
+                </button>
+                {!isBetOptionsCollapsed && (
+                  <div className="grid max-h-72 gap-2 overflow-y-auto pr-1">
+                    {betOptions.map(option => {
+                      const selected = selectedOptions.some(entry => entry.id === option.id);
+                      return <button key={option.id} type="button" aria-pressed={selected} disabled={loadingBatch}
+                        onClick={() => addOrRemoveBetOptions(option.id)}
+                        className={`rounded-lg border px-3 py-2 text-left ${selected ? 'border-emerald-300/60 bg-emerald-300/10' : 'border-slate-700 bg-[#0d1626]'}`}>
+                        <span className="block text-sm font-semibold">{option.name}</span>
+                        <span className="mt-1 block text-xs text-slate-300">{option.description || option.shortName}</span>
+                      </button>;
+                    })}
+                  </div>
+                )}
               </div>
-              {displayedFixtureIds.length > 0 && (
-                <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label="Forecast expansion controls">
-                  <button type="button" onClick={() => setExpandedForecasts(previous => ({ ...previous, ...Object.fromEntries(displayedFixtureIds.map(id => [id, true])) }))}
-                    className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700">Expand all</button>
-                  <button type="button" onClick={() => setExpandedForecasts(previous => ({ ...previous, ...Object.fromEntries(displayedFixtureIds.map(id => [id, false])) }))}
-                    className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700">Collapse all</button>
-                </div>
-              )}
-              {displayedFixtureIds.length === 0 && loadingBatch ? (
-                <div aria-hidden="true" className="space-y-3 py-3">
-                  {[0, 1, 2].map(row => <div key={row} className="rounded-xl border border-slate-700/60 bg-slate-900 p-4 motion-safe:animate-pulse">
-                    <div className="mb-3 h-3 w-2/5 rounded bg-slate-700" />
-                    <div className="grid grid-cols-3 gap-2">{[0, 1, 2].map(cell => <div key={cell} className="h-12 rounded bg-slate-800" />)}</div>
-                  </div>)}
-                </div>
-              ) : displayedFixtureIds.length === 0 ? (
-                <div className="grid place-items-center py-16 text-sm text-slate-400">
-                  {Object.keys(failedLeagueLoads).length > 0 || fixtureLoadWarnings.length > 0 ? (
-                    <p className="max-w-xl text-center text-sm text-slate-200">Some data could not be loaded. See the notice and retry controls above.</p>
-                  ) : selectedBatch.length > 0 ? (
-                    <div className="max-w-xl text-center text-xs text-slate-300">
-                      No fixtures were returned for the selected leagues and date range. Current-season fixture or team-history access may be restricted by the API plan; no model snapshot or paper entry was created.
-                    </div>
-                  ) : (
-                    'No predictions yet. Select leagues, choose options, and press Bet.'
-                  )}
-                </div>
-              ) : (
-                <div className="max-h-[70vh] space-y-3 overflow-y-auto pr-1">
-                  {displayedFixtureIds.map((fixtureId) => {
-                    const currentFixture = currentFixtures.find((f) => `${f.fixture.id}` === fixtureId);
-                    if (!currentFixture) return null;
-                    const enginePrediction = enginePredictions[Number(fixtureId)];
-                    const expanded = expandedForecasts[fixtureId] === true;
-                    const matchLabel = `${currentFixture.teams.home.name} vs ${currentFixture.teams.away.name}`;
+            )}
+          </section>
+        </aside>
 
-                    return (
-                      <div key={fixtureId} className="rounded-xl border border-slate-700/70 bg-slate-900 p-3">
-                        <div className="flex flex-col gap-2 border-b border-slate-800/80 pb-2 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-slate-100">
-                            <div className="flex min-w-0 items-center gap-1.5">
-                              <img src={currentFixture.teams.home.logo} alt="" className="h-7 w-7 shrink-0 rounded-full bg-slate-800 object-contain p-0.5" />
-                              <span className="truncate">{currentFixture.teams.home.name}</span>
-                            </div>
-                            <span className="shrink-0 text-xs font-normal text-slate-500">vs</span>
-                            <div className="flex min-w-0 items-center gap-1.5">
-                              <img src={currentFixture.teams.away.logo} alt="" className="h-7 w-7 shrink-0 rounded-full bg-slate-800 object-contain p-0.5" />
-                              <span className="truncate">{currentFixture.teams.away.name}</span>
-                            </div>
-                          </div>
-                          <div className="flex shrink-0 flex-wrap items-center gap-2">
-                          <button type="button" aria-expanded={expanded} aria-controls={`forecast-content-${fixtureId}`}
-                            aria-label={`${expanded ? 'Collapse' : 'Expand'} forecast for ${matchLabel}`}
-                            title={expanded ? 'Collapse forecast' : 'Expand forecast'}
-                            onClick={() => setExpandedForecasts(previous => ({ ...previous, [fixtureId]: !expanded }))}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300">
-                            <svg aria-hidden="true" focusable="false" className={`h-4 w-4 ${expanded ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={onFixtureClick(currentFixture)}
-                            className="rounded-lg border border-cyan-500/50 bg-cyan-500/10 px-3 py-1 text-[11px] font-semibold text-cyan-200 hover:bg-cyan-500/20"
-                          >
-                            View details
-                          </button>
-                          </div>
-                        </div>
+        <section aria-labelledby="prediction-results" className="min-w-0 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 id="prediction-results" tabIndex={-1} className="scroll-mt-4 text-2xl font-extrabold tracking-tight">Your predictions</h2>
+              <p className="mt-1 text-sm text-slate-300">{predictionRangeLabel}</p>
+            </div>
+            {hasPredictionAccess && (displayedFixtureIds.length > 0 || feedback) && (
+              <button type="button" onClick={addMoreLeagues} disabled={loadingBatch}
+                className="min-h-[44px] rounded-lg border border-emerald-300/60 px-4 text-sm font-bold text-emerald-200 hover:bg-emerald-300/10 disabled:opacity-50">
+                <span aria-hidden="true">+ </span>Add More Leagues
+              </button>
+            )}
+          </div>
+          {feedback && (
+            <p role="status" className={`rounded-xl border p-4 text-sm ${feedback.fixtures ? 'border-emerald-300/40 bg-emerald-300/10 text-emerald-100' : 'border-slate-600 bg-[#152136] text-slate-200'}`}>
+              {feedback.fixtures ? (
+                <><strong>{feedback.partial ? 'Some predictions are ready.' : 'Predictions ready.'}</strong>{' '}
+                  {feedback.fixtures} {feedback.fixtures === 1 ? 'match' : 'matches'} in this request. Use Add More Leagues to start another request.</>
+              ) : 'This request found no predictions for the selected leagues and dates. Try a different league or date range.'}
+            </p>
+          )}
+          {hasPredictionAccess === true && (!cacheReady || predictionMode === 'statistical' && !workspaceReady) && <div role="status" className="rounded-xl border border-slate-600 bg-slate-900 p-3 text-sm text-slate-200">Restoring saved forecasts…</div>}
+          {workspaceError && <div role="alert" className="rounded-xl border border-amber-400/40 p-3 text-sm text-amber-100">
+            {workspaceError}
+            <button type="button" onClick={() => setRestoreAttempt(value => value + 1)} className="ml-3 underline">Retry access and saved predictions</button>
+          </div>}
+          {loadingBatch && <div ref={predictionLoaderRef} className="scroll-mt-4">
+            <PredictionLoader leagueCount={requestLeagueCount} statistical={predictionMode === 'statistical'} hasPreviousForecasts={displayedFixtureIds.length > 0} />
+          </div>}
+          <LeagueLoadErrors failures={Object.values(failedLeagueLoads)} warnings={fixtureLoadWarnings}
+            loading={loadingBatch} retryingIds={retryingLeagueIds} onRetry={failures => handleBet(true, failures)} />
+          <SuggestedBetList
+            predictions={visibleEnginePredictions}
+            loading={loadingBatch}
+            statistical={predictionMode === 'statistical'}
+            ready={!initialising && workspaceReady && hasPredictionAccess === true}
+            selectedPickKeys={selectedStatisticalPickKeys}
+            onReview={prediction => onFixtureClick(prediction.fixture)()}
+            onTogglePick={toggleStatisticalPick}
+          />
+          <details open aria-busy={loadingBatch} className="rounded-2xl border border-slate-700 bg-[#152136] p-4">
+            <summary className="cursor-pointer py-2 text-base font-bold text-white">
+              {predictionMode === 'statistical' ? 'All forecasts and market details' : 'Legacy fixture results'} · {displayedFixtureIds.length} fixtures
+            </summary>
+            <div className="mb-3 flex justify-end">
+              <button type="button" onClick={clearPredictions} disabled={loadingBatch || clearingPredictions || !cacheReady || predictionMode === 'statistical' && !workspaceReady}
+                className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-2 py-1 text-[11px] font-semibold text-rose-200 hover:bg-rose-500/20 disabled:opacity-50">Clear predictions</button>
+            </div>
+            {displayedFixtureIds.length > 0 && (
+              <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label="Forecast expansion controls">
+                <button type="button" onClick={() => setExpandedForecasts(previous => ({ ...previous, ...Object.fromEntries(displayedFixtureIds.map(id => [id, true])) }))}
+                  className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700">Expand all</button>
+                <button type="button" onClick={() => setExpandedForecasts(previous => ({ ...previous, ...Object.fromEntries(displayedFixtureIds.map(id => [id, false])) }))}
+                  className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-700">Collapse all</button>
+              </div>
+            )}
+            {displayedFixtureIds.length === 0 && loadingBatch ? (
+              <div aria-hidden="true" className="space-y-3 py-3">
+                {[0, 1, 2].map(row => <div key={row} className="rounded-xl border border-slate-700/60 bg-slate-900 p-4 motion-safe:animate-pulse">
+                  <div className="mb-3 h-3 w-2/5 rounded bg-slate-700" />
+                  <div className="grid grid-cols-3 gap-2">{[0, 1, 2].map(cell => <div key={cell} className="h-12 rounded bg-slate-800" />)}</div>
+                </div>)}
+              </div>
+            ) : displayedFixtureIds.length === 0 ? (
+              <div className="grid place-items-center py-16 text-sm text-slate-400">
+                {Object.keys(failedLeagueLoads).length > 0 || fixtureLoadWarnings.length > 0 ? (
+                  <p className="max-w-xl text-center text-sm text-slate-200">Some data could not be loaded. See the notice and retry controls above.</p>
+                ) : feedback?.fixtures === 0 ? (
+                  <div className="max-w-xl text-center text-xs text-slate-300">
+                    No forecasts are available in this date range.
+                  </div>
+                ) : (
+                  hasPredictionAccess ? 'Select leagues and generate predictions to see match forecasts here.' : 'Match forecasts appear here when you generate predictions with an active pass.'
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {displayedFixtureIds.map((fixtureId) => {
+                  const currentFixture = currentFixtures.find((f) => `${f.fixture.id}` === fixtureId);
+                  if (!currentFixture) return null;
+                  const enginePrediction = enginePredictions[Number(fixtureId)];
+                  const expanded = expandedForecasts[fixtureId] === true;
+                  const finalScore = currentFixture.fixture.status.short === 'FT' ? currentFixture.score?.fulltime : null;
+                  const matchLabel = `${currentFixture.teams.home.name} vs ${currentFixture.teams.away.name}`;
 
-                        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-400">
-                          <span>{currentFixture.league.name} ({currentFixture.league.country})</span>
-                          <span className="text-slate-600">·</span>
-                          <span>{toMomentDate(currentFixture.fixture.date).format('DD MMMM YYYY HH:mm')}</span>
-                        </div>
+                  return (
+                    <article key={fixtureId} className="rounded-xl border border-slate-700 bg-[#0d1626] p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs text-slate-300">
+                        <span className="font-semibold text-emerald-200">{currentFixture.league.name} · {currentFixture.league.country}</span>
+                        <time dateTime={currentFixture.fixture.date}>{toMomentDate(currentFixture.fixture.date).format('DD MMM YYYY · HH:mm')}</time>
+                      </div>
+                      <h3 className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-base font-bold">
+                        <span className="flex min-w-0 items-center gap-2">
+                          <img src={currentFixture.teams.home.logo} alt="" className="h-7 w-7 shrink-0 rounded bg-slate-800 object-contain p-0.5" />
+                          <span className="min-w-0 break-words">{currentFixture.teams.home.name}</span>
+                        </span>
+                        <span className="text-xs font-normal text-slate-300">vs</span>
+                        <span className="flex min-w-0 items-center gap-2">
+                          <img src={currentFixture.teams.away.logo} alt="" className="h-7 w-7 shrink-0 rounded bg-slate-800 object-contain p-0.5" />
+                          <span className="min-w-0 break-words">{currentFixture.teams.away.name}</span>
+                        </span>
+                      </h3>
+                      {finalScore && Number.isFinite(finalScore.home) && Number.isFinite(finalScore.away) && (
+                        <p className="mt-2 text-sm font-bold text-slate-200">Final score · {finalScore.home}–{finalScore.away}</p>
+                      )}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button type="button" aria-expanded={expanded} aria-controls={`forecast-content-${fixtureId}`}
+                          aria-label={`${expanded ? 'Collapse' : 'Expand'} forecast for ${matchLabel}`}
+                          onClick={() => setExpandedForecasts(previous => ({ ...previous, [fixtureId]: !expanded }))}
+                          className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-600 px-3 text-xs font-bold text-emerald-200 hover:bg-slate-800">
+                          {expanded ? 'Hide predictions' : 'Show predictions'}
+                          <svg aria-hidden="true" className={`h-4 w-4 ${expanded ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </button>
+                        <button type="button" onClick={onFixtureClick(currentFixture)}
+                          className="min-h-[44px] rounded-lg px-3 text-xs font-semibold text-slate-200 hover:bg-slate-800">
+                          View details
+                        </button>
+                      </div>
 
-                        <div id={`forecast-content-${fixtureId}`} hidden={!expanded} className="mt-2">
+                      <div id={`forecast-content-${fixtureId}`} hidden={!expanded} className="mt-2">
                         {predictionMode === 'statistical' && enginePrediction && (
                           <EnginePredictionPanel
                             prediction={enginePrediction}
@@ -2137,136 +2028,127 @@ const BetAndFixturesScreen: React.FC = () => {
                             );
                           })}
                         </div>
-                        </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </details>
-            {selectedPaperPicks.length > 0 && (
-              <details className="mb-2 border-t border-slate-700/60 pt-2">
-                <summary className="cursor-pointer text-xs font-semibold text-slate-300">
-                  My saved picks · {selectedPaperPicks.length} selected
-                </summary>
-                  <div className="mt-2 space-y-1.5">
-                    {selectedPaperPicks.map((pick) => {
-                      const key = `${pick.fixtureId}:${pick.marketId}`;
-                      return (
-                        <div key={key} className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-700 bg-slate-950/70 p-2 text-[10px]">
-                          <div className="text-slate-200">
-                            <span className="font-semibold">{pick.homeTeam} vs {pick.awayTeam}</span>
-                            {' · '}{pick.label}
-                            {' · model '}{pct(pick.modelProbability)}
-                            {' · odds '}{pick.decimalOdds.toFixed(2)}{pick.bookmaker ? ` ${pick.bookmaker}` : ''}
-                            {' · edge '}{pct(pick.edge, 1)}
-                            {' · EV '}{pct(pick.expectedValue, 1)}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const next = selectedStatisticalPickKeys.filter((existing) => existing !== key);
-                              setSelectedStatisticalPickKeys(next);
-                              try { localStorage.setItem(STATISTICAL_PICKS_KEY, JSON.stringify(next)); } catch {}
-                            }}
-                            className="rounded border border-slate-600 px-2 py-1 text-slate-300 hover:border-rose-400/50 hover:text-rose-200"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      );
-                    })}
-                    <div className="text-[9px] text-slate-500">Selections from the same match are correlated; this list does not account for combined stake or portfolio risk.</div>
-                  </div>
-              </details>
-            )}
-
-            <div className="rounded-2xl border border-slate-700/60 bg-slate-900/80 p-3">
-              <div className="mb-2 flex items-center justify-between">
-                <div className="text-sm font-semibold text-slate-100">Favorite Predictions</div>
-                {favoritePredictions.length > 0 && (
-                  <button
-                    onClick={() => setFavoritePredictions([])}
-                    className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-700"
-                  >
-                    Clear all
-                  </button>
-                )}
+                    </article>
+                  );
+                })}
               </div>
-
-              {favoritePredictions.length === 0 ? (
-                <div className="py-4 text-xs text-slate-400">Save predictions from fixture cards and they will appear here.</div>
-              ) : (
-                <div className="max-h-60 space-y-2 overflow-y-auto pr-1">
-                  {favoritePredictions.map((favorite) => (
-                    <div key={`${favorite.fixtureId}-${favorite.optionId}`} className="rounded-xl border border-slate-700/60 bg-slate-900 p-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="rounded-md border border-sky-400/30 bg-sky-500/10 px-2 py-1 text-[11px] font-semibold text-sky-100">
-                          {favorite.optionShortName}
+            )}
+          </details>
+          {selectedPaperPicks.length > 0 && (
+            <details className="mb-2 border-t border-slate-700/60 pt-2">
+              <summary className="cursor-pointer text-xs font-semibold text-slate-300">
+                My saved picks · {selectedPaperPicks.length} selected
+              </summary>
+                <div className="mt-2 space-y-1.5">
+                  {selectedPaperPicks.map((pick) => {
+                    const key = `${pick.fixtureId}:${pick.marketId}`;
+                    return (
+                      <div key={key} className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-700 bg-slate-950/70 p-2 text-[10px]">
+                        <div className="text-slate-200">
+                          <span className="font-semibold">{pick.homeTeam} vs {pick.awayTeam}</span>
+                          {' · '}{pick.label}
+                          {' · model '}{pct(pick.modelProbability)}
+                          {' · odds '}{pick.decimalOdds.toFixed(2)}{pick.bookmaker ? ` ${pick.bookmaker}` : ''}
+                          {' · edge '}{pct(pick.edge, 1)}
+                          {' · EV '}{pct(pick.expectedValue, 1)}
+                          {pick.settled && (
+                            <p className="mt-1 font-semibold">
+                              {pick.settled.won === null ? 'Push' : pick.settled.won ? 'Won' : 'Lost'} · Final score {pick.settled.homeGoals}–{pick.settled.awayGoals}
+                            </p>
+                          )}
                         </div>
-                        <div className="text-[10px] text-slate-400">Saved {moment(favorite.savedAt).fromNow()}</div>
-                      </div>
-
-                      <div className="mt-2 flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2 text-xs text-slate-100">
-                          <img src={favorite.homeTeamLogo} className="h-4 w-4" />
-                          <span>{favorite.homeTeamName}</span>
-                        </div>
-                        <span className="text-[10px] text-slate-500">vs</span>
-                        <div className="flex items-center gap-2 text-xs text-slate-100">
-                          <span>{favorite.awayTeamName}</span>
-                          <img src={favorite.awayTeamLogo} className="h-4 w-4" />
-                        </div>
-                      </div>
-
-                      <div className="mt-1 text-[11px] text-slate-300">{favorite.optionDescription}</div>
-                      <div className="mt-1 text-[10px] text-slate-400">
-                        {favorite.leagueName} ({favorite.leagueCountry}) · {toMomentDate(favorite.fixtureDate).format('DD MMM YYYY HH:mm')}
-                      </div>
-
-                      <div className="mt-2 flex items-center gap-2">
                         <button
-                          onClick={() => openFavoriteFixture(favorite)}
-                          className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-2 py-1 text-[11px] font-semibold text-cyan-200 hover:bg-cyan-500/20"
-                        >
-                          View fixture
-                        </button>
-                        <button
-                          onClick={() =>
-                            setFavoritePredictions((prev) =>
-                              prev.filter(
-                                (item) => !(item.fixtureId === favorite.fixtureId && item.optionId === favorite.optionId)
-                              )
-                            )
-                          }
-                          className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-700"
+                          type="button"
+                          onClick={() => {
+                            const next = selectedStatisticalPickKeys.filter((existing) => existing !== key);
+                            setSelectedStatisticalPickKeys(next);
+                            try { localStorage.setItem(STATISTICAL_PICKS_KEY, JSON.stringify(next)); } catch {}
+                          }}
+                          className="rounded border border-slate-600 px-2 py-1 text-slate-300 hover:border-rose-400/50 hover:text-rose-200"
                         >
                           Remove
                         </button>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
+                  <div className="text-[9px] text-slate-500">Selections from the same match are correlated; this list does not account for combined stake or portfolio risk.</div>
                 </div>
+            </details>
+          )}
+
+          <div className="rounded-2xl border border-slate-700/60 bg-slate-900/80 p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <div className="text-sm font-semibold text-slate-100">Favorite Predictions</div>
+              {favoritePredictions.length > 0 && (
+                <button
+                  onClick={() => setFavoritePredictions([])}
+                  className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-700"
+                >
+                  Clear all
+                </button>
               )}
             </div>
 
+            {favoritePredictions.length === 0 ? (
+              <div className="py-4 text-xs text-slate-400">Save predictions from fixture cards and they will appear here.</div>
+            ) : (
+              <div className="max-h-60 space-y-2 overflow-y-auto pr-1">
+                {favoritePredictions.map((favorite) => (
+                  <div key={`${favorite.fixtureId}-${favorite.optionId}`} className="rounded-xl border border-slate-700/60 bg-slate-900 p-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="rounded-md border border-sky-400/30 bg-sky-500/10 px-2 py-1 text-[11px] font-semibold text-sky-100">
+                        {favorite.optionShortName}
+                      </div>
+                      <div className="text-[10px] text-slate-400">Saved {moment(favorite.savedAt).fromNow()}</div>
+                    </div>
 
+                    <div className="mt-2 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 text-xs text-slate-100">
+                        <img src={favorite.homeTeamLogo} alt="" className="h-4 w-4" />
+                        <span>{favorite.homeTeamName}</span>
+                      </div>
+                      <span className="text-[10px] text-slate-500">vs</span>
+                      <div className="flex items-center gap-2 text-xs text-slate-100">
+                        <span>{favorite.awayTeamName}</span>
+                        <img src={favorite.awayTeamLogo} alt="" className="h-4 w-4" />
+                      </div>
+                    </div>
+
+                    <div className="mt-1 text-[11px] text-slate-300">{favorite.optionDescription}</div>
+                    <div className="mt-1 text-[10px] text-slate-400">
+                      {favorite.leagueName} ({favorite.leagueCountry}) · {toMomentDate(favorite.fixtureDate).format('DD MMM YYYY HH:mm')}
+                    </div>
+
+                    <div className="mt-2 flex items-center gap-2">
+                      <button
+                        onClick={() => openFavoriteFixture(favorite)}
+                        className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-2 py-1 text-[11px] font-semibold text-cyan-200 hover:bg-cyan-500/20"
+                      >
+                        View fixture
+                      </button>
+                      <button
+                        onClick={() =>
+                          setFavoritePredictions((prev) =>
+                            prev.filter(
+                              (item) => !(item.fixtureId === favorite.fixtureId && item.optionId === favorite.optionId)
+                            )
+                          )
+                        }
+                        className="rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-[11px] text-slate-300 hover:bg-slate-700"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        </div>
-      </div>
 
-      <button
-        onClick={() => handleBet(true)}
-        disabled={!canBet || loadingBatch || !signedIn || initialising}
-        className={`fixed bottom-5 right-4 z-30 rounded-full px-5 py-3 text-sm font-semibold shadow-xl transition lg:hidden ${
-          !canBet || loadingBatch || !signedIn || initialising
-            ? 'cursor-not-allowed bg-slate-800/90 text-slate-400'
-            : 'bg-cyan-600 text-white hover:bg-cyan-500'
-        }`}
-        title={msLeft > 0 ? `Cooldown: ${Math.ceil(msLeft / 1000)}s` : 'Bet now'}
-      >
-        {loadingBatch ? 'Preparing…' : 'Bet'}
-      </button>
+
+        </section>
+      </div>
 
       {/* Modal (unchanged) */}
       <Modal
@@ -2281,11 +2163,11 @@ const BetAndFixturesScreen: React.FC = () => {
             <div className="flex items-center gap-3">
               {selectedFixtureRow && (
                 <>
-                  <img src={selectedFixtureRow.teams.home.logo} className="h-6 w-6" />
+                  <img src={selectedFixtureRow.teams.home.logo} alt="" className="h-6 w-6" />
                   <span className="text-sm font-semibold text-slate-100">{selectedFixtureRow.teams.home.name}</span>
                   <span className="text-xs text-slate-400">vs</span>
                   <span className="text-sm font-semibold text-slate-100">{selectedFixtureRow.teams.away.name}</span>
-                  <img src={selectedFixtureRow.teams.away.logo} className="h-6 w-6" />
+                  <img src={selectedFixtureRow.teams.away.logo} alt="" className="h-6 w-6" />
                 </>
               )}
             </div>
@@ -2337,7 +2219,7 @@ const BetAndFixturesScreen: React.FC = () => {
           </div>
         </div>
       </Modal>
-    </div>
+    </main>
   );
 };
 

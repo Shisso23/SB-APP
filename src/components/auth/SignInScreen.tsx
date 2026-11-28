@@ -56,7 +56,7 @@ const SignInScreen: React.FC = () => {
 
   if (initialising) {
     return (
-      <div role="status" className="grid min-h-screen place-items-center bg-slate-950 text-slate-300">
+      <div role="status" className="py-2 text-sm text-slate-600">
         Checking your session…
       </div>
     );
@@ -64,15 +64,15 @@ const SignInScreen: React.FC = () => {
 
   if (user) {
     return (
-      <div className="flex items-center gap-3 text-xs text-slate-300">
-        <span className="hidden sm:inline">{user.email}</span>
+      <div className="flex flex-col items-start gap-3 text-sm text-slate-700">
+        <span className="max-w-full break-all">{user.email}</span>
         <button
           type="button"
           onClick={async () => {
             await signOut();
             markSignedOut();
           }}
-          className="rounded-lg border border-slate-600 px-3 py-1.5 font-semibold text-slate-200 hover:border-rose-400/50 hover:text-rose-200"
+          className="min-h-[44px] rounded-lg border border-slate-300 px-3 font-semibold text-slate-800 hover:bg-slate-100"
         >
           Sign out
         </button>
@@ -81,9 +81,9 @@ const SignInScreen: React.FC = () => {
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-2 rounded-2xl border border-slate-600 bg-slate-800 p-3 sm:flex-row sm:items-end">
+    <form onSubmit={submit} className="flex flex-col gap-3">
       <div>
-        <label htmlFor="predictxi-email" className="block text-[11px] font-semibold uppercase tracking-wide text-slate-300">Email</label>
+        <label htmlFor="predictxi-email" className="block text-[11px] font-semibold uppercase tracking-wide text-slate-700">Email</label>
         <input
           id="predictxi-email"
           type="email"
@@ -91,11 +91,11 @@ const SignInScreen: React.FC = () => {
           required
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          className="mt-1 w-full rounded-lg border border-slate-500 bg-white px-2 py-1.5 text-sm text-slate-900"
+          className="mt-1 w-full rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-sm text-slate-900"
         />
       </div>
       <div>
-        <label htmlFor="predictxi-password" className="block text-[11px] font-semibold uppercase tracking-wide text-slate-300">Password</label>
+        <label htmlFor="predictxi-password" className="block text-[11px] font-semibold uppercase tracking-wide text-slate-700">Password</label>
         <input
           id="predictxi-password"
           type="password"
@@ -104,24 +104,24 @@ const SignInScreen: React.FC = () => {
           minLength={6}
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          className="mt-1 w-full rounded-lg border border-slate-500 bg-white px-2 py-1.5 text-sm text-slate-900"
+          className="mt-1 w-full rounded-lg border border-slate-400 bg-white px-3 py-2.5 text-sm text-slate-900"
         />
       </div>
       <button
         type="submit"
         disabled={busy}
-        className="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+        className="min-h-[44px] rounded-lg bg-teal-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
       >
         {busy ? 'Please wait…' : mode === 'sign-in' ? 'Sign in' : 'Create account'}
       </button>
       <button
         type="button"
         onClick={() => { setMode(mode === 'sign-in' ? 'register' : 'sign-in'); setError(''); }}
-        className="text-xs font-semibold text-cyan-200 underline"
+        className="min-h-[44px] text-sm font-semibold text-teal-800 underline"
       >
         {mode === 'sign-in' ? 'Need an account?' : 'Have an account?'}
       </button>
-      {error && <div role="alert" className="text-xs text-rose-200 sm:ml-2">{error}</div>}
+      {error && <div role="alert" className="text-sm text-rose-800">{error}</div>}
     </form>
   );
 };

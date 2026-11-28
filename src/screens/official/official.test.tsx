@@ -10,7 +10,7 @@
  * All API calls are mocked. No test performs a real network request.
  */
 import React from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 import OfficialHistoryScreen from './OfficialHistoryScreen';
@@ -116,9 +116,9 @@ const previewOf = (overrides: Partial<OfficialPreviewResponse> = {}): OfficialPr
   ...overrides,
 });
 
-const renderScreen = () =>
+const renderScreen = (url = '/history') =>
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[url]}>
       <OfficialHistoryScreen />
     </MemoryRouter>,
   );
@@ -148,9 +148,13 @@ describe('public history screen', () => {
   it('renders without any authentication call', async () => {
     mockAll();
     renderScreen();
-    expect(await screen.findByRole('heading', { name: 'Prediction history' })).toBeInTheDocument();
-    // Only the four public endpoints are used; nothing membership-related.
+    expect(screen.getByRole('heading', { name: 'Results & Daily Picks' })).toBeInTheDocument();
+    await screen.findByText('Strong goals signal.');
     expect(mocked.getOfficialToday).toHaveBeenCalled();
+    expect(mocked.getOfficialHistory).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('link', { name: 'Past Results' }));
+    expect(await screen.findByRole('heading', { name: 'Last two weeks' })).toBeInTheDocument();
     expect(mocked.getOfficialHistory).toHaveBeenCalled();
   });
 
@@ -258,11 +262,11 @@ describe('public history screen', () => {
           publishedList({ businessDate: '2026-03-10', status: 'won' }),
           publishedList({ businessDate: '2026-03-09', status: 'lost' }),
           publishedList({ businessDate: '2026-03-08', status: 'unresolved' }),
+          publishedList({ businessDate: '2026-03-07', status: 'void' }),
         ],
-        [publishedList({ businessDate: '2026-03-07', status: 'void' })],
       ),
     });
-    renderScreen();
+    renderScreen('/history?view=past');
     // A winners-only view would omit these; all must be present.
     expect(await screen.findByText('Lost')).toBeInTheDocument();
     expect(screen.getAllByText('Unresolved').length).toBeGreaterThan(0);
@@ -275,7 +279,7 @@ describe('public history screen', () => {
         { businessDate: '2026-03-10', published: false, legs: [], message: 'No official five-match list was published for this date.' },
       ]),
     });
-    renderScreen();
+    renderScreen('/history?view=past');
     expect(await screen.findByText('Not published')).toBeInTheDocument();
     expect(screen.getAllByText(/No official five-match list was published/).length).toBeGreaterThan(0);
   });
@@ -285,21 +289,38 @@ describe('public history screen', () => {
       businessDate: '2026-03-10', published: true, legCount: 1, status: 'won',
     };
     mockAll({ history: historyOf([recent]) });
-    renderScreen();
+    renderScreen('/history?view=past');
     const section = await screen.findByRole('region', { name: 'Last two weeks' });
     expect(within(section).getByText(/1 selections/)).toBeInTheDocument();
     expect(within(section).getByText(/Selection details are not available/)).toBeInTheDocument();
     expect(within(section).queryByText('This list')).not.toBeInTheDocument();
   });
 
-  it('shows recent lists with their selections and no full history section', async () => {
-    mockAll({ history: historyOf([publishedList()], [publishedList({ businessDate: '2026-03-01' })]) });
-    renderScreen();
+  it('filters recent dates and pages through the published archive', async () => {
+    const recent = publishedList();
+    const gap = { businessDate: '2026-03-09', published: false as const };
+    const older = publishedList({ businessDate: '2026-03-01' });
+    mockAll({ history: { ...historyOf([recent, gap], [recent]), totalPages: 2 } });
+    mocked.getOfficialHistory.mockImplementation(async (page = 1) => ({
+      data: {
+        ...historyOf([recent, gap], page === 2 ? [older] : [recent]),
+        page,
+        totalPages: 2,
+      },
+    } as never));
+
+    renderScreen('/history?view=past');
     const section = await screen.findByRole('region', { name: 'Last two weeks' });
     expect(within(section).getByText(/Alpha.*Bravo/)).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Full history' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Older' })).not.toBeInTheDocument();
-    expect(screen.queryByText(/1 March 2026/)).not.toBeInTheDocument();
+    fireEvent.change(within(section).getByLabelText('Filter by date'), { target: { value: gap.businessDate } });
+    expect(within(section).getByText('Not published')).toBeInTheDocument();
+    expect(within(section).queryByText(/Alpha.*Bravo/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('link', { name: 'All published lists' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Older lists' }));
+    expect(await screen.findByText('1 March 2026')).toBeInTheDocument();
+    expect(mocked.getOfficialHistory).toHaveBeenLastCalledWith(2);
+    expect(screen.getByRole('button', { name: 'Older lists' })).toBeDisabled();
   });
 
   it('does not identify status by colour alone', async () => {
@@ -309,7 +330,7 @@ describe('public history screen', () => {
         publishedList({ businessDate: '2026-03-09', status: 'lost' }),
       ]),
     });
-    renderScreen();
+    renderScreen('/history?view=past');
     // Each status carries a text label and a non-colour glyph.
     const won = (await screen.findAllByText('Won'))[0].closest('span');
     expect(won?.textContent).toMatch(/✓/);
@@ -324,11 +345,11 @@ describe('public history screen', () => {
         selections: { won: 0, lost: 0, void: 0, pending: 0, unresolved: 0, denominator: 0, hit_rate: null },
       }),
     });
-    renderScreen();
+    renderScreen('/history?view=past');
     await screen.findByRole('heading', { name: 'Track record' });
     // Both rates are labelled distinctly, and a null rate is an em dash rather
     // than a misleading 0%.
-    expect(screen.getByText('Betlist win rate')).toBeInTheDocument();
+    expect(screen.getByText('Daily list win rate')).toBeInTheDocument();
     expect(screen.getByText('Selection win rate')).toBeInTheDocument();
     expect(screen.queryByText('0%')).not.toBeInTheDocument();
   });
@@ -336,18 +357,20 @@ describe('public history screen', () => {
   it('explains how forecasts work and states their limitations', async () => {
     mockAll();
     renderScreen();
-    expect(await screen.findByRole('heading', { name: 'How these forecasts work' })).toBeInTheDocument();
-    expect(screen.getByText(/Probabilities describe likelihood, not outcomes/)).toBeInTheDocument();
+    fireEvent.click(await screen.findByText('How these forecasts work', { selector: 'summary' }));
+    expect(screen.getByText(/Probabilities describe likelihood, not outcomes/)).toBeVisible();
     expect(screen.getAllByText(/before the earliest kickoff/).length).toBeGreaterThan(0);
   });
 
-  it('surfaces a load failure instead of showing an empty history', async () => {
-    mocked.getOfficialToday.mockRejectedValue(new Error('network'));
-    mocked.getOfficialHistory.mockRejectedValue(new Error('network'));
-    mocked.getOfficialSummary.mockRejectedValue(new Error('network'));
-    mocked.getOfficialPreview.mockRejectedValue(new Error('network'));
+  it('lets visitors retry daily picks while the featured match remains available', async () => {
+    mockAll();
+    mocked.getOfficialToday.mockRejectedValueOnce(new Error('network'));
     renderScreen();
     expect(await screen.findByRole('alert')).toHaveTextContent(/could not load/i);
+    expect(await screen.findByText('Strong goals signal.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+    expect(await screen.findByText('2–1')).toBeInTheDocument();
   });
 
   it('flags an unresolved reconciliation check rather than hiding it', async () => {
@@ -441,8 +464,7 @@ describe('list cards show their own win percentage', () => {
     });
     mockAll({ today: mixed, history: historyOf([mixed]) });
     renderScreen();
-    // 2 won / 3 settled = 67%. The card appears in both the today and history
-    // sections, so both instances are expected.
+    // 2 won / 3 settled = 67%.
     expect((await screen.findAllByText('67%')).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/2 won \/ 3 settled/).length).toBeGreaterThan(0);
   });

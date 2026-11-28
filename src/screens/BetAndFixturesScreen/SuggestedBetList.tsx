@@ -3,6 +3,7 @@ import moment from 'moment';
 import { FixturePrediction, MarketValue } from '../../prediction-engine/types';
 import { BetListSuggestion, getSuggestedBetList } from '../../services/predictions';
 import { ForecastHighlight } from './ForecastHighlight';
+import { ProbabilityTrack } from './ProbabilityTrack';
 
 export const DEFAULT_BET_LIST_SIZE = 5;
 
@@ -55,6 +56,7 @@ export const SuggestedBetList: React.FC<{
   const [limit, setLimit] = useState(DEFAULT_BET_LIST_SIZE);
   const [copyMessage, setCopyMessage] = useState('');
   const [suggestions, setSuggestions] = useState<BetListSuggestion[]>([]);
+  const [attempt, setAttempt] = useState(0);
   const [fetchError, setFetchError] = useState('');
   const [fetching, setFetching] = useState(false);
   const requestIdRef = useRef(0);
@@ -82,7 +84,7 @@ export const SuggestedBetList: React.FC<{
         setFetchError(error instanceof Error ? error.message : 'Could not load the suggested bet list.');
       });
     return () => { requestIdRef.current += 1; };
-  }, [predictions, limit, statistical, ready]);
+  }, [predictions, limit, statistical, ready, attempt]);
 
   const predictionsById = new Map(predictions.map((prediction) => [prediction.fixture.fixture.id, prediction]));
   const isLoading = loading || fetching;
@@ -95,11 +97,11 @@ export const SuggestedBetList: React.FC<{
     } catch { setCopyMessage('Copy is unavailable in this browser. You can select the list text below.'); }
   };
 
-  return <section aria-label="Suggested bet list" className="rounded-2xl border border-cyan-400/30 bg-slate-900 p-4 sm:p-5">
+  return <section aria-label="Suggested bet list" className="rounded-2xl border border-slate-700 bg-[#152136] p-4 sm:p-5">
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h2 className="text-lg font-semibold text-white">Suggested bet list <span className="text-cyan-200">· {suggestions.length}</span></h2>
-        <p className="mt-1 text-xs text-slate-300">Only forecast options meeting our market-specific percentage thresholds qualify. One qualifying option per upcoming match; matches with none are left out.</p>
+        <h2 className="text-lg font-bold text-white">Suggested bet list <span className="text-cyan-200">· {suggestions.length}</span></h2>
+        <p className="mt-1 text-xs text-slate-300">One qualifying prediction per upcoming match. See the model’s estimate and the status of available prices.</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <label className="text-xs text-slate-300">Up to{' '}
@@ -110,13 +112,19 @@ export const SuggestedBetList: React.FC<{
         <button type="button" disabled={isLoading || !suggestions.length} onClick={copyList} className="rounded-lg border border-cyan-400/40 px-3 py-1.5 text-xs font-semibold text-cyan-100 hover:bg-cyan-500/10 disabled:cursor-not-allowed disabled:opacity-50">Copy list</button>
       </div>
     </div>
-    <p className="mt-2 text-xs text-slate-400">Uses the strongest qualifying forecast for each match. Thresholds stay unchanged.</p>
-    <p className="mt-2 text-xs text-amber-200">Suggestions for review; not guaranteed outcomes or proven returns. Each entry shows whether its price checks passed.</p>
+    <p className="mt-2 text-xs text-slate-400">Suggestions use the configured market thresholds. Open the analysis to see why a market was selected.</p>
+    <p className="mt-2 text-xs text-amber-200">Percentages estimate the likelihood of specific match outcomes. They are separate from historical performance.</p>
     {copyMessage && <p role="status" className="mt-2 text-xs text-slate-200">{copyMessage}</p>}
     {isLoading && <p className="mt-3 text-sm text-cyan-100">Updating the suggested list with the current prediction batch…</p>}
-    {fetchError && <p role="alert" className="mt-3 text-sm text-amber-200">{fetchError}</p>}
+    {fetchError && (
+      <div className="mt-3 rounded-lg border border-amber-300/40 p-3">
+        <p role="alert" className="text-sm text-amber-200">{fetchError}</p>
+        <button type="button" disabled={loading} onClick={() => setAttempt(value => value + 1)}
+          className="min-h-[44px] text-sm font-semibold text-emerald-200 underline underline-offset-4 disabled:opacity-50">Retry suggested list</button>
+      </div>
+    )}
     {!statistical ? <p className="mt-3 text-sm text-slate-300">Switch to Statistical to generate this list. Legacy rules do not supply forecast probabilities.</p>
-      : !suggestions.length ? (!fetchError && <p className="mt-3 text-sm text-slate-300">{isLoading ? 'Your suggested list will appear when forecasts are ready.' : 'No upcoming matches meet your suggestion thresholds. The list stays empty until qualifying forecasts are available.'}</p>)
+      : !suggestions.length ? (!fetchError && <p className="mt-3 text-sm text-slate-300">{isLoading ? 'Your suggested list will appear when forecasts are ready.' : !ready ? 'An active pass and match forecasts are needed to build a suggested list.' : 'No upcoming matches meet your suggestion thresholds.'}</p>)
       : <>
         <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-300">
           <span>{suggestions.length} of up to {limit} matches</span><span>·</span><span>{familyCount} market {familyCount === 1 ? 'type' : 'types'}</span><span>·</span><span>{checkedCount} with price checks passed</span><span>·</span><span>{suggestions.length - checkedCount} need price review</span>
@@ -130,7 +138,7 @@ export const SuggestedBetList: React.FC<{
             const market = prediction.markets.find((entry) => entry.marketId === marketId);
             const key = `${suggestion.providerFixtureId}:${marketId}`;
             const picked = selectedPickKeys.includes(key);
-            return <li key={key} className="rounded-xl border border-slate-700 bg-slate-950/60 p-3">
+            return <li key={key} className="rounded-xl border border-slate-700 bg-[#0d1626] p-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <h3 className="text-sm font-semibold text-white">{index + 1}. {fixture.teams.home.name} vs {fixture.teams.away.name}</h3>
@@ -138,24 +146,30 @@ export const SuggestedBetList: React.FC<{
                 </div>
                 <span className={`rounded-full border px-2 py-1 text-[10px] font-semibold ${priceStatus === 'checked' ? 'border-emerald-400/40 text-emerald-200' : 'border-amber-400/30 text-amber-200'}`}>{PRICE_STATUS_LABELS[priceStatus]}</span>
               </div>
-              <div className="mt-2 font-semibold text-cyan-100">{marketLabel} · {(probability * 100).toFixed(2)}%</div>
-              <p className="mt-1 text-[10px] text-slate-400">{FORECAST_FAMILY_LABELS[family] ?? family}</p>
-              {impliedBy && <p className="mt-2 text-xs text-cyan-200">Qualifies via combined markets that already passed their own thresholds.</p>}
-              {diversityAlternative && <p className="mt-2 text-xs text-cyan-200">Chosen for variety. Strongest qualifying option for this match: {diversityAlternative.label} ({(diversityAlternative.probability * 100).toFixed(2)}%).</p>}
-              <ForecastHighlight probability={probability} preference={preference} progressive={marketId === 'btts_yes'} level={suggestion.level}
-                note={impliedBy ? `qualifies via combined markets, not its own threshold.` : undefined} />
-              <p className="mt-2 text-xs text-slate-300">{suggestion.explanation}</p>
-              {preference.isRange && <p className="mt-1 text-xs text-slate-400">Base scoreline model; separate from prior-blended totals. This range model is unvalidated.</p>}
-              {!preference.isRange && market && prediction.dataQuality.weakMarkets.includes(market.marketId) && <p className="mt-1 text-xs text-amber-200">Weak or unvalidated market model.</p>}
-              <p className="mt-1 text-xs text-slate-400">Team history: home {prediction.homeTeam.overallSampleSize}, away {prediction.awayTeam.overallSampleSize} matches.</p>
-              {historyLimited && <p className="mt-1 text-xs text-amber-200">Limited team history; inspect the statistics before deciding.</p>}
-              {priceStatus !== 'unpriced' && <p className="mt-2 text-xs text-slate-200">Odds {decimalOdds?.toFixed(2)}{bookmaker ? ` · ${bookmaker}` : ''}
-                {priceStatus === 'checked' && market?.expectedValue !== undefined ? ` · model-estimated EV ${(market.expectedValue * 100).toFixed(1)}%` : ''}</p>}
-              {priceStatus === 'unqualified' && <p className="mt-1 text-xs text-amber-200">{market?.rejectReasons.slice(0, 2).join(' ') || 'The forecast qualifies for highlighting, but does not pass the existing probability, edge and positive-EV price checks.'}</p>}
-              {priceStatus === 'unpriced' && <p className="mt-2 text-xs text-slate-400">Review this forecast against an available price before deciding.</p>}
+              <div className="mt-3 font-bold text-emerald-200">{marketLabel} · {(probability * 100).toFixed(2)}%</div>
+              <ProbabilityTrack value={probability} />
+              <details className="mt-3 rounded-lg border border-slate-700 px-3">
+                <summary className="cursor-pointer py-2.5 text-sm font-semibold text-slate-200">Selection analysis</summary>
+                <div className="space-y-1 pb-3">
+                  <p className="text-xs text-slate-300">{FORECAST_FAMILY_LABELS[family] ?? family}</p>
+                  {impliedBy && <p className="mt-2 text-xs text-cyan-200">Qualifies via combined markets that already passed their own thresholds.</p>}
+                  {diversityAlternative && <p className="mt-2 text-xs text-cyan-200">Chosen for variety. Strongest qualifying option for this match: {diversityAlternative.label} ({(diversityAlternative.probability * 100).toFixed(2)}%).</p>}
+                  <ForecastHighlight probability={probability} preference={preference} progressive={marketId === 'btts_yes'} level={suggestion.level}
+                    note={impliedBy ? `qualifies via combined markets, not its own threshold.` : undefined} />
+                  <p className="mt-2 text-xs text-slate-300">{suggestion.explanation}</p>
+                  {preference.isRange && <p className="mt-1 text-xs text-slate-400">Base scoreline model; separate from prior-blended totals. This range model is unvalidated.</p>}
+                  {!preference.isRange && market && prediction.dataQuality.weakMarkets.includes(market.marketId) && <p className="mt-1 text-xs text-amber-200">Weak or unvalidated market model.</p>}
+                  <p className="mt-1 text-xs text-slate-400">Team history: home {prediction.homeTeam.overallSampleSize}, away {prediction.awayTeam.overallSampleSize} matches.</p>
+                  {historyLimited && <p className="mt-1 text-xs text-amber-200">Limited team history; inspect the statistics before deciding.</p>}
+                  {priceStatus !== 'unpriced' && <p className="mt-2 text-xs text-slate-200">Odds {decimalOdds?.toFixed(2)}{bookmaker ? ` · ${bookmaker}` : ''}
+                    {priceStatus === 'checked' && market?.expectedValue !== undefined ? ` · model-estimated EV ${(market.expectedValue * 100).toFixed(1)}%` : ''}</p>}
+                  {priceStatus === 'unqualified' && <p className="mt-1 text-xs text-amber-200">{market?.rejectReasons.slice(0, 2).join(' ') || 'The forecast qualifies for highlighting, but does not pass the existing probability, edge and positive-EV price checks.'}</p>}
+                  {priceStatus === 'unpriced' && <p className="mt-2 text-xs text-slate-400">Review this forecast against an available price before deciding.</p>}
+                </div>
+              </details>
               <div className="mt-3 flex flex-wrap gap-2">
-                <button type="button" onClick={() => onReview(prediction)} className="rounded-lg border border-slate-600 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-800">Review match statistics</button>
-                {priceStatus === 'checked' && market && <button type="button" disabled={isLoading} onClick={() => onTogglePick(fixture.fixture.id, market)} className="rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-100 disabled:opacity-50">{picked ? 'Remove from my picks' : 'Add to my picks'}</button>}
+                <button type="button" onClick={() => onReview(prediction)} className="min-h-[44px] rounded-lg border border-slate-600 px-3 text-xs text-slate-200 hover:bg-slate-800">Review match statistics</button>
+                {priceStatus === 'checked' && market && <button type="button" disabled={isLoading} onClick={() => onTogglePick(fixture.fixture.id, market)} className="min-h-[44px] rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 text-xs font-semibold text-emerald-100 disabled:opacity-50">{picked ? 'Remove from my picks' : 'Add to my picks'}</button>}
               </div>
             </li>;
           })}

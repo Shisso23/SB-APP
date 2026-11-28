@@ -135,6 +135,17 @@ test('empty, legacy, loading and changed forecasts do not manufacture entries', 
   expect(screen.getByText(/Updating the suggested list/)).toBeInTheDocument();
 });
 
+test('retries the suggested list with the same available forecasts', async () => {
+  const prediction = makeForecastBetPrediction({ now });
+  mockBetList([prediction]);
+  mockGetSuggestedBetList.mockRejectedValueOnce(new Error('Request timed out'));
+  render(<SuggestedBetList {...props} predictions={[prediction]} />);
+  expect(await screen.findByRole('alert')).toHaveTextContent('Request timed out');
+  fireEvent.click(screen.getByRole('button', { name: 'Retry suggested list' }));
+  expect(await screen.findByRole('listitem')).toBeInTheDocument();
+  expect(mockGetSuggestedBetList).toHaveBeenLastCalledWith({ predictions: [prediction], limit: 5 });
+});
+
 test('a qualifying forecast remains listed with limited history and no model selection', async () => {
   const prediction = makeForecastBetPrediction({ now, markets: { home_win: .6 } });
   prediction.selections = [];
@@ -154,7 +165,7 @@ test('always uses the strongest qualifying forecast per match and can return few
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
   render(<SuggestedBetList {...props} predictions={predictions} />);
   expect(await screen.findByText('1 market type')).toBeInTheDocument();
-  expect(screen.getByText(/Uses the strongest qualifying forecast for each match/)).toBeInTheDocument();
+  expect(screen.getByText(/Suggestions use the configured market thresholds/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Copy list' }));
   expect(await screen.findByRole('status')).toHaveTextContent('List copied.');
   expect(screen.getAllByRole('listitem')).toHaveLength(3);

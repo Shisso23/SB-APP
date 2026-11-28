@@ -10,6 +10,7 @@ import {
   getPurchaseStatus,
   readCheckoutAttempt,
 } from '../../services/access';
+import { useAuth } from '../../services/auth/AuthProvider';
 import type { MeResponse, PurchaseStatus, PurchaseStatusResponse } from '../../services/access/types';
 
 /**
@@ -51,6 +52,7 @@ const isTerminalBad = (status: PurchaseStatus): boolean =>
 const PayFastResultScreen: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { initialising } = useAuth();
 
   const hint = hintFromSearch(location.search);
   // The attempt comes from router state, or from this tab's session after the
@@ -79,6 +81,7 @@ const PayFastResultScreen: React.FC = () => {
   }, [attemptId]);
 
   useEffect(() => {
+    if (initialising) return;
     cancelledRef.current = false;
 
     const run = async () => {
@@ -143,9 +146,7 @@ const PayFastResultScreen: React.FC = () => {
     return () => {
       cancelledRef.current = true;
     };
-    // Intentionally keyed on `refresh` and `hint` only: the mount effect must
-    // run once per result hint, not again on every state it sets.
-  }, [refresh, hint]);
+  }, [refresh, hint, initialising]);
 
   const accessState = accessStateOf(me);
   const finished = accessState === 'active' || hint === 'cancelled' || (purchase ? isTerminalBad(purchase.status) : false);
@@ -186,7 +187,7 @@ const PayFastResultScreen: React.FC = () => {
         <p className="text-gray-200">Your premium access is now active.</p>
         {remaining && <p className="mt-1 text-sm text-teal-100">{remaining}</p>}
         {expiry && <p className="text-sm text-teal-100">Access ends on {expiry}.</p>}
-        <PrimaryButton onClick={() => navigate('/predictions')}>View premium predictions</PrimaryButton>
+        <PrimaryButton onClick={() => navigate('/BetAndFixturesScreen')}>Generate Predictions</PrimaryButton>
       </Shell>
     );
   }
@@ -204,10 +205,10 @@ const PayFastResultScreen: React.FC = () => {
         <PrimaryButton onClick={() => void retry()}>Refresh status</PrimaryButton>
         <button
           type="button"
-          onClick={() => navigate('/predictions')}
+          onClick={() => navigate('/history')}
           className="mt-3 block w-full text-sm underline text-gray-300"
         >
-          Return to PredictXI
+          Explore free results
         </button>
       </Shell>
     );
@@ -246,21 +247,21 @@ const PayFastResultScreen: React.FC = () => {
       </button>
       <button
         type="button"
-        onClick={() => navigate('/predictions')}
+        onClick={() => navigate('/history')}
         className="mt-3 block w-full text-sm underline text-gray-300"
       >
-        Return to PredictXI
+        Explore free results
       </button>
     </Shell>
   );
 };
 
 const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="flex flex-grow flex-col items-center justify-center px-4 pt-28 pb-16 bg-gray-900 text-white">
-    <div className="w-full max-w-md rounded-lg bg-gray-800 px-6 py-8 text-center shadow-md">
+  <main className="flex min-h-screen items-start justify-center bg-[#0d1626] px-4 py-12 text-white sm:py-20">
+    <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-[#152136] px-6 py-8 text-center">
       {children}
     </div>
-  </div>
+  </main>
 );
 
 const PrimaryButton: React.FC<{ onClick: () => void; children: React.ReactNode }> = ({
@@ -270,7 +271,7 @@ const PrimaryButton: React.FC<{ onClick: () => void; children: React.ReactNode }
   <button
     type="button"
     onClick={onClick}
-    className="mt-5 rounded bg-gradient-to-r from-cyan-500 to-teal-500 px-5 py-2 font-semibold text-white"
+    className="mt-5 min-h-[44px] rounded-lg bg-emerald-300 px-5 py-2 font-bold text-slate-900 hover:bg-emerald-200"
   >
     {children}
   </button>
