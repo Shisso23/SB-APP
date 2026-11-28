@@ -15,6 +15,14 @@ import { MemoryRouter } from 'react-router-dom';
 
 import OfficialHistoryScreen from './OfficialHistoryScreen';
 import * as service from '../../services/official';
+import { getMe } from '../../services/access';
+
+let mockUid: string | undefined;
+jest.mock('../../services/auth/AuthProvider', () => ({ useAuth: () => ({ user: mockUid ? { uid: mockUid } : null }) }));
+jest.mock('../../services/access', () => ({
+  ...jest.requireActual('../../services/access'),
+  getMe: jest.fn(),
+}));
 import type {
   OfficialHistoryResponse,
   OfficialList,
@@ -142,6 +150,7 @@ const mockAll = ({
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockUid = undefined;
 });
 
 describe('public history screen', () => {
@@ -149,12 +158,13 @@ describe('public history screen', () => {
     mockAll();
     renderScreen();
     expect(screen.getByRole('heading', { name: 'Results & Daily Picks' })).toBeInTheDocument();
-    await screen.findByText('Strong goals signal.');
+    await within(await screen.findByRole('region', { name: 'Today’s featured match' })).findByText('Strong goals signal.');
     expect(mocked.getOfficialToday).toHaveBeenCalled();
+    expect(getMe).not.toHaveBeenCalled();
     expect(mocked.getOfficialHistory).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole('link', { name: 'Past Results' }));
-    expect(await screen.findByRole('heading', { name: 'Last two weeks' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('link', { name: 'Previous Picks' }));
+    expect(await screen.findByRole('heading', { name: 'Previous daily lists' })).toBeInTheDocument();
     expect(mocked.getOfficialHistory).toHaveBeenCalled();
   });
 
@@ -163,6 +173,8 @@ describe('public history screen', () => {
     renderScreen();
     // The market appears on the leg row, the featured match and its market table.
     expect((await screen.findAllByText(/Over 2\.5/)).length).toBeGreaterThan(0);
+    fireEvent.click((await screen.findAllByText('Selection details'))[0]);
+    fireEvent.click(screen.getByText('Hypothetical returns'));
     expect(screen.getAllByText('1.85').length).toBeGreaterThan(0);
     expect(screen.getAllByText('2–1').length).toBeGreaterThan(0);
     // en-ZA groups thousands with U+00A0; normalise before asserting.
@@ -252,7 +264,7 @@ describe('public history screen', () => {
     });
     renderScreen();
     expect(await screen.findByText(/Potential return/)).toBeInTheDocument();
-    expect(screen.getByText(/not fully settled/)).toBeInTheDocument();
+    expect(screen.getByText(/Settlement is pending/)).toBeInTheDocument();
   });
 
   it('gives wins, losses and unresolved lists equal visibility', async () => {
@@ -266,76 +278,73 @@ describe('public history screen', () => {
         ],
       ),
     });
-    renderScreen('/history?view=past');
+    renderScreen('/history?view=past&date=all');
     // A winners-only view would omit these; all must be present.
-    expect(await screen.findByText('Lost')).toBeInTheDocument();
-    expect(screen.getAllByText('Unresolved').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Void').length).toBeGreaterThan(0);
+    expect(await screen.findByText('List lost')).toBeInTheDocument();
+    expect(screen.getAllByText('List unresolved').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('List void').length).toBeGreaterThan(0);
   });
 
   it('shows dates with no published list instead of skipping them', async () => {
     mockAll({
       history: historyOf([
-        { businessDate: '2026-03-10', published: false, legs: [], message: 'No official five-match list was published for this date.' },
+        publishedList(),
+        { businessDate: '2026-03-09', published: false, legs: [], message: 'No official five-match list was published for this date.' },
       ]),
     });
     renderScreen('/history?view=past');
-    expect(await screen.findByText('Not published')).toBeInTheDocument();
+    expect(await screen.findByText('No picks published')).toBeInTheDocument();
     expect(screen.getAllByText(/No official five-match list was published/).length).toBeGreaterThan(0);
   });
 
   it('shows a recent date without selections instead of crashing', async () => {
     const recent: OfficialListSummary = {
-      businessDate: '2026-03-10', published: true, legCount: 1, status: 'won',
+      businessDate: '2026-03-09', published: true, legCount: 1, status: 'won',
     };
-    mockAll({ history: historyOf([recent]) });
+    mockAll({ history: historyOf([publishedList(), recent]) });
     renderScreen('/history?view=past');
-    const section = await screen.findByRole('region', { name: 'Last two weeks' });
-    expect(within(section).getByText(/1 selections/)).toBeInTheDocument();
+    const section = await screen.findByRole('region', { name: 'Previous daily lists' });
+    expect(within(section).getByText(/1 selection/)).toBeInTheDocument();
     expect(within(section).getByText(/Selection details are not available/)).toBeInTheDocument();
     expect(within(section).queryByText('This list')).not.toBeInTheDocument();
   });
 
   it('filters recent dates and pages through the published archive', async () => {
-    const recent = publishedList();
-    const gap = { businessDate: '2026-03-09', published: false as const };
+    const recent = publishedList({ businessDate: '2026-03-09' });
+    const gap = { businessDate: '2026-03-08', published: false as const };
     const older = publishedList({ businessDate: '2026-03-01' });
-    mockAll({ history: { ...historyOf([recent, gap], [recent]), totalPages: 2 } });
+    mockAll({ history: { ...historyOf([publishedList(), recent, gap], [recent]), totalPages: 2 } });
     mocked.getOfficialHistory.mockImplementation(async (page = 1) => ({
       data: {
-        ...historyOf([recent, gap], page === 2 ? [older] : [recent]),
+        ...historyOf([publishedList(), recent, gap], page === 2 ? [older] : [recent]),
         page,
         totalPages: 2,
       },
     } as never));
 
     renderScreen('/history?view=past');
-    const section = await screen.findByRole('region', { name: 'Last two weeks' });
-    expect(within(section).getByText(/Alpha.*Bravo/)).toBeInTheDocument();
-    fireEvent.change(within(section).getByLabelText('Filter by date'), { target: { value: gap.businessDate } });
-    expect(within(section).getByText('Not published')).toBeInTheDocument();
-    expect(within(section).queryByText(/Alpha.*Bravo/)).not.toBeInTheDocument();
+    const section = await screen.findByRole('region', { name: 'Previous daily lists' });
+    expect(within(section).getByRole('heading', { name: /Alpha.*Bravo/ })).toBeInTheDocument();
+    fireEvent.change(within(section).getByLabelText('Choose a date'), { target: { value: gap.businessDate } });
+    expect(within(section).getByText('No picks published')).toBeInTheDocument();
+    expect(within(section).queryByRole('heading', { name: /Alpha.*Bravo/ })).not.toBeInTheDocument();
+    fireEvent.click(within(section).getByRole('link', { name: 'Next date' }));
+    expect(within(section).getByRole('heading', { name: /Alpha.*Bravo/ })).toBeInTheDocument();
+    expect(mocked.getOfficialHistory).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole('link', { name: 'All published lists' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Older lists' }));
-    expect(await screen.findByText('1 March 2026')).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('link', { name: /Older entries/ }));
+    expect(await screen.findByText('1 March 2026', { selector: 'summary' })).toBeInTheDocument();
     expect(mocked.getOfficialHistory).toHaveBeenLastCalledWith(2);
-    expect(screen.getByRole('button', { name: 'Older lists' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Older entries/ })).toBeDisabled();
   });
 
   it('does not identify status by colour alone', async () => {
-    mockAll({
-      history: historyOf([
-        publishedList({ businessDate: '2026-03-10', status: 'won' }),
-        publishedList({ businessDate: '2026-03-09', status: 'lost' }),
-      ]),
-    });
-    renderScreen('/history?view=past');
-    // Each status carries a text label and a non-colour glyph.
-    const won = (await screen.findAllByText('Won'))[0].closest('span');
-    expect(won?.textContent).toMatch(/✓/);
-    const lost = screen.getAllByText('Lost')[0].closest('span');
-    expect(lost?.textContent).toMatch(/✕/);
+    const leg = publishedList().legs[0];
+    mockAll({ today: publishedList({ legs: [leg, { ...leg, providerFixtureId: 9001, status: 'lost' }] }) });
+    renderScreen();
+    expect(await screen.findByText('Correct', { selector: 'span' })).toHaveTextContent('✓Correct');
+    expect(screen.getByText('Incorrect', { selector: 'span' })).toHaveTextContent('✕Incorrect');
   });
 
   it('reports metrics with their denominators and never coerces a null rate to zero', async () => {
@@ -345,13 +354,50 @@ describe('public history screen', () => {
         selections: { won: 0, lost: 0, void: 0, pending: 0, unresolved: 0, denominator: 0, hit_rate: null },
       }),
     });
-    renderScreen('/history?view=past');
+    renderScreen('/history?view=predictions');
     await screen.findByRole('heading', { name: 'Track record' });
     // Both rates are labelled distinctly, and a null rate is an em dash rather
     // than a misleading 0%.
-    expect(screen.getByText('Daily list win rate')).toBeInTheDocument();
-    expect(screen.getByText('Selection win rate')).toBeInTheDocument();
+    expect(screen.getByText('Whole daily lists')).toBeInTheDocument();
+    expect(screen.getByText('Individual selections')).toBeInTheDocument();
     expect(screen.queryByText('0%')).not.toBeInTheDocument();
+  });
+
+  it('groups saved markets by fixture, filters page data and reuses the archive response across tabs', async () => {
+    const original = publishedList();
+    const entry = publishedList({
+      legs: [
+        original.legs[0],
+        { ...original.legs[0], marketId: 'btts', marketLabel: 'Both teams to score', status: 'lost' },
+        { ...original.legs[0], providerFixtureId: 3, homeTeam: 'Charlie', homeGoals: null, awayGoals: null, status: 'pending', kickoff: '2099-01-01T00:00:00Z' },
+        { ...original.legs[0], providerFixtureId: 4, homeTeam: 'Delta', status: 'void' },
+      ],
+    });
+    mockAll({ history: { ...historyOf([entry], [entry]), totalPages: 900, totalLists: 9000 } });
+    renderScreen('/history?view=predictions');
+    const archive = await screen.findByRole('region', { name: 'Published match predictions' });
+    expect(within(archive).getByText('Upcoming')).toBeInTheDocument();
+    expect(within(archive).getByText('Void', { selector: 'span' })).toBeInTheDocument();
+    fireEvent.click(within(archive).getByText('View 2 published predictions'));
+    expect(within(archive).getByText('Both teams to score', { selector: 'p' })).toBeVisible();
+    fireEvent.change(within(archive).getByLabelText('Outcome'), { target: { value: 'lost' } });
+    expect(within(archive).getByText('Both teams to score', { selector: 'p' })).toBeVisible();
+    expect(within(archive).queryByText('Charlie')).not.toBeInTheDocument();
+    fireEvent.change(within(archive).getByLabelText('Team'), { target: { value: 'Other club' } });
+    expect(within(archive).getByRole('status')).toHaveTextContent('No predictions match');
+    fireEvent.click(screen.getByRole('link', { name: 'Previous Picks' }));
+    fireEvent.click(screen.getByRole('link', { name: 'All published lists' }));
+    expect(await screen.findByRole('heading', { name: 'Published daily lists' })).toBeInTheDocument();
+    expect(mocked.getOfficialHistory).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers an active premium user the prediction desk without hiding free picks', async () => {
+    mockUid = 'premium-user';
+    (getMe as jest.Mock).mockResolvedValue({ data: { has_prediction_access: true, prediction_access_ends_at: '2099-01-01' } });
+    mockAll();
+    renderScreen();
+    expect(await screen.findByRole('link', { name: 'Generate Predictions' })).toHaveAttribute('href', '/BetAndFixturesScreen');
+    expect(await screen.findByRole('region', { name: 'Today’s daily selections' })).toBeInTheDocument();
   });
 
   it('explains how forecasts work and states their limitations', async () => {
@@ -367,7 +413,7 @@ describe('public history screen', () => {
     mocked.getOfficialToday.mockRejectedValueOnce(new Error('network'));
     renderScreen();
     expect(await screen.findByRole('alert')).toHaveTextContent(/could not load/i);
-    expect(await screen.findByText('Strong goals signal.')).toBeInTheDocument();
+    expect(await within(await screen.findByRole('region', { name: 'Today’s featured match' })).findByText('Strong goals signal.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
     expect(await screen.findByText('2–1')).toBeInTheDocument();
@@ -476,7 +522,7 @@ describe('list cards show their own win percentage', () => {
     });
     mockAll({ today: pending, history: historyOf([pending]) });
     renderScreen();
-    expect((await screen.findAllByText('This list')).length).toBeGreaterThan(0);
+    expect(await screen.findByText('—', { selector: 'strong' })).toBeInTheDocument();
     // No fabricated 0%.
     expect(screen.queryByText('0%')).not.toBeInTheDocument();
   });
